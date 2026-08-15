@@ -1,0 +1,18 @@
+#!/bin/bash
+# ensure-web — 确保 dsh web 服务在运行(不打开浏览器)
+# 已在运行 → 直接返回(绝不杀现有实例);未运行 → 后台拉起
+PORT="${DSH_PORT:-3080}"
+if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  exit 0
+fi
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
+LOG="$HOME/.dsh/web.log"
+mkdir -p "$HOME/.dsh"
+if [ ! -f "$DSH_BIN" ]; then
+  echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact" >>"$LOG"
+  exit 1
+fi
+cd "$HOME" || exit 1
+/usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web >>"$LOG" 2>&1 &
+exit 0
