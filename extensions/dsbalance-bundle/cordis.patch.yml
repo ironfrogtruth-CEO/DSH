@@ -1,0 +1,5 @@
+# dsh-dsbalance bundle patch: 插入余额服务插件行
+# 随 profile 启动自动加载,无需手动运行动态插件
+- insert:
+    - id: dsbalance
+      name: '@local/dsh-dsbalance'

@@ -1,0 +1,13 @@
+#!/bin/bash
+# dsh restart — 重启 Web 服务(加载新 bundle 后使用)
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+echo "停止服务..."
+"$HOME/.dsh/scripts/stop"
+sleep 2
+echo "启动服务..."
+"$HOME/.dsh/scripts/ensure-web"
+for i in $(seq 1 20); do
+  sleep 1
+  lsof -iTCP:3080 -sTCP:LISTEN >/dev/null 2>&1 && { echo "✅ 服务已就绪: http://127.0.0.1:3080"; exit 0; }
+done
+echo "❌ 启动超时,查看 ~/.dsh/web.log"; exit 1

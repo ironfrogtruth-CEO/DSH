@@ -83,3 +83,5 @@ extensions:                          # 扩展注册点
   skills: ~/.dsh/skills/             # 技能(每目录一个 SKILL.md)
   plugins: ~/.dsh/extensions/        # 沉淀的插件源码(动态插件永久副本)
   patches: ~/.dsh/profiles/web/cordis.patch.yml
+  bundles:
+    - "@local/dsh-dsbalance"    # 余额卡片固化 bundle(自动加载)
