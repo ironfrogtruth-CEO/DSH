@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康经营分析"
+  short_description: "把确认数据转成可追溯的风险、费用和管理结论"
+  default_prompt: "Use $enterprise-health-business-analysis to build traceable A04 findings and management implications from the confirmed data package."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,44 @@
+:root {
+  --pa-primary: #f05a22;
+  --pa-secondary: #1d8153;
+  --pa-ink: #222222;
+  --pa-muted: #6c727a;
+  --pa-bg: #ffffff;
+  --pa-soft: #fff1e8;
+}
+
+[data-style="pa_orange_professional"] {
+  --pa-primary: #f05a22;
+  --pa-secondary: #1d8153;
+  --pa-ink: #222222;
+  --pa-muted: #6c727a;
+  --pa-bg: #ffffff;
+  --pa-soft: #fff1e8;
+}
+
+[data-style="medical_green_clean"] {
+  --pa-primary: #1d8153;
+  --pa-secondary: #f05a22;
+  --pa-ink: #1f2a2e;
+  --pa-muted: #68737a;
+  --pa-bg: #ffffff;
+  --pa-soft: #e9f5ef;
+}
+
+[data-style="business_blue_gray"] {
+  --pa-primary: #2563eb;
+  --pa-secondary: #f05a22;
+  --pa-ink: #1f2937;
+  --pa-muted: #64748b;
+  --pa-bg: #ffffff;
+  --pa-soft: #eff6ff;
+}
+
+[data-style="neutral_report"] {
+  --pa-primary: #3f4652;
+  --pa-secondary: #f05a22;
+  --pa-ink: #20242a;
+  --pa-muted: #6b7280;
+  --pa-bg: #ffffff;
+  --pa-soft: #f4f6f8;
+}

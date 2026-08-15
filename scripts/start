@@ -1,0 +1,38 @@
+#!/bin/bash
+# dsh start — 启动 Web 界面(等价现在的手动 npx 启动)
+set -u
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+PORT="${DSH_PORT:-3080}"
+URL="http://127.0.0.1:$PORT"
+LOG="$HOME/.dsh/web.log"
+DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+if ! command -v /usr/local/bin/node >/dev/null 2>&1; then
+  echo "错误: 未找到 node (/usr/local/bin/node)" >&2; exit 1
+fi
+if [ ! -f "$DSH_BIN" ]; then
+  echo "错误: 容器未安装,请先: cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact" >&2; exit 1
+fi
+
+# 已在运行 → 直接打开
+if lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  open "$URL"
+  echo "dsh 已在运行: $URL"
+  exit 0
+fi
+
+# 启动(后台,日志到 ~/.dsh/web.log)
+nohup /usr/local/bin/node "$DSH_BIN" web >"$LOG" 2>&1 &
+for i in $(seq 1 30); do
+  sleep 1
+  if lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then break; fi
+done
+
+if lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  open "$URL"
+  echo "dsh 已启动: $URL (日志: $LOG)"
+else
+  echo "启动失败,日志尾部:" >&2
+  tail -20 "$LOG" >&2
+  exit 1
+fi

@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康数据质量"
+  short_description: "校验类型、单位、重复、分母和源单元格追溯"
+  default_prompt: "Use $enterprise-health-data-quality to validate A01 rows and build the immutable A02 confirmed data package."
+policy:
+  allow_implicit_invocation: true

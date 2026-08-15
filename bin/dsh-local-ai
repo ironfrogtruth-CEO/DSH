@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""dsh-local-ai — 本机 AI 能力全局调度网关 (DeepSeek Harness)。
+
+任何 DSH 会话均可通过 `dsh-local-ai <子命令>` 调度本机模型：
+  list                     列出系统 Ollama(11434) 与 FLUX 侧车(11435) 的全部模型
+  image "提示词"           用本地 FLUX 生成图片 (x/flux2-klein:4b)
+  tts  --text ...          本地 TTS：qwen (Qwen3-TTS VoiceDesign) 或 voxcpm (VoxCPM2)
+  stt  --audio 文件.wav    本地语音识别 (whisper-large-v3-turbo via mlx_audio)
+  chat "问题"              本地 LLM 对话 (cybermarcus / gemma4)
+  embed "文本"             本地 embedding (embeddinggemma)
+
+仅依赖 Python 标准库；TTS/STT 复用平安企康已装好的 MLX 运行环境。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+# ---------------- 常量 ----------------
+OLLAMA_MAIN = "http://127.0.0.1:11434"   # 系统 Ollama（LLM / embedding / 亦有 FLUX）
+FLUX_SIDECAR = "http://127.0.0.1:11435"  # 隔离 FLUX 图像侧车（0.20.3, OLLAMA_NO_CLOUD）
+DEFAULT_IMAGE_MODEL = "x/flux2-klein:4b"
+DEFAULT_LLM = "cybermarcus:latest"
+DEFAULT_EMBED = "embeddinggemma:latest"
+TTS_ROOT = Path("/Users/marcus/Desktop/平安企康/本地TTS模型")
+QWEN_BIN = TTS_ROOT / "运行环境" / "qwen-mlx" / "bin"
+VOXCPM_BIN = TTS_ROOT / "运行环境" / "voxcpm2" / "bin"
+QWEN_SCRIPT = TTS_ROOT / "scripts" / "qwen_voice_design.py"
+VOXCPM_SCRIPT = TTS_ROOT / "scripts" / "voxcpm2_voice_design.py"
+WHISPER_DIR = TTS_ROOT / "语音识别模型" / "whisper-large-v3-turbo"
+
+# ---------------- Ollama API 基础 ----------------
+def _post(url: str, payload: dict, timeout: int = 900) -> dict:
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _post_image_streaming(url: str, payload: dict, timeout: int = 1800) -> dict:
+    """流式 NDJSON 生图：逐帧接收，规避魔改侧车 10 分钟非流式上限。
+    流式模式下每步都有进度帧，socket 不会空闲超时，客户端可等待任意时长。"""
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        last = None
+        for raw_line in resp:
+            line = raw_line.decode("utf-8", errors="replace").strip()
+            if not line:
+                continue
+            try:
+                last = json.loads(line)
+            except ValueError:
+                continue
+            if last.get("done"):
+                return last
+    raise RuntimeError("流式生图提前结束，未收到完成帧")
+
+
+def _get(url: str, timeout: int = 5):
+    with urllib.request.urlopen(url, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _alive(base: str) -> bool:
+    try:
+        return bool(_get(f"{base}/api/version").get("version"))
+    except Exception:
+        return False
+
+
+# ---------------- 子命令 ----------------
+def cmd_list(_args) -> int:
+    for base, label in ((OLLAMA_MAIN, "系统 Ollama (11434)"), (FLUX_SIDECAR, "FLUX 图像侧车 (11435)")):
+        print(f"== {label} ==")
+        if not _alive(base):
+            print("  (未运行)")
+            continue
+        try:
+            for m in _get(f"{base}/api/tags").get("models", []):
+                size = m.get("size", 0) / 1024 / 1024 / 1024
+                print(f"  {m.get('name')}  {size:.1f} GB")
+        except Exception as exc:
+            print(f"  (读取失败: {exc})")
+    return 0
+
+
+def cmd_image(args) -> int:
+    prompt = args.prompt
+    out = Path(args.out).expanduser().resolve()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    targets = ([FLUX_SIDECAR] if _alive(FLUX_SIDECAR) else []) + [OLLAMA_MAIN]
+    if not targets:
+        print("错误：FLUX 侧车与系统 Ollama 都未运行。", file=sys.stderr)
+        return 1
+    last_error = None
+    # 魔改 FLUX 侧车对单次请求有 10 分钟硬上限（约 8 步 @1024px）；超限步数自动降级
+    # 保证离线路由（cybermarcus router）生图永远能完成
+    steps = max(1, min(args.steps, 8))
+    if steps != args.steps:
+        print(f"警告：侧车 10 分钟上限，步数 {args.steps} 自动降级为 {steps}", file=sys.stderr)
+    for base in targets:
+        try:
+            payload = {
+                "model": args.model,
+                "prompt": prompt,
+                "stream": True,
+                "width": args.width,
+                "height": args.height,
+                "steps": steps,
+            }
+            if args.seed is not None:
+                payload["seed"] = args.seed
+            started = time.time()
+            print(f"[dsh-local-ai] 调用 {base} 流式生成 {args.width}x{args.height}（{args.steps} 步）…", file=sys.stderr)
+            # 流式模式逐帧接收，绕开魔改侧车的非流式 10 分钟上限；socket 有持续数据，不会空闲超时
+            resp = _post_image_streaming(f"{base}/api/generate", payload, timeout=1800)
+            import base64
+            raw = resp.get("image") or (resp.get("images") or [None])[0] or ""
+            if not raw:
+                raise RuntimeError(str(resp.get("error") or "模型未返回图片"))
+            data = base64.b64decode(raw)
+            out.write_bytes(data)
+            print(f"已保存: {out}  ({len(data) / 1024:.0f} KB, 耗时 {time.time() - started:.0f}s)")
+            return 0
+        except Exception as exc:
+            last_error = exc
+            print(f"  {base} 失败: {exc}", file=sys.stderr)
+    print(f"错误：所有运行时均失败。最后错误: {last_error}", file=sys.stderr)
+    return 1
+
+
+def cmd_tts(args) -> int:
+    if args.engine == "qwen":
+        bin_dir, script = QWEN_BIN, QWEN_SCRIPT
+    else:
+        bin_dir, script = VOXCPM_BIN, VOXCPM_SCRIPT
+    if not script.is_file():
+        print(f"错误：找不到脚本 {script}", file=sys.stderr)
+        return 1
+    python = bin_dir / "python"
+    cmd = [
+        str(python), str(script),
+        "--text", args.text,
+        "--description", args.description,
+        "--output", str(Path(args.out).expanduser().resolve()),
+    ]
+    print(f"[dsh-local-ai] {'Qwen3-TTS' if args.engine == 'qwen' else 'VoxCPM2'} 生成中（首次加载权重较慢）…", file=sys.stderr)
+    proc = subprocess.run(cmd)
+    if proc.returncode == 0:
+        print(f"已保存: {args.out}")
+    return proc.returncode
+
+
+def cmd_stt(args) -> int:
+    bin_dir = QWEN_BIN
+    python = bin_dir / "python"
+    audio = Path(args.audio).expanduser().resolve()
+    if not audio.is_file():
+        print(f"错误：音频文件不存在 {audio}", file=sys.stderr)
+        return 1
+    cmd = [
+        str(python), "-m", "mlx_audio.stt.generate",
+        "--model", str(WHISPER_DIR),
+        "--audio", str(audio),
+    ]
+    if args.out:
+        cmd += ["--output", str(Path(args.out).expanduser().resolve())]
+    print("[dsh-local-ai] whisper-large-v3-turbo 识别中…", file=sys.stderr)
+    return subprocess.run(cmd).returncode
+
+
+def cmd_route(args) -> int:
+    """智能指令路由：规则优先，未命中用本地 LLM 分类。
+    输出 JSON：{"type": "image|tts|stt|chat", "audio_path": "...", "reason": "..."}
+    """
+    import base64 as _b64  # noqa: F401 (保持与 image 一致的导入习惯)
+    text = args.text
+    result = {"type": "chat", "audio_path": None, "reason": "规则未命中"}
+
+    audio_re = re.compile(r"([^\s\"'，。！？、；：''\"\"【】]+\.(?:wav|mp3|m4a|flac|aac|ogg|wma|amr|mp4))", re.I)
+    stt_word_re = re.compile(r"(识别|转写|听写|转文字|字幕|讲了什么|说什么)", re.I)
+    image_re = re.compile(r"(画|绘制|生成|做|设计|制作)[^。！？\n]{0,10}(图|画|照片|壁纸|海报|封面|头像|插画|logo)|文生图|生图|出图|配图|插画|generate.{0,20}image", re.I)
+    tts_re = re.compile(r"(朗读|读出来|读一遍|说出来|配音|念一下|语音合成|合成语音|用.{0,12}声音|发声|念给我听|说给我听|帮我读|给我读|tts|读一下|读给我)", re.I)
+
+    audio = audio_re.search(text)
+    if audio and stt_word_re.search(text):
+        result = {"type": "stt", "audio_path": audio.group(1), "reason": "规则：音频路径+识别意图"}
+    elif image_re.search(text):
+        result = {"type": "image", "audio_path": None, "reason": "规则：生图意图"}
+    elif tts_re.search(text):
+        result = {"type": "tts", "audio_path": None, "reason": "规则：语音合成意图"}
+    elif audio:
+        # 给了音频文件但无明确动词：默认视为语音识别
+        result = {"type": "stt", "audio_path": audio.group(1), "reason": "规则：音频路径默认识别"}
+
+    if result["type"] == "chat" and _alive(OLLAMA_MAIN):
+        prompt = (
+            "你是离线指令路由器。根据用户输入判断意图，只输出一个英文单词：\n"
+            "image（想生成/绘制图片）| tts（想让机器朗读/配音）| stt（想识别/转写语音文件）| chat（普通对话/推理/写作）。\n"
+            f"用户输入：{text[:500]}\n只输出单词："
+        )
+        try:
+            resp = _post(
+                f"{OLLAMA_MAIN}/api/chat",
+                {"model": args.model, "messages": [{"role": "user", "content": prompt}], "stream": False, "options": {"num_predict": 8, "temperature": 0}},
+                timeout=120,
+            )
+            word = (resp.get("message", {}).get("content", "") or "").strip().lower()
+            word = re.sub(r"[^a-z]", "", word)[:12]
+            if word in ("image", "tts", "stt"):
+                result = {"type": word, "audio_path": audio.group(1) if audio else None, "reason": f"本地LLM分类: {word}"}
+        except Exception as exc:
+            result["reason"] = f"LLM分类失败，回退chat: {exc}"
+
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
+
+
+def cmd_chat(args) -> int:
+    if not _alive(OLLAMA_MAIN):
+        print("错误：系统 Ollama 未运行。", file=sys.stderr)
+        return 1
+    messages = []
+    if args.system:
+        messages.append({"role": "system", "content": args.system})
+    messages.append({"role": "user", "content": args.prompt})
+    resp = _post(
+        f"{OLLAMA_MAIN}/api/chat",
+        {"model": args.model, "messages": messages, "stream": False},
+        timeout=args.timeout,
+    )
+    print(resp.get("message", {}).get("content", ""))
+    return 0
+
+
+def cmd_embed(args) -> int:
+    if not _alive(OLLAMA_MAIN):
+        print("错误：系统 Ollama 未运行。", file=sys.stderr)
+        return 1
+    resp = _post(f"{OLLAMA_MAIN}/api/embed", {"model": args.model, "input": args.text}, timeout=60)
+    vectors = resp.get("embeddings") or []
+    if vectors:
+        print(json.dumps(vectors[0], ensure_ascii=False))
+        print(f"[dims={len(vectors[0])}]", file=sys.stderr)
+    else:
+        print("无向量返回", file=sys.stderr)
+        return 1
+    return 0
+
+
+# ---------------- 入口 ----------------
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="dsh-local-ai", description="本机 AI 能力全局调度网关")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("list", help="列出全部本机模型")
+
+    p = sub.add_parser("image", help="FLUX 文生图")
+    p.add_argument("prompt")
+    p.add_argument("--out", default="generated-image.png")
+    p.add_argument("--model", default=DEFAULT_IMAGE_MODEL)
+    p.add_argument("--width", type=int, default=1024)
+    p.add_argument("--height", type=int, default=1024)
+    p.add_argument("--steps", type=int, default=30)
+    p.add_argument("--seed", type=int, default=None)
+
+    p = sub.add_parser("tts", help="本地语音合成")
+    p.add_argument("--engine", choices=["qwen", "voxcpm"], default="qwen")
+    p.add_argument("--text", required=True)
+    p.add_argument("--description", default="35岁左右的普通话男声，温暖沉稳，自然的商业讲解")
+    p.add_argument("--out", default="voice.wav")
+
+    p = sub.add_parser("stt", help="本地语音识别")
+    p.add_argument("--audio", required=True)
+    p.add_argument("--out", default=None)
+
+    p = sub.add_parser("route", help="智能指令路由（生图/语音合成/语音识别/对话）")
+    p.add_argument("text")
+    p.add_argument("--model", default="cybermarcus:latest")
+
+    p = sub.add_parser("chat", help="本地 LLM 对话")
+    p.add_argument("prompt")
+    p.add_argument("--model", default=DEFAULT_LLM)
+    p.add_argument("--system", default=None)
+    p.add_argument("--timeout", type=int, default=900)
+
+    p = sub.add_parser("embed", help="本地文本向量")
+    p.add_argument("text")
+    p.add_argument("--model", default=DEFAULT_EMBED)
+
+    args = parser.parse_args()
+    handlers = {
+        "list": cmd_list,
+        "image": cmd_image,
+        "tts": cmd_tts,
+        "stt": cmd_stt,
+        "route": cmd_route,
+        "chat": cmd_chat,
+        "embed": cmd_embed,
+    }
+    return handlers[args.command](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

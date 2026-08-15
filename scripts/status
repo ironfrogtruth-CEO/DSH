@@ -1,0 +1,16 @@
+#!/bin/bash
+# dsh status — 容器状态总览
+set -u
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+PORT="${DSH_PORT:-3080}"
+echo "== dsh 容器状态 =="
+echo "端口 $PORT: $(lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1 && echo '运行中' || echo '未运行')"
+echo "磁盘: $(df -h /System/Volumes/Data | tail -1 | awk '{print "可用 "$4" / 总量 "$2" ("$5")"}')"
+if command -v ollama >/dev/null 2>&1; then
+  echo "ollama: $(ollama list 2>/dev/null | wc -l | tr -d ' ') 个模型"
+else
+  echo "ollama: 未在 PATH"
+fi
+echo "presets: $(ls ~/.dsh/.agent-presets 2>/dev/null | tr '\n' ' ')"
+echo "skills: $(ls ~/.dsh/skills 2>/dev/null | wc -l | tr -d ' ') 个"
+echo "备份: $(ls -1t ~/.dsh/backups/*.tar.gz 2>/dev/null | head -1 || echo '无')"

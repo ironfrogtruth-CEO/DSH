@@ -1,0 +1,46 @@
+{
+  "pa_orange_professional": {
+    "name": "平安橙专业汇报",
+    "colors": {
+      "primary": "#f05a22",
+      "secondary": "#1d8153",
+      "ink": "#222222",
+      "muted": "#6c727a",
+      "bg": "#ffffff",
+      "soft": "#fff1e8"
+    }
+  },
+  "medical_green_clean": {
+    "name": "医疗绿清爽",
+    "colors": {
+      "primary": "#1d8153",
+      "secondary": "#f05a22",
+      "ink": "#1f2a2e",
+      "muted": "#68737a",
+      "bg": "#ffffff",
+      "soft": "#e9f5ef"
+    }
+  },
+  "business_blue_gray": {
+    "name": "商务蓝灰",
+    "colors": {
+      "primary": "#2563eb",
+      "secondary": "#f05a22",
+      "ink": "#1f2937",
+      "muted": "#64748b",
+      "bg": "#ffffff",
+      "soft": "#eff6ff"
+    }
+  },
+  "neutral_report": {
+    "name": "中性报告",
+    "colors": {
+      "primary": "#3f4652",
+      "secondary": "#f05a22",
+      "ink": "#20242a",
+      "muted": "#6b7280",
+      "bg": "#ffffff",
+      "soft": "#f4f6f8"
+    }
+  }
+}

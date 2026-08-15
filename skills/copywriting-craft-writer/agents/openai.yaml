@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康中文文案编辑"
+  short_description: "DeepSeek保真改写并检查模板腔，输出客户可直接阅读的页面文案"
+  default_prompt: "Use $copywriting-craft-writer in A08 with DeepSeek to conservatively polish page copy, apply the localized Chinese anti-template patterns, and preserve every fact, citation, recommendation, page identity, and component binding."
+policy:
+  allow_implicit_invocation: true

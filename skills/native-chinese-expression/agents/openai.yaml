@@ -1,0 +1,6 @@
+interface:
+  display_name: "中文母语表达"
+  short_description: "让聊天、报告、PPT和专业材料采用自然清楚可信的现代汉语表达"
+  default_prompt: "Use $native-chinese-expression to write this content in natural, clear, context-appropriate modern Chinese."
+policy:
+  allow_implicit_invocation: true

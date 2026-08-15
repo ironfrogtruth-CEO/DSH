@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康XLSX导入"
+  short_description: "本地解析XLSX和CSV，锁定源哈希并语义匹配表头"
+  default_prompt: "Use $enterprise-health-xlsx-ingestion to parse the uploaded workbook and emit a traceable A01 field mapping."
+policy:
+  allow_implicit_invocation: true

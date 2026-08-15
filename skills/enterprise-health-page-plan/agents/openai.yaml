@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康报告逐页稿"
+  short_description: "锁定每页标题、副标题、解读、组件文案、服务动作和注释"
+  default_prompt: "Use $enterprise-health-page-plan to lock every page task, visible copy, evidence binding, component field, note, and recommendation decision."
+policy:
+  allow_implicit_invocation: true

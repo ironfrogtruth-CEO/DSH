@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="压力负荷">
+  <title>压力负荷</title>
+  <circle cx="48" cy="38" r="16" fill="#fff1e8" stroke="#f05a22" stroke-width="6"/><path d="M22 106c4-28 15-42 26-42s22 14 26 42H22z" fill="#fff1e8" stroke="#f05a22" stroke-width="6" stroke-linejoin="round"/><path d="M80 28h28M86 46h18M84 64h26" stroke="#f05a22" stroke-width="6" stroke-linecap="round"/>
+</svg>

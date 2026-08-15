@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>企业健康报告 A4 HTML 模板</title>
+  <link rel="stylesheet" href="../assets/a4-health-theme.css">
+</head>
+<body data-download-name="企业健康报告_编辑后.html">
+  <div class="toolbar">
+    <button id="toggleEdit">开启编辑</button>
+    <span id="selectedInfo" class="selected-info">未选中元素</span>
+    <button class="secondary" id="addText" type="button">插入文字</button>
+    <button class="secondary" id="addImage" type="button">插入图片</button>
+    <button class="secondary" id="setFooterImage" type="button">页脚图片</button>
+    <button class="secondary" id="triggerReplace" type="button">替换所选图片</button>
+    <label class="editor-field">适配
+      <select id="imageFit" disabled>
+        <option value="cover">铺满</option>
+        <option value="contain">适应</option>
+        <option value="fill">拉伸</option>
+      </select>
+    </label>
+    <label class="editor-field">透明<input id="imageOpacity" type="range" min="0" max="1" step="0.05" value="1" disabled></label>
+    <label class="editor-field">宽<input id="widgetWidth" type="number" min="20" step="1" disabled></label>
+    <label class="editor-field">高<input id="widgetHeight" type="number" min="20" step="1" disabled></label>
+    <label class="editor-field">页脚上<input id="footerTopOpacity" type="range" min="0" max="1" step="0.05" value="0" disabled></label>
+    <label class="editor-field">页脚下<input id="footerBottomOpacity" type="range" min="0" max="1" step="0.05" value="1" disabled></label>
+    <button class="secondary" id="bringForward" type="button">上移</button>
+    <button class="secondary" id="sendBackward" type="button">下移</button>
+    <button class="secondary" id="deleteSelected" type="button">删除</button>
+    <input id="replaceImage" type="file" accept="image/*" hidden>
+    <input id="insertImage" type="file" accept="image/*" hidden>
+    <button class="secondary" id="saveHtml">保存HTML</button>
+    <button class="secondary" id="printPdf">导出PDF</button>
+  </div>
+
+  <div class="deck">
+    <section class="page" data-page="1">
+      <div class="page-bg editable-image-layer" data-layer="background" data-editor-name="P1 背景图层"></div>
+      <div class="top-art editable-image-layer" data-layer="top" data-editor-name="P1 顶部图层"></div>
+      <div class="footer-art editable-image-layer" data-layer="footer" data-editor-name="P1 底部图层"></div>
+      <div class="page-footer-slot editable-image-layer" data-layer="pageFooter" data-editor-name="P1 页脚图片层" style="--footer-bottom-opacity:1;--footer-top-opacity:0"></div>
+      <main class="content">
+        <header>
+          <div class="kicker editable-text">年度服务基础</div>
+          <h1 class="editable-text">风险分层已有改善，后续要保持同口径追踪</h1>
+          <p class="lead editable-text">把企业健康数据转成 HR 和工会能看懂的管理判断、服务动作和年度配置建议。</p>
+        </header>
+        <div class="metric-grid three">
+          <div class="metric-card moveable" data-component="metric-card">
+            <span class="editable-text">体检覆盖率</span>
+            <strong class="editable-text">100%</strong>
+            <em class="editable-text">健康档案基础完整</em>
+          </div>
+          <div class="metric-card moveable" data-component="metric-card">
+            <span class="editable-text">慢病管理率</span>
+            <strong class="editable-text">85%</strong>
+            <em class="editable-text">重点人群持续跟踪</em>
+          </div>
+          <div class="metric-card moveable" data-component="metric-card">
+            <span class="editable-text">中高风险变化</span>
+            <strong class="editable-text">45%→35%</strong>
+            <em class="editable-text">年度风险分层下降</em>
+          </div>
+        </div>
+        <div class="flow">
+          <div class="flow-step moveable"><span>1</span><p class="editable-text">员工健康档案建档</p></div>
+          <div class="flow-step moveable"><span>2</span><p class="editable-text">体检报告解读</p></div>
+          <div class="flow-step moveable"><span>3</span><p class="editable-text">重点人群随访</p></div>
+        </div>
+        <div class="insight-grid">
+          <div class="insight-card result moveable" data-component="insight-card"><b class="editable-text">年度成效</b><p class="editable-text">风险下降已经出现，说明建档、解读和随访开始形成连续管理效果。</p></div>
+          <div class="insight-card logic moveable" data-component="insight-card"><b class="editable-text">口径延续</b><p class="editable-text">后续复盘应继续沿用同一风险分层口径，避免年度之间无法比较。</p></div>
+          <div class="insight-card action moveable" data-component="insight-card"><b class="editable-text">追踪重点</b><p class="editable-text">按季度观察重点人群、慢病指标、理赔变化和服务触达。</p></div>
+        </div>
+        <div class="conclusion moveable">
+          <b class="editable-text">本页结论</b>
+          <p class="editable-text">风险改善已经出现，下一阶段关键是持续追踪。</p>
+        </div>
+        <footer class="concept-note editable-text">*中高风险定义：按体检异常、慢病记录、理赔记录和就医需求综合识别后，需要重点跟踪或干预的员工人群。</footer>
+      </main>
+    </section>
+  </div>
+
+  <script src="../assets/a4-health-editor.js"></script>
+</body>
+</html>

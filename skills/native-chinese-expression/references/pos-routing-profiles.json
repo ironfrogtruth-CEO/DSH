@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0.0",
+  "contract_version": "1.1.0",
+  "decision_order": ["carrier", "audience", "clause_role"],
+  "pos_classes": [
+    "noun", "verb", "adjective", "numeral", "classifier", "pronoun",
+    "adverb", "preposition", "conjunction", "particle", "interjection", "onomatopoeia"
+  ],
+  "rules": {
+    "ratios_are_scores": false,
+    "facts_override_profile": true,
+    "profile_is_qualitative": true
+  },
+  "carriers": {
+    "email": {
+      "prioritize": ["noun", "verb", "pronoun", "adverb"],
+      "control": ["adjective", "preposition", "conjunction", "particle"],
+      "avoid_by_default": ["interjection", "onomatopoeia"],
+      "skeletons": ["称谓或责任主体 + 动词 + 对象 + 时间或结果"]
+    },
+    "ppt": {
+      "prioritize": ["noun", "verb", "numeral", "classifier"],
+      "control": ["adjective", "adverb", "preposition", "conjunction", "pronoun"],
+      "avoid_by_default": ["interjection", "onomatopoeia"],
+      "skeletons": ["对象名词 + 判断或变化动词 + 结果", "数词 + 量词 + 对象名词"]
+    },
+    "article": {
+      "prioritize": ["noun", "verb", "pronoun", "adjective"],
+      "control": ["adverb", "conjunction", "particle", "interjection", "onomatopoeia"],
+      "avoid_by_default": [],
+      "skeletons": ["具体对象 + 动作或变化 + 可感知细节"]
+    },
+    "data_analysis_report": {
+      "prioritize": ["noun", "verb", "numeral", "classifier", "conjunction"],
+      "control": ["adjective", "adverb", "preposition", "pronoun"],
+      "avoid_by_default": ["particle", "interjection", "onomatopoeia"],
+      "skeletons": ["样本或指标 + 数值与口径 + 比较或变化动词 + 判断边界"]
+    },
+    "enterprise_health_report": {
+      "prioritize": ["noun", "verb", "numeral", "classifier"],
+      "control": ["adjective", "adverb", "preposition", "conjunction", "pronoun"],
+      "avoid_by_default": ["particle", "interjection", "onomatopoeia"],
+      "skeletons": ["人群或岗位 + 风险或服务动词 + 证据 + 管理动作"]
+    }
+  },
+  "audiences": {
+    "public_readers": {
+      "prioritize": ["pronoun", "verb", "noun"],
+      "control": ["adjective", "adverb", "particle", "interjection"],
+      "notes": ["专业词先用普通话解释", "你或我们必须符合真实品牌关系"]
+    },
+    "enterprise_clients": {
+      "prioritize": ["noun", "verb", "numeral", "classifier"],
+      "control": ["pronoun", "adjective", "adverb", "particle"],
+      "notes": ["写出企业、员工、岗位、服务和责任主体", "形容词必须有标准"]
+    },
+    "leaders": {
+      "prioritize": ["noun", "verb", "numeral", "classifier", "adverb"],
+      "control": ["pronoun", "adjective", "preposition", "particle"],
+      "notes": ["先给判断、影响和需要决定的动作", "压缩背景铺垫"]
+    },
+    "c_end_users": {
+      "prioritize": ["pronoun", "verb", "noun", "adverb"],
+      "control": ["adjective", "preposition", "conjunction", "particle"],
+      "notes": ["直接说明发生了什么和可以做什么", "减少术语"]
+    },
+    "subordinates": {
+      "prioritize": ["noun", "verb", "adverb", "pronoun"],
+      "control": ["adjective", "preposition", "conjunction", "particle"],
+      "notes": ["写清责任人、期限、交付物和验收条件"]
+    },
+    "colleagues": {
+      "prioritize": ["pronoun", "verb", "noun", "conjunction"],
+      "control": ["adjective", "adverb", "particle"],
+      "notes": ["可以协商，但责任、期限和版本不能含糊"]
+    }
+  },
+  "clause_roles": {
+    "title_conclusion": {
+      "prioritize": ["noun", "verb", "adjective"],
+      "control": ["preposition", "conjunction", "adverb", "pronoun"],
+      "skeletons": ["对象名词 + 判断或变化动词 + 结果或影响"]
+    },
+    "evidence_data": {
+      "prioritize": ["numeral", "classifier", "noun", "verb"],
+      "control": ["adjective", "adverb", "pronoun"],
+      "skeletons": ["数词 + 量词 + 对象名词 + 比较或变化动词 + 统计口径"]
+    },
+    "explanation": {
+      "prioritize": ["noun", "verb", "conjunction"],
+      "control": ["preposition", "adverb", "adjective", "pronoun"],
+      "skeletons": ["事实或现象 + 因果或条件连词 + 具体原因"]
+    },
+    "action": {
+      "prioritize": ["noun", "verb", "adverb"],
+      "control": ["adjective", "preposition", "conjunction", "pronoun"],
+      "skeletons": ["责任主体 + 时间副词 + 动词 + 对象 + 验收结果"]
+    },
+    "risk_boundary": {
+      "prioritize": ["noun", "verb", "adverb", "conjunction"],
+      "control": ["adjective", "preposition", "pronoun"],
+      "skeletons": ["对象 + 否定或范围副词 + 判断动词 + 限制条件"]
+    },
+    "narrative_transition": {
+      "prioritize": ["noun", "verb", "pronoun", "conjunction"],
+      "control": ["adjective", "adverb", "particle", "interjection", "onomatopoeia"],
+      "skeletons": ["承接对象或时间 + 动作或变化 + 下一层信息"]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="药箱药品">
+  <title>药箱药品</title>
+  <rect x="24" y="36" width="80" height="68" rx="8" fill="#fff1e8" stroke="#f05a22" stroke-width="6"/><path d="M50 36V24h28v12M64 56v28M50 70h28" stroke="#f05a22" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

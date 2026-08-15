@@ -1,0 +1,20 @@
+#!/bin/bash
+# dsh export — 导出容器(能力+配置,不含数据/模型/install)
+# 用法: dsh export [输出路径]  默认 ~/.dsh/backups/dsh-container-<日期>.tar.gz
+set -u
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+OUT="${1:-$HOME/.dsh/backups/dsh-container-$(date +%Y%m%d-%H%M).tar.gz}"
+mkdir -p "$(dirname "$OUT")"
+
+tar -czf "$OUT" \
+  -C "$HOME" \
+  --exclude='.dsh/sessions' \
+  --exclude='.dsh/storages' \
+  --exclude='.dsh/backups' \
+  --exclude='.dsh/install' \
+  --exclude='.dsh/web.log' \
+  --exclude='.dsh/profiles/node_modules' \
+  .dsh
+
+echo "已导出: $OUT ($(du -h "$OUT" | awk '{print $1}'))"
+echo "恢复: 解包到 ~ 后执行 scripts/restore"

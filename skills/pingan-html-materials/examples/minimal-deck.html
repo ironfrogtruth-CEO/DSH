@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Editable HTML Report Deck</title>
+<link rel="stylesheet" href="../assets/report-theme.css" />
+</head>
+<body data-asset-root="../resources/visual-component-library" data-download-name="minimal-deck-edited.html">
+<div class="deck-tools">
+  <button id="insertText">插入自由文字</button>
+  <button id="replaceAsset" disabled>替换素材</button>
+  <button id="saveHtml">保存HTML</button>
+  <button id="printPdf" class="primary">打印/保存PDF</button>
+</div>
+
+<div id="textToolbar" class="text-toolbar">
+  <select id="fontSelect">
+    <option value="PingFang SC, Microsoft YaHei, Source Han Sans SC, Arial, sans-serif">默认黑体</option>
+    <option value="Microsoft YaHei, Arial, sans-serif">微软雅黑</option>
+    <option value="SimHei, Microsoft YaHei, sans-serif">黑体</option>
+    <option value="KaiTi, STKaiti, serif">楷体</option>
+    <option value="Arial, sans-serif">Arial</option>
+  </select>
+  <select id="fontSizeSelect">
+    <option value="12px">12</option>
+    <option value="14px">14</option>
+    <option value="16px" selected>16</option>
+    <option value="18px">18</option>
+    <option value="20px">20</option>
+    <option value="24px">24</option>
+    <option value="28px">28</option>
+    <option value="32px">32</option>
+    <option value="40px">40</option>
+  </select>
+  <input id="colorSelect" type="color" value="#f05a28" />
+  <button id="boldBtn">B</button>
+  <button id="underlineBtn">U</button>
+  <button id="alignLeftBtn">左对齐</button>
+  <button id="alignCenterBtn">居中</button>
+</div>
+
+<main class="deck" id="deck">
+  <section class="slide" data-page="1">
+    <div class="slide-bg-layer"></div>
+    <div class="page-tools"></div>
+    <div class="slide-content">
+      <div class="widget" style="left:64px;top:80px;width:620px;height:120px">
+        <div class="widget-content" contenteditable="true">
+          <h1 class="pa-page-title">重客管理驾驶舱建设方案</h1>
+          <p class="pa-body" style="margin:14px 0 0;color:#555">示例：按平安汇报模版生成的 16:9 可编辑 HTML 汇报页。</p>
+        </div>
+      </div>
+
+      <div class="widget" style="left:70px;top:220px;width:690px;height:280px">
+        <div class="widget-content" contenteditable="true">
+          <div class="pa-card" style="height:100%;padding:18px">
+            <div class="pa-card-header green">核心能力</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:18px">
+              <div class="pa-card pad"><div class="pa-card-title orange">客户分层</div><p class="pa-body">识别重点客户与服务机会。</p></div>
+              <div class="pa-card pad"><div class="pa-card-title green">过程追踪</div><p class="pa-body">跟踪建联、宣导、服销和续约。</p></div>
+              <div class="pa-card pad"><div class="pa-card-title orange">价值复盘</div><p class="pa-body">沉淀成效指标和管理动作。</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="widget" style="left:820px;top:220px;width:300px;height:280px">
+        <div class="widget-content" contenteditable="true">
+          <div class="pa-kpi-box" style="height:125px"><div class="pa-kpi-number">3类</div><div class="pa-kpi-label">经营看板</div></div>
+          <div class="pa-kpi-box" style="height:125px;margin-top:30px"><div class="pa-kpi-number orange">闭环</div><div class="pa-kpi-label">任务推进</div></div>
+        </div>
+      </div>
+      <div class="pa-footer-note">注：示例页面，正式材料应补齐数据来源、口径和责任边界。</div>
+      <div class="pa-page-number">1</div>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/editor-core.js"></script>
+</body>
+</html>

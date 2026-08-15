@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康报告"
+  short_description: "规划企业健康报告逐页文案、组件、可编辑HTML和QA闸门"
+  default_prompt: "Use $enterprise-health-report to render the locked A08 copy and A09 components as editable A4 HTML without inventing visible content."
+policy:
+  allow_implicit_invocation: true

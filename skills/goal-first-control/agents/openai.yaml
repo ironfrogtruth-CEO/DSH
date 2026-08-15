@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康生产总控"
+  short_description: "管理A00到A11的状态、授权、哈希校验和回滚"
+  default_prompt: "Use $goal-first-control to validate state, artifacts, approvals, and rollback points without generating report content."
+policy:
+  allow_implicit_invocation: true

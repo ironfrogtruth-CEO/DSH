@@ -1,0 +1,27 @@
+{
+  "display_name": "检视宝",
+  "skill_name": "jianshibao",
+  "version": "1.0.0",
+  "skill_path": "jianshibao",
+  "knowledge_base_dependency": {
+    "recommended_name": "知识库",
+    "source_path": "/Users/marcus/Desktop/平安企康/平安健康知识库&技能/知识库",
+    "required": true,
+    "description": "平安健康本地 Markdown 知识库，含业务知识、产品与服务、组织架构、部门职责、来源追溯。"
+  },
+  "capabilities": [
+    "材料可靠性检视",
+    "产品方案合理性评估",
+    "领导指示可执行性拆解",
+    "周报月报与管理复盘",
+    "对上回复生成",
+    "对下任务安排",
+    "组织职责边界校验",
+    "基于知识库的可追溯引用",
+    "用户偏好记忆更新"
+  ],
+  "portable_packages": {
+    "skill_zip": "检视宝_skill包.zip",
+    "knowledge_zip": "检视宝_知识库包.zip"
+  }
+}

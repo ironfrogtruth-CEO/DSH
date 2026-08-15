@@ -1,0 +1,83 @@
+# DSH 容器清单 — 本文件描述容器内容与依赖,由 scripts/doctor 校验
+container:
+  name: dsh-container
+  version: 1.0.0
+  created: 2026-08-15
+
+runtime:
+  dsh: 0.1.0-rc.6
+  install: ~/.dsh/install            # 固定安装(版本锁死,不依赖 npx 缓存)
+  node: /usr/local/bin/node          # brew node 25.5.0
+  entry: bin/dsh                     # 统一入口(等价 npx @deepseek-ai/dsh)
+
+profile:
+  id: web
+  bundles:
+    - "@deepseek-ai/dsh-base"
+    - "@deepseek-ai/dsh-web-app"
+  web: http://127.0.0.1:3080
+
+agent:
+  presets:
+    - cordis                        # 自有副本在 ~/.dsh/.agent-presets/cordis
+  default: cordis
+  model:
+    provider: deepseek-official
+    model: deepseek-v4-flash
+    reasoningEffort: max
+  permission: danger-full-access
+
+capabilities:
+  skills:                            # ~/.dsh/skills (20)
+    - copywriting-craft-writer
+    - enterprise-health-business-analysis
+    - enterprise-health-data-analysis
+    - enterprise-health-data-quality
+    - enterprise-health-evidence-validation
+    - enterprise-health-orchestrator
+    - enterprise-health-page-plan
+    - enterprise-health-pdf-export
+    - enterprise-health-report
+    - enterprise-health-storyline
+    - enterprise-health-visual-design
+    - enterprise-health-xlsx-ingestion
+    - goal-first-control
+    - jianshibao
+    - native-chinese-expression
+    - pingan-html-materials
+    - pingan-kb-router
+    - pingan-ppt-materials
+    - pingan-qikang-kb-curator
+    - pingan-qikang-visual-component-library
+  launchers:                         # ~/.dsh/launchers
+    - ashare-launch.command
+    - cybermarcus-launch.command
+    - dasha-start.command
+    - shrimptank-launch.command
+  local:
+    - bin/dsh-local-ai               # 本地 AI 工具
+
+dependencies:                        # 容器依赖的外部资源(不打包)
+  ollama:
+    note: 21G 本地模型
+    models:
+      - cybermarcus:latest
+      - cybermarcus-codex:latest
+      - gemma4:26b-a4b-it-qat
+      - x/flux2-klein:4b
+      - embeddinggemma:latest
+  workspaces:
+    - ~/Desktop/平安企康              # 平安企康工作区
+    - ~/Desktop/虾缸
+    - ~/Desktop/大A
+
+data:                                # 不纳入版本管理、导出默认排除
+  sessions: ~/.dsh/sessions
+  storages: ~/.dsh/storages
+  backups: ~/.dsh/backups
+
+extensions:                          # 扩展注册点
+  presets: ~/.dsh/.agent-presets/    # 自有 agent preset(每目录一个)
+  skills: ~/.dsh/skills/             # 技能(每目录一个 SKILL.md)
+  plugins: ~/.dsh/extensions/        # 沉淀的插件源码(动态插件永久副本)
+  patches: ~/.dsh/profiles/web/cordis.patch.yml

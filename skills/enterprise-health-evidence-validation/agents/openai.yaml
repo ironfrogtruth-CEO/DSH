@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康证据核验"
+  short_description: "核验官方外部真源，并隔离公共证据与企业事实"
+  default_prompt: "Use $enterprise-health-evidence-validation to verify A03 sources and enforce A04 claim boundaries."
+policy:
+  allow_implicit_invocation: true

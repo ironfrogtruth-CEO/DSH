@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="影像检查">
+  <title>影像检查</title>
+  <rect x="22" y="28" width="84" height="64" rx="12" fill="#fff1e8" stroke="#f05a22" stroke-width="6"/><circle cx="64" cy="60" r="22" fill="#fff" stroke="#f05a22" stroke-width="6"/><path d="M44 104h40M54 92v12M74 92v12" stroke="#f05a22" stroke-width="6" stroke-linecap="round"/>
+</svg>

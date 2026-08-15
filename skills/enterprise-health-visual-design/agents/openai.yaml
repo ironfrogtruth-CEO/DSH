@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康报告视觉设计"
+  short_description: "选择报告组件、图片素材、色调和版式，并对接视觉组件外挂库"
+  default_prompt: "Use $enterprise-health-visual-design to choose registered A4 component grammars, natural sizes, image slots, and CSS tokens for each page."
+policy:
+  allow_implicit_invocation: true

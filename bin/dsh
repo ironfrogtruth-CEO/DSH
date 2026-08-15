@@ -1,0 +1,10 @@
+#!/bin/bash
+# dsh 容器统一入口 — 等价 `npx @deepseek-ai/dsh`,但走固定安装
+# 用法: dsh web | dsh --profile web | dsh --dump-config ...
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
+if [ ! -f "$DSH_BIN" ]; then
+  echo "错误: 未找到 $DSH_BIN — 请先执行: cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact" >&2
+  exit 1
+fi
+exec /usr/local/bin/node "$DSH_BIN" "$@"

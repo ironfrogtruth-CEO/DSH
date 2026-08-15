@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康报告总控"
+  short_description: "总控A00-A11、失败节点重试、回滚、HTML和PDF交付"
+  default_prompt: "Use $enterprise-health-orchestrator to coordinate only the registered local A00-A11 agents, truth sources, bounded node retries, handoffs, user approval, and QA rollback gates."
+policy:
+  allow_implicit_invocation: true

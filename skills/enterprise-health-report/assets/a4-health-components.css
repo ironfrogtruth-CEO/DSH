@@ -1,0 +1,270 @@
+:root{
+  --report-card-radius:14px;
+  --report-card-shadow:0 10px 26px rgba(24,39,62,.055);
+  --report-gap:12px;
+}
+
+.full-component-stage.report-contract-layout{
+  display:grid;
+  grid-template-rows:minmax(0,1fr) auto;
+  gap:12px;
+  align-content:stretch;
+  min-height:600px;
+  max-height:748px;
+  overflow:hidden;
+}
+
+.report-contract-layout .data-component-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:var(--report-gap);
+  min-height:360px;
+  align-items:stretch;
+}
+
+.report-contract-layout .data-component-grid.dual{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  min-height:360px;
+}
+
+.report-contract-layout .data-component-grid.dual .signal-info-card strong{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  font-size:18px;
+  line-height:1.16;
+}
+
+.report-contract-layout .data-component-grid .component-stage{
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+  border-radius:var(--report-card-radius);
+}
+
+.report-contract-layout .component-stage:not(.a09-component-stage) > div,
+.report-contract-layout .component-stage:not(.a09-component-stage) > table{
+  width:100%;
+  height:100%;
+}
+
+.report-contract-layout .signal-matrix,
+.report-contract-layout .card-grid,
+.report-contract-layout .risk-spend-matrix,
+.report-contract-layout .pathway,
+.report-contract-layout .risk-chain,
+.report-contract-layout .case-showcase,
+.report-contract-layout .claim-amount-story{
+  height:100%;
+  grid-auto-rows:minmax(0,1fr);
+  align-content:stretch;
+}
+
+.report-contract-layout .simple-bars,
+.report-contract-layout .stacked-ratio,
+.report-contract-layout .ratio-scale,
+.report-contract-layout .dumbbell-compare,
+.report-contract-layout .funnel,
+.report-contract-layout .pyramid{
+  height:100%;
+  align-content:space-evenly;
+}
+
+.report-contract-layout .stacked-ratio{
+  grid-template-rows:minmax(86px,.8fr) minmax(0,1.2fr);
+  align-content:stretch;
+}
+
+.report-contract-layout .stacked-track{
+  height:52px;
+  align-self:center;
+}
+
+.report-contract-layout .stacked-legend{
+  height:100%;
+  grid-auto-rows:minmax(0,1fr);
+  align-content:stretch;
+}
+
+.report-contract-layout .waterfall-delta,
+.report-contract-layout .radar-effect,
+.report-contract-layout .report-table,
+.report-contract-layout .claims-application-table{
+  height:100%;
+}
+
+.report-contract-layout .signal-info-card,
+.report-contract-layout .info-card,
+.report-contract-layout .risk-spend-block,
+.report-contract-layout .risk-chain-node,
+.report-contract-layout .path-node{
+  height:100%;
+  align-content:center;
+}
+
+.report-contract-layout .data-component-grid.dual .component-stage{
+  font-size:.94em;
+}
+
+.report-contract-layout .data-component-grid.dual .signal-matrix,
+.report-contract-layout .data-component-grid.dual .card-grid,
+.report-contract-layout .data-component-grid.dual .case-showcase,
+.report-contract-layout .data-component-grid.dual .claim-amount-story{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.report-contract-layout .data-component-grid.dual .simple-bar-row,
+.report-contract-layout .data-component-grid.dual .funnel-step{
+  grid-template-columns:88px minmax(0,1fr) 86px;
+  gap:8px;
+}
+
+.report-contract-layout .data-component-grid.dual .info-card,
+.report-contract-layout .data-component-grid.dual .signal-info-card,
+.report-contract-layout .data-component-grid.dual .metric-card{
+  min-height:96px;
+  padding:11px 12px;
+}
+
+.report-contract-layout .recommendation-zone{
+  display:grid;
+  gap:8px;
+  min-height:0;
+  padding-top:2px;
+  border-top:1px solid rgba(148,163,184,.28);
+}
+
+.report-contract-layout.has-product-recommendation .data-component-grid{
+  min-height:370px;
+}
+
+.report-contract-layout.has-product-recommendation .report-table th,
+.report-contract-layout.has-product-recommendation .report-table td,
+.report-contract-layout.has-product-recommendation .claims-application-table th,
+.report-contract-layout.has-product-recommendation .claims-application-table td{
+  padding:7px 8px;
+  font-size:13px;
+  line-height:1.22;
+}
+
+.report-contract-layout.recommendation-stage:not(.has-product-recommendation) .data-component-grid{
+  min-height:370px;
+}
+
+.report-contract-layout.recommendation-stage:not(.has-product-recommendation) .recommendation-card{
+  min-height:148px;
+  height:148px;
+}
+
+.report-contract-layout.recommendation-stage:not(.has-product-recommendation) .recommendation-card img{
+  height:126px;
+}
+
+.report-contract-layout.has-product-recommendation .recommendation-card{
+  grid-template-columns:74px minmax(0,1fr);
+  gap:7px;
+  min-height:104px;
+  height:104px;
+  padding:8px;
+}
+
+.report-contract-layout.has-product-recommendation .recommendation-card img{
+  width:74px;
+  height:86px;
+}
+
+.report-contract-layout.has-product-recommendation .recommendation-card b{
+  margin:4px 0 3px;
+  font-size:13.5px;
+  line-height:1.1;
+}
+
+.report-contract-layout.has-product-recommendation .recommendation-card p{
+  font-size:10.5px;
+  line-height:1.16;
+  display:-webkit-box;
+  -webkit-line-clamp:1;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+.report-contract-layout.has-product-recommendation .recommendation-card em{
+  display:none;
+}
+
+.report-contract-layout .recommendation-heading{
+  min-height:30px;
+}
+
+.report-contract-layout .recommendation-heading b{
+  border-radius:7px;
+  padding:5px 11px;
+}
+
+.report-contract-layout .recommendation-bridge{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+
+.report-contract-layout .recommendation-bridge article{
+  grid-template-columns:80px minmax(0,1fr);
+  min-height:54px;
+  padding:8px 10px;
+  border-radius:10px;
+}
+
+.report-contract-layout .recommendation-cards{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+
+.report-contract-layout .recommendation-card{
+  grid-template-columns:92px minmax(0,1fr);
+  gap:10px;
+  min-height:132px;
+  padding:9px;
+  border-radius:12px;
+  box-shadow:var(--report-card-shadow);
+}
+
+.report-contract-layout .recommendation-card img{
+  width:92px;
+  height:112px;
+  object-fit:cover;
+  border-radius:9px;
+}
+
+.report-contract-layout .recommendation-card b{
+  margin:5px 0 4px;
+  font-size:15px;
+}
+
+.report-contract-layout .recommendation-card p{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  overflow:hidden;
+  font-size:11.5px;
+  line-height:1.3;
+}
+
+.report-contract-layout .recommendation-card em{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
+
+.report-contract-layout .recommendation-decision:empty{
+  display:none;
+}
+
+@media print{
+  .report-contract-layout .data-component-grid .component-stage,
+  .report-contract-layout .recommendation-card{
+    break-inside:avoid;
+  }
+}

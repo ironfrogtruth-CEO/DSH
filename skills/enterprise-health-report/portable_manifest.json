@@ -1,0 +1,28 @@
+{
+  "display_name": "企业健康报告",
+  "local_skill_name": "enterprise-health-report",
+  "version": "2026-06-01",
+  "entrypoint": "SKILL.md",
+  "template": "templates/a4-health-report-template.html",
+  "assets": [
+    "assets/a4-health-theme.css",
+    "assets/a4-health-editor.js"
+  ],
+  "references": [
+    "references/component-system.md",
+    "references/editor-capabilities.md",
+    "references/qa-gates.md",
+    "references/compatibility.md"
+  ],
+  "scripts": [
+    "scripts/validate_health_report.py"
+  ],
+  "platforms": {
+    "local_enterprise_health_report": "load from resources/skills/enterprise-health-report inside this project",
+    "coze": "use SKILL.md as main prompt and attach templates/assets/references/scripts as resources",
+    "mavis": "import the folder as a workflow resource bundle and keep relative paths",
+    "workbuddy": "load SKILL.md as instruction, expose templates/assets as editable resources, run scripts as QA actions when available",
+    "qclaw": "use enterprise-health-report as the folder id and show 企业健康报告 as the UI name"
+  },
+  "path_policy": "All template references are relative; do not hardcode local /Users paths."
+}

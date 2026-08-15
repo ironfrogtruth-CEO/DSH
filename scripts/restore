@@ -1,0 +1,15 @@
+#!/bin/bash
+# dsh restore — 恢复容器(需先解包 tar 到 ~ 目录)
+# 用法: 1) tar -xzf <导出的包> -C ~   2) scripts/restore
+set -u
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+echo "== 恢复容器 =="
+[ -f "$HOME/.dsh/container.manifest.yaml" ] || { echo "❌ 未找到 manifest,确认已解包"; exit 1; }
+
+if [ ! -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ]; then
+  echo "安装固定运行时 @deepseek-ai/dsh@0.1.0-rc.6 ..."
+  cd "$HOME/.dsh/install" && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact --no-audit --no-fund || exit 1
+fi
+
+chmod +x "$HOME/.dsh/bin/dsh" "$HOME/.dsh/scripts/"* 2>/dev/null
+"$HOME/.dsh/scripts/doctor" && echo "✅ 容器恢复完成"

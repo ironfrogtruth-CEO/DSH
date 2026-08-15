@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "enterprise-health-image2-asset-registry.v1",
+  "assetPolicy": {
+    "allowedUse": "企业健康报告服务与商品推荐卡",
+    "requiredPrefix": "img2_service_ 或 img2_product_",
+    "allowedFormats": ["png", "jpg", "jpeg", "webp"],
+    "forbiddenFormats": ["svg"],
+    "fallbackRule": "先按服务或商品名称复用本清单；没有匹配项时重新用 image2 生成、审核并登记后才能渲染。"
+  },
+  "productionBatch": {
+    "batchId": "image2-service-product-20260803-v2",
+    "generator": "image2",
+    "generatedAt": "2026-08-03T16:56:00+08:00",
+    "visualStyle": "photorealistic-production-raster",
+    "reviewStatus": "visual-reviewed",
+    "replaces": "line-art-raster-v1",
+    "reuseRule": "按服务或商品标签匹配后复用；没有合适标签时必须重新生成并登记。"
+  },
+  "assets": [
+    {"path":"img2_service_online_doctor.png","type":"service","tags":["名医在线咨询","在线问诊","咨询"]},
+    {"path":"img2_service_appointment.png","type":"service","tags":["门诊预约协助","挂号","就医协助"]},
+    {"path":"img2_service_family_doctor.png","type":"service","tags":["平安家医服务","慢病管理服务","家庭医生"]},
+    {"path":"img2_service_onsite_testing.png","type":"service","tags":["到企活动","企业筛查","健康讲座"]},
+    {"path":"img2_service_fast_check.png","type":"service","tags":["检查加急安排协助","检查绿通"]},
+    {"path":"img2_service_report_interpret.png","type":"service","tags":["健康体检含报告解读","报告解读"]},
+    {"path":"img2_service_weight.png","type":"service","tags":["体重管理服务","减重管理"]},
+    {"path":"img2_service_thyroid.png","type":"service","tags":["甲状腺结节复查","甲状腺专科"]},
+    {"path":"img2_service_lung.png","type":"service","tags":["肺结节复查","呼吸专科"]},
+    {"path":"img2_product_glucose_bp_monitor.png","type":"product","tags":["血糖监测","血压监测","健康设备"]},
+    {"path":"img2_product_protein_weight.png","type":"product","tags":["营养补充","蛋白粉","体重管理"]},
+    {"path":"img2_product_q10_fish_oil.png","type":"product","tags":["辅酶Q10","鱼油","营养保健"]}
+  ]
+}

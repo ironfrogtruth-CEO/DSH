@@ -1,0 +1,16 @@
+#!/bin/bash
+# dsh stop — 停止 Web 服务(按端口)
+set -u
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+PORT="${DSH_PORT:-3080}"
+PIDS=$(lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null)
+if [ -z "$PIDS" ]; then
+  echo "dsh 未在运行 (端口 $PORT 无监听)"
+  exit 0
+fi
+kill $PIDS 2>/dev/null
+sleep 1
+if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  kill -9 $(lsof -tiTCP:"$PORT" -sTCP:LISTEN) 2>/dev/null
+fi
+echo "dsh 已停止 (端口 $PORT)"

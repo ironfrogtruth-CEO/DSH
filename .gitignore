@@ -1,0 +1,15 @@
+# 数据与运行产物 — 永不纳入版本管理
+sessions/
+storages/
+backups/
+install/
+profiles/node_modules/
+web.log
+.ds_store
+.DS_Store
+*.log
+
+# 敏感文件 — 永不入库
+.credentials.yaml
+.anonymous-user-id
+

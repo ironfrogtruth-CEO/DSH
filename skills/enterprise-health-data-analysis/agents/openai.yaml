@@ -1,0 +1,6 @@
+interface:
+  display_name: "企业健康报告数据分析"
+  short_description: "解析企业健康字段表，形成风险、费用、服务和人效分析结论"
+  default_prompt: "Use $enterprise-health-data-analysis to verify the confirmed field data and produce traceable risk, cost, and service conclusions."
+policy:
+  allow_implicit_invocation: true

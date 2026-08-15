@@ -1,0 +1,25 @@
+#!/bin/bash
+# dsh doctor — 容器健康检查
+set -u
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+FAIL=0
+check() { # name, ok, msg
+  if [ "$2" = "ok" ]; then echo "✅ $1"; else echo "❌ $1 — $3"; FAIL=1; fi
+}
+
+echo "== dsh doctor =="
+check "node 运行时" "$([ -x /usr/local/bin/node ] && echo ok || echo fail)" "/usr/local/bin/node 缺失"
+check "固定安装" "$([ -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ] && echo ok || echo fail)" "install 未装,cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact"
+check "版本锁定" "$(grep -q '"@deepseek-ai/dsh": "0.1.0-rc.6"' "$HOME/.dsh/install/package.json" 2>/dev/null && echo ok || echo fail)" "package.json 版本未锁死 0.1.0-rc.6"
+check "入口命令" "$([ -x "$HOME/.dsh/bin/dsh" ] && echo ok || echo fail)" "bin/dsh 缺失或不可执行"
+check "preset 副本" "$([ -f "$HOME/.dsh/.agent-presets/cordis/preset.yml" ] && echo ok || echo fail)" ".agent-presets/cordis 缺失"
+check "skills" "$([ "$(ls "$HOME/.dsh/skills" 2>/dev/null | wc -l | tr -d ' ')" -ge 20 ] && echo ok || echo fail)" "skills 数量不足 20"
+check "profile web" "$([ -f "$HOME/.dsh/profiles/web/cordis.yml" ] && echo ok || echo fail)" "profiles/web 缺失"
+check "credentials" "$([ -s "$HOME/.dsh/.credentials.yaml" ] && echo ok || echo fail)" "credentials 未配置"
+check "Web 服务" "$(lsof -iTCP:3080 -sTCP:LISTEN >/dev/null 2>&1 && echo ok || echo fail)" "端口 3080 未监听(可运行 scripts/start)"
+check "磁盘余量" "$([ "$(df -g /System/Volumes/Data | tail -1 | awk '{print $4}')" -ge 30 ] && echo ok || echo fail)" "可用空间低于 30G"
+check "ollama" "$(command -v ollama >/dev/null 2>&1 && echo ok || echo fail)" "ollama 未安装/未在 PATH"
+
+echo
+[ $FAIL -eq 0 ] && echo "✅ 容器健康" || echo "❌ 存在 $FAIL 项异常"
+exit $FAIL
