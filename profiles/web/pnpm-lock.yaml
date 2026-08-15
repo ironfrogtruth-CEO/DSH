@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@local/dsh-browser':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-browser
+        version: link:../../extensions/dsh-browser
       '@local/dsh-dsbalance':
         specifier: link:/Users/marcus/.dsh/extensions/dsbalance-bundle
         version: link:../../extensions/dsbalance-bundle

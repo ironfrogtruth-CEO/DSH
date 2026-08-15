@@ -2,7 +2,7 @@
 // 1) 左上角 logo 换成虾缸 wordmark(明/暗两版, 保留 harness 布局)
 // 2) 会话头部新增"📦 产物"按钮 → 右侧产物面板(文件列表 + 文件树 + 预览)
 window.__ModuleLoader__.load({
-  id: '@local/dsh-shrimp-shell/client',
+  id: '@local/dsh-shrimp-shell',
   factory: (require) => {
     var module = { exports: {} }
     var exports = module.exports

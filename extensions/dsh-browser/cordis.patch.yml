@@ -1,0 +1,5 @@
+# dsh-browser bundle patch: 插入 Playwright 浏览器工具插件行
+# 随 profile 启动自动加载; 提供 browser_open/browser_act/browser_screenshot/browser_text/browser_pdf/browser_close
+- insert:
+    - id: dsh-browser
+      name: '@local/dsh-browser'

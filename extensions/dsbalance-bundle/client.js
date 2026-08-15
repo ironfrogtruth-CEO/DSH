@@ -2,7 +2,7 @@
 // 输入框下方显示 DeepSeek 余额 + 充值入口; 每 60 秒刷新
 // 数据源: 同源 fetch /api/dsbalance/balance(Host 路由,服务端持有密钥)
 window.__ModuleLoader__.load({
-  id: '@local/dsh-dsbalance/client',
+  id: '@local/dsh-dsbalance',
   factory: (require) => {
     var module = { exports: {} }
     var exports = module.exports

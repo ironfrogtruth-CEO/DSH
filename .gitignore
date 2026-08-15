@@ -13,3 +13,6 @@ web.log
 .credentials.yaml
 .anonymous-user-id
 
+
+# 依赖目录
+node_modules/

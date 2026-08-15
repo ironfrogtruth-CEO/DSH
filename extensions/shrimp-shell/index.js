@@ -53,9 +53,11 @@ export function apply(ctx) {
   const fs = ctx.fs
 
   // ---- 品牌资源(明/暗 wordmark) ----
+  // 注意: prefix 匹配器会自行在 path 后补 "/", 因此 path 不能以 "/" 结尾,
+  // 否则 "/api/shrimp/assets/xxx.png" 永远匹配不上(历史 404 根因)。
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
-    path: '/api/shrimp/assets/',
+    path: '/api/shrimp/assets',
     handler: async (req, res) => {
       const name = (req.url || '').split('?')[0].split('/').pop()
       if (!/^[a-zA-Z0-9._-]+$/.test(name || '')) {
