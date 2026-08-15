@@ -1,0 +1,4 @@
+# shrimp-shell bundle patch: 虾缸 harness 外观 + 产物面板
+- insert:
+    - id: shrimp-shell
+      name: '@local/dsh-shrimp-shell'

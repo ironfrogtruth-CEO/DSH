@@ -2,14 +2,16 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle"
+    "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
+    "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell"
   },
   "dsh": {
     "profile": {
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        "@local/dsh-dsbalance"
+        "@local/dsh-dsbalance",
+        "@local/dsh-shrimp-shell"
       ]
     }
   }

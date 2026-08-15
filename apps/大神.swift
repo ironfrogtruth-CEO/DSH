@@ -10,7 +10,7 @@ let PORT = 3080
 let UI_URL = "http://127.0.0.1:\(PORT)"
 let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/ensure-web"
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScriptMessageHandler {
     var window: NSWindow!
     var webView: WKWebView!
     var loadInFlight = false
@@ -27,7 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "大神"
+        // 一体化无外框: 透明标题栏、隐藏标题、无分隔线(只留红绿灯)
+        window.title = ""
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
         window.minSize = NSSize(width: 960, height: 600)
         window.center()
 
@@ -35,10 +39,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         webView = WKWebView(frame: rect, configuration: config)
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
+        // 原生↔Web 语音桥: Web 端按钮 → 原生 SFSpeechRecognizer
+        webView.configuration.userContentController.add(self, name: "shrimpVoice")
         window.contentView = webView
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        setupMicButton()
 
         loadWithRetry()
     }
@@ -80,17 +85,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     var audioEngine = AVAudioEngine()
     var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     var recognitionTask: SFSpeechRecognitionTask?
-    var micButton: NSButton?
 
-    func setupMicButton() {
-        let item = NSTitlebarAccessoryViewController()
-        micButton = NSButton(title: "🎤 语音输入", target: self, action: #selector(micPressed))
-        micButton?.bezelStyle = .rounded
-        micButton?.isContinuous = false
-        micButton?.toolTip = "点击开始录音,再点结束,识别文字自动填入输入框"
-        item.view = micButton ?? NSView()
-        item.layoutAttribute = .trailing
-        window.addTitlebarAccessoryViewController(item)
+    // Web 端按钮 → 原生: window.webkit.messageHandlers.shrimpVoice.postMessage('toggle')
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "shrimpVoice" else { return }
+        micPressed()
+    }
+
+    // 录音状态 → Web 按钮: window.__shrimpVoiceState(state)
+    func notifyVoiceState(_ state: String) {
+        webView?.evaluateJavaScript("window.__shrimpVoiceState && window.__shrimpVoiceState('\(state)')") { _, _ in }
     }
 
     @objc func micPressed() {
@@ -106,14 +110,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 guard status == .authorized else {
-                    self.micButton?.title = "🎤 无权限"
+                    self.notifyVoiceState("denied")
                     return
                 }
                 do {
                     try self.beginRecording()
-                    self.micButton?.title = "⏹ 结束"
+                    self.notifyVoiceState("recording")
                 } catch {
-                    self.micButton?.title = "🎤 启动失败"
+                    self.notifyVoiceState("error")
                 }
             }
         }
@@ -148,8 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
                 }
                 self.cleanupRecording()
             } else if let result = result {
-                // 实时预览(可选): 显示在按钮 tooltip, 不打扰
-                self.micButton?.toolTip = result.bestTranscription.formattedString
+                // 实时预览: 部分结果发到 Web 按钮 tooltip(可选,不打扰)
             }
         }
     }
@@ -167,8 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest = nil
         recognitionTask = nil
-        micButton?.title = "🎤 语音输入"
-        micButton?.toolTip = "点击开始录音,再点结束,识别文字自动填入输入框"
+        notifyVoiceState("idle")
     }
 
     // 把识别文本注入页面 textarea(受控组件: 原生 setter + input 事件)
