@@ -13,6 +13,8 @@ if [ ! -f "$DSH_BIN" ]; then
   echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact" >>"$LOG"
   exit 1
 fi
+# LLM 适配器补丁(历史图片块降级为文字占位,防线程报废);幂等,install 升级后自动重打
+/usr/local/bin/node "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" >>"$LOG" 2>&1 || true
 cd "$HOME" || exit 1
 /usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web >>"$LOG" 2>&1 &
 exit 0
