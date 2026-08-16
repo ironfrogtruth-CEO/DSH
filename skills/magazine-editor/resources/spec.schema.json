@@ -1,0 +1,31 @@
+{
+  "canvas_type": "a4 | 16x9",
+  "title": "document title",
+  "theme": {
+    "primary": "#f05a22",
+    "ink": "#1f2933",
+    "paper": "#fffdf8"
+  },
+  "pages": [
+    {
+      "id": "p01",
+      "kind": "cover | content",
+      "top": {"height": 360, "src": "", "opStart": 1, "opEnd": 0.3},
+      "footer": {"height": 190, "src": "", "opStart": 0.1, "opEnd": 1},
+      "background": {"color": "#fffdf8", "src": ""},
+      "components": [
+        {
+          "type": "text | image | shape",
+          "name": "组件名称",
+          "x": 60,
+          "y": 120,
+          "w": 500,
+          "h": 120,
+          "z": 30,
+          "html": "<h1>可编辑文字</h1>",
+          "className": "optional css class"
+        }
+      ]
+    }
+  ]
+}

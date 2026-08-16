@@ -1,0 +1,5991 @@
+[
+  {
+    "asset_id": "gen.icon_pressure",
+    "display_name": "压力负荷",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/pa_icon_pressure.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "压力负荷",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "audience.pressure",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "5ca0c423509d49e5f2ba98c9f56f37c086280a1f587e654b76128b63155c7924",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.13638706",
+    "display_name": "压力负荷-压力",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/iconfont_audience_pressure_13638706_压力.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "13638706",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=压力",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "压力负荷",
+      "压力",
+      "压力"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "audience.pressure",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "d6a237b6625d60618cb0862c15dfe1a419d2e76e041f5bc19ee85d0a3a81c81a",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.25716464",
+    "display_name": "压力负荷-压力",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/iconfont_audience_pressure_25716464_压力.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "25716464",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=压力",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "压力负荷",
+      "压力",
+      "压力"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "audience.pressure",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "7ba0e3872440d960f4d18d0e6533ad2d3961d59e6fd20cc7adb3a33a51244bfc",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_wine_glass",
+    "display_name": "久坐应酬",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/pa_icon_wine_glass.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "久坐应酬",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "audience.social_dining",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "e43487d1f7bb269d5c7588e7f4fe9294ad4775cda910be205f5f88db4257f23c",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.26302605",
+    "display_name": "应酬饮酒-酒杯",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/iconfont_audience_social_dining_26302605_酒杯.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "26302605",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=酒杯",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "应酬饮酒",
+      "酒杯",
+      "酒杯"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "audience.social_dining",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "c4c83167fc44b586eca5342ec7bab9cfc16f1b22539138beb561396da024724f",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.5058344",
+    "display_name": "应酬饮酒-酒杯",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/iconfont_audience_social_dining_5058344_酒杯.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "5058344",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=酒杯",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "应酬饮酒",
+      "酒杯",
+      "酒杯"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "audience.social_dining",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "1c2d69a6c570de8551f39c6d782bac7f62cd279be7165d27d83976cecd4c783f",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_travel_plane",
+    "display_name": "高频出差",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/pa_icon_travel_plane.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "高频出差",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "audience.travel",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "8261a71c654a26aaf46e78b86a3cf75ab174cd31919fa1cff332c9790f96b80d",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.658012",
+    "display_name": "高频出差-飞机",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/iconfont_audience_travel_658012_飞机.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "658012",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=飞机",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "高频出差",
+      "飞机",
+      "飞机"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "audience.travel",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "b453e43671dd3b3692f13282e7f9bb19bd66a06c4fb87daf0f8c4280b4285c89",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.990",
+    "display_name": "高频出差-旅行",
+    "category": "01_图标_icon",
+    "subcategory": "人群画像",
+    "file_path": "01_图标_icon/人群画像/iconfont_audience_travel_990_旅行.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "990",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=飞机",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "高频出差",
+      "飞机",
+      "飞机,机票"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "audience.travel",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "c9fc5214f9b664441832ca66302c655e3ac26f845ca21cf27ddd51b4fcd3f5c7",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.10056205",
+    "display_name": "血压管理-血压",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/iconfont_service_blood_pressure_10056205_血压.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "10056205",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=血压",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "血压管理",
+      "血压",
+      "血压"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.blood_pressure",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "a8a5e4995f294d0fb3aeabe0ca7e72efdada89658cd084102ba38256403654a7",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.765557",
+    "display_name": "血压管理-血压",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/iconfont_service_blood_pressure_765557_血压.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "765557",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=血压",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "血压管理",
+      "血压",
+      "血压,温度,压力"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.blood_pressure",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "b3fe4507b27348fb3749410a047767c5e6a374c60ddd5bc20422441c67fbed24",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_heart_pulse",
+    "display_name": "心脑血管",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/pa_icon_heart_pulse.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "心脑血管",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.cardio",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "ceb109941941ba241cc68578ecd93538556b159d1a063afa2d257c1c86cf59e2",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.icon_checkup_scan",
+    "display_name": "体检筛查",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/pa_icon_checkup_scan.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "体检筛查",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.checkup",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "5ebe65121162407784bb5b13a7ddf96a195ffc35c094be38c0f32f977c27f045",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.5961315",
+    "display_name": "体检筛查-人体检测",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/iconfont_service_checkup_5961315_人体检测.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "5961315",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=体检",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "体检筛查",
+      "体检",
+      "人体检测,人,走路,动作,捕捉"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.checkup",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "6fc860dfd8da91f095d13142c80d13f047420474d23309a4fabe8ba6d3daac62",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.8288892",
+    "display_name": "体检筛查-体检",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/iconfont_service_checkup_8288892_体检.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "8288892",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=体检",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "体检筛查",
+      "体检",
+      "体检"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.checkup",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "56a6dc8852dd44f61bc2f9e48388087508fc47d778b89c6cf4860b3c4f3b18ab",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.42230802",
+    "display_name": "心电心脏-pulse-line",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/iconfont_service_heart_42230802_pulse-line.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "42230802",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=心电",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "心电心脏",
+      "心电",
+      "心跳,心电图"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.heart",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "16951bc563085dd219c17bb451e1e6229c22d7a9aaaf1e6f11e4b4c89bbd127f",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.643279",
+    "display_name": "心电心脏-心电",
+    "category": "01_图标_icon",
+    "subcategory": "医疗检测",
+    "file_path": "01_图标_icon/医疗检测/iconfont_service_heart_643279_心电.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "643279",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=心电",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "心电心脏",
+      "心电",
+      "心电"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.heart",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "d0b951bc831766e31a9ffd8af92c82c467100dea3edf782a856c2f27874a58d3",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_hospital_bed",
+    "display_name": "住院床位",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_hospital_bed.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "住院床位",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "medical.bed",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "63aaa97ff935dee607d645b73cf4f4764021df50699ca32eab2fee251991a1e6",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.4942304",
+    "display_name": "住院床位-病床",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_bed_4942304_病床.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "4942304",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=病床",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "住院床位",
+      "病床",
+      "病床,床"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.bed",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "253723f4750514ce4b1f575c981c707af1cd9e35e5ac915115477c1840045159",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.8223399",
+    "display_name": "住院床位-病床",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_bed_8223399_病床.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "8223399",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=病床",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "住院床位",
+      "病床",
+      "病床"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.bed",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "d9da0f2151812aab7bf831f863c5505ce5c073fa7088997e26815bbe1b282e95",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_companion",
+    "display_name": "陪诊服务",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_companion.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "陪诊服务",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "medical.companion",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "d8c5c2881a892e5043bf4df88e3ddf2f7185f51c9debe78b2cd049c0648cea26",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.14233212",
+    "display_name": "陪诊服务-陪诊 ",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_companion_14233212_陪诊.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "14233212",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=陪诊",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "陪诊服务",
+      "陪诊",
+      "陪诊 (2),填充,扁平"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.companion",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "0e09abb6232a91e518c02b70bcfa59ce3b973b2d4c93f817266a4dc9a7105497",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.5082611",
+    "display_name": "陪诊服务-陪诊 我的陪诊#ff5988",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_companion_5082611_陪诊_我的陪诊_ff5988.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "5082611",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=陪诊",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "陪诊服务",
+      "陪诊",
+      "陪诊 我的陪诊"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.companion",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "d2ba412df83b62a6050540472ba55ad08c3e72091dd0a94917d216388f57003a",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_doctor_service",
+    "display_name": "医生服务",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_doctor_service.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医生服务",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "medical.doctor",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "534bfdefb82c9c0889ad51cfdf8798ec95e902663beffd40f8560df31e591485",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.10268608",
+    "display_name": "医生服务-医生&医生介绍",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_doctor_10268608_医生_医生介绍.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "10268608",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=医生",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医生服务",
+      "医生",
+      "医生&医生介绍"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.doctor",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "0fece8580313aeffc381bf17565ccc26a7b6ab91c8ef850b94d2297c78e8c919",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.765377",
+    "display_name": "医生服务-医生",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_doctor_765377_医生.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "765377",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=医生",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医生服务",
+      "医生",
+      "医生,护理"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.doctor",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "e5e07a4f2fd305033afb96617b105cd15ce452840e14b24cc5172b1c81358a5e",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_hospital",
+    "display_name": "医院资源",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_hospital.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医院资源",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "medical.hospital",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "534ab1eb8bad83d6bd926e4e29b555cb70954bbe6835c873257c0fe13b17439b",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.145457",
+    "display_name": "医院资源-医院",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_hospital_145457_医院.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "145457",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=医院",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医院资源",
+      "医院",
+      "医院"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.hospital",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "5db8bac8297641e09644e5123daa71f3e69455741d46b736bd9737da32a09c08",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.145740",
+    "display_name": "医院资源-医院_填充",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_hospital_145740_医院_填充.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "145740",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=医院",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医院资源",
+      "医院",
+      "医院_填充"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.hospital",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "5fc1b89fb71f0569bba1d4ed9fd94e60c98a2eee18b14a2965bf221c269c5896",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_surgery",
+    "display_name": "手术协助",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_surgery.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "手术协助",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "medical.surgery",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "0ad51ae7e165212849c92091de01cba1ec4fd05e78e70346f3d9760b014a8c9e",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.10056238",
+    "display_name": "手术协助-手术",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_surgery_10056238_手术.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "10056238",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=手术",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "手术协助",
+      "手术",
+      "手术"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.surgery",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "7cac2e30be9ea2c761c824f2636ac4c8d3582af4f98c338ac7d2d17b9e80b7d4",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.786200",
+    "display_name": "手术协助-外科",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_medical_surgery_786200_外科.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "786200",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=手术",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "手术协助",
+      "手术",
+      "外科,手术"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "medical.surgery",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "026d4ad28d316d33714f864c55c231e3b7d59f44ef4307b38b9761575c6698ea",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_shield_cross",
+    "display_name": "免疫防护",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_shield_cross.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "免疫防护",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.immunity",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "8d18872c8e98e56c6c7c253e79c9f87ebb0a33a66fb6fb84153e6ec9c86f5fec",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.10056191",
+    "display_name": "注射接种-注射器",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_injection_10056191_注射器.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "10056191",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=注射",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "注射接种",
+      "注射",
+      "注射器"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.injection",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "c55e5afeca42202c68ca6cf063753a6319f734f94e0ff938d8272e515eb77ccb",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.3920061",
+    "display_name": "注射接种-注射器",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_injection_3920061_注射器.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "3920061",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=注射",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "注射接种",
+      "注射",
+      "注射器"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.injection",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "c2abcaeb41b2daf280f0191287199059547cdaba093dca6870759beb7525a01a",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_nutrition_bowl",
+    "display_name": "营养管理",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_nutrition_bowl.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "营养管理",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.nutrition",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "b8b1e997278c9227716a97719e9ca2556e5ff59ad994e81711ef35d4ad87ff00",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.1071062",
+    "display_name": "营养管理-营养说2",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_nutrition_1071062_营养说2.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "1071062",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=营养",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "营养管理",
+      "营养",
+      "营养说2"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.nutrition",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "3a3d15353687c0de4ff77978006f3f72506aa4132ef26da8753858549b568932",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.16275271",
+    "display_name": "营养管理-营养咨询师",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_nutrition_16275271_营养咨询师.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "16275271",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=营养",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "营养管理",
+      "营养",
+      "营养咨询师,线性,手绘,单色,营养师,营养咨询"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.nutrition",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "37fdd37bb44b2a4aabf27e4efb8fac9d043cc7b3ae5343bb66162c4d433250e3",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_sleep_moon",
+    "display_name": "睡眠管理",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_sleep_moon.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "睡眠管理",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.sleep",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "956bf3c53619fce1622fea98866a250e911061b30eb0f88e4edff3f56d6e896d",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.4408993",
+    "display_name": "睡眠管理-睡眠",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_sleep_4408993_睡眠.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "4408993",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=睡眠",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "睡眠管理",
+      "睡眠",
+      "睡眠"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.sleep",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "e8646f4655e18626ea5f8ab2113908afc8108e6ed91625171a2f9f278a296338",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.988847",
+    "display_name": "睡眠管理-睡眠",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_sleep_988847_睡眠.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "988847",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=睡眠",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "睡眠管理",
+      "睡眠",
+      "睡眠"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.sleep",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "b40dda77c92757de185027f6925ee58640be0d2c9a9e066dfc52f3f7e95e3bf3",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_vaccine_syringe",
+    "display_name": "疫苗接种",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/pa_icon_vaccine_syringe.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "疫苗接种",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.vaccine",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "07eb4cb28766b3b11e1ba2a4fe9a4bba0ddd10e66ecd43dc4abfc29ea8c6f828",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.765796",
+    "display_name": "疫苗防护-疫苗",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_vaccine_765796_疫苗.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "765796",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=疫苗",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "疫苗防护",
+      "疫苗",
+      "疫苗,打针"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.vaccine",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "568b7159ac48c58837569072241e3d023ce3bfb2e37b49c207dae0a723e7a7a3",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.7693982",
+    "display_name": "疫苗防护-疫苗",
+    "category": "01_图标_icon",
+    "subcategory": "服务能力",
+    "file_path": "01_图标_icon/服务能力/iconfont_service_vaccine_7693982_疫苗.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "7693982",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=疫苗",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "疫苗防护",
+      "疫苗",
+      "疫苗"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.vaccine",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "92cf83e42714eb49342df6cb4c2693299e60cfc0e548e75889a7e184107b643c",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_followup_calendar",
+    "display_name": "随访跟踪",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/pa_icon_followup_calendar.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "随访跟踪",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "flow.followup",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "d647ae70d82de815b96510a0cd30a03b15df9ffa29803c12102819e710dca19b",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.10885287",
+    "display_name": "随访跟踪-随访",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/iconfont_flow_followup_10885287_随访.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "10885287",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=随访",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "随访跟踪",
+      "随访",
+      "随访"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "flow.followup",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "da701b2f4fc09d5b150d27f215171e222b1547e7f88e0c19fc7aa9a121979d0d",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.16921561",
+    "display_name": "随访跟踪-随访",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/iconfont_flow_followup_16921561_随访.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "16921561",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=随访",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "随访跟踪",
+      "随访",
+      "随访"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "flow.followup",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "051bee86618ca612c058fb3ebf0c3ce90c10761f3f857ebcedb686ce9c900108",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_health_record",
+    "display_name": "健康档案",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/pa_icon_health_record.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "健康档案",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.health_record",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "96d32bfaa9efc2156f313d234c1c0fe91715bf65202f23b4f1a1d3e145cff65e",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.10268557",
+    "display_name": "健康档案-健康档案",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/iconfont_service_health_record_10268557_健康档案.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "10268557",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=健康档案",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "健康档案",
+      "健康档案",
+      "健康档案"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.health_record",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "4c969e202eb5248d25aac66061f7d76bdc996d3eb6178744996a6af14e209439",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.31359592",
+    "display_name": "健康档案-健康档案",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/iconfont_service_health_record_31359592_健康档案.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "31359592",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=健康档案",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "健康档案",
+      "健康档案",
+      "健康档案,简约,线性"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.health_record",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "f5d9feb0d595f94ddbaf760b2386846a39cfb9d896cd80722e4032d1a636bcc7",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.icon_report_interpret",
+    "display_name": "报告解读",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/pa_icon_report_interpret.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "报告解读",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "service.report",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "396453e61503483a3ad21e5df71c4636a48659f4cb45ad13ac47e8ada0bd677e",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.34453368",
+    "display_name": "报告解读-行业报告",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/iconfont_service_report_34453368_行业报告.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "34453368",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=报告",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "报告解读",
+      "报告",
+      "行业报告,线性,简约,手绘"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.report",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "5c90f6fcdf68aa626bfb0f2e89df40ee88c99ceaa7c51bb26edd33279bf0c050",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.5334129",
+    "display_name": "报告解读-报告",
+    "category": "01_图标_icon",
+    "subcategory": "流程节点",
+    "file_path": "01_图标_icon/流程节点/iconfont_service_report_5334129_报告.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "5334129",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=报告",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "报告解读",
+      "报告",
+      "报告"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "service.report",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "fdee07bc3d2636aab078c09d9a504dc3446feddd41e54014356633547b300f7c",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.arrow_right_chevron",
+    "display_name": "右箭头",
+    "category": "02_流程箭头_连接组件",
+    "subcategory": "右箭头",
+    "file_path": "02_流程箭头_连接组件/右箭头/pa_arrow_right_chevron.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "右箭头",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "flow.arrow_right",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "4d7aae63ac50ede9f924d998f4ad0a028886f2a5b273ce81954c15cdf46d6272",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.arrow_right_soft",
+    "display_name": "柔和右箭头",
+    "category": "02_流程箭头_连接组件",
+    "subcategory": "右箭头",
+    "file_path": "02_流程箭头_连接组件/右箭头/pa_arrow_right_soft.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "柔和右箭头",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "flow.arrow_right",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "c43141b1d508eabd8979857d19f788b026b1c0d6a2d3802d9551b36843e75dc0",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.timeline_node",
+    "display_name": "时间轴节点",
+    "category": "02_流程箭头_连接组件",
+    "subcategory": "时间轴",
+    "file_path": "02_流程箭头_连接组件/时间轴/pa_timeline_node.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "时间轴节点",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "flow.timeline_node",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "77e28053af11e1a4df7df580349760216d27dc41b377d9a016607a7665e96e6f",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.arrow_loop",
+    "display_name": "闭环箭头",
+    "category": "02_流程箭头_连接组件",
+    "subcategory": "闭环箭头",
+    "file_path": "02_流程箭头_连接组件/闭环箭头/pa_arrow_loop.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "闭环箭头",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "flow.closed_loop",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "efa38a476738c23f1d7dfac3b30660a5d824a5efd7f370a0ae2e8e841e276ed4",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0011",
+    "display_name": "企业员工健康-PRESALE002_A0011",
+    "category": "03_场景插画_照片",
+    "subcategory": "企业员工健康",
+    "file_path": "03_场景插画_照片/企业员工健康/local_PRESALE002_A0011_企业员工健康.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0011",
+    "source_url": "",
+    "source_page": "PRESALE002 p5",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "企业员工健康",
+      "商务医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.enterprise_health",
+    "color_profile": {
+      "width": 474,
+      "height": 600,
+      "brightness": 0.864,
+      "saturation": 0.121,
+      "orange_ratio": 0.121,
+      "green_ratio": 0.0,
+      "black_ratio": 0.004,
+      "white_ratio": 0.54,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "1f6f133042814866f00838c824ff4fab5eb42bd1af59a781ffe245dbbdbd3f6c",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0087",
+    "display_name": "企业员工健康-PRESALE002_A0087",
+    "category": "03_场景插画_照片",
+    "subcategory": "企业员工健康",
+    "file_path": "03_场景插画_照片/企业员工健康/local_PRESALE002_A0087_企业员工健康.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0087",
+    "source_url": "",
+    "source_page": "PRESALE002 p14",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "企业员工健康",
+      "商务医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.enterprise_health",
+    "color_profile": {
+      "width": 619,
+      "height": 460,
+      "brightness": 0.923,
+      "saturation": 0.082,
+      "orange_ratio": 0.026,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.651,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "0139c6a16d8a333a1a2d0812ef55c7f7c08cb7d3037e52ee97c5e91d7d686761",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0056",
+    "display_name": "医务室体检-PRESALE002_A0056",
+    "category": "03_场景插画_照片",
+    "subcategory": "医务室体检",
+    "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0056_医务室体检.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0056",
+    "source_url": "",
+    "source_page": "PRESALE002 p10",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "医务室体检",
+      "医生服务",
+      "医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.clinic_checkup",
+    "color_profile": {
+      "width": 679,
+      "height": 614,
+      "brightness": 0.921,
+      "saturation": 0.085,
+      "orange_ratio": 0.015,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.786,
+      "high_sat_ratio": 0.006
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "486912f7213be0ba4e3eeadbe319e6e860c41b38b21eb3f6a29d92044d63b72c",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0065",
+    "display_name": "医务室体检-PRESALE002_A0065",
+    "category": "03_场景插画_照片",
+    "subcategory": "医务室体检",
+    "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0065_医务室体检.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0065",
+    "source_url": "",
+    "source_page": "PRESALE002 p12",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "医务室体检",
+      "医生服务",
+      "医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.clinic_checkup",
+    "color_profile": {
+      "width": 590,
+      "height": 800,
+      "brightness": 0.918,
+      "saturation": 0.139,
+      "orange_ratio": 0.06,
+      "green_ratio": 0.0,
+      "black_ratio": 0.006,
+      "white_ratio": 0.745,
+      "high_sat_ratio": 0.059
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "e3c3b7c2161b1004b08191b7471d0d9b8af05ef3668bec1c638d4af011888243",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0069",
+    "display_name": "医务室体检-PRESALE002_A0069",
+    "category": "03_场景插画_照片",
+    "subcategory": "医务室体检",
+    "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0069_医务室体检.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0069",
+    "source_url": "",
+    "source_page": "PRESALE002 p12",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "医务室体检",
+      "医生服务",
+      "医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好",
+      "高饱和偏多"
+    ],
+    "replacement_group": "scene.clinic_checkup",
+    "color_profile": {
+      "width": 508,
+      "height": 586,
+      "brightness": 0.793,
+      "saturation": 0.483,
+      "orange_ratio": 0.7,
+      "green_ratio": 0.012,
+      "black_ratio": 0.001,
+      "white_ratio": 0.19,
+      "high_sat_ratio": 0.494
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "bab2cca60ca0467bb7e08b8000ecf298e2cb99c0ae7d4cf43eeb0f4abbd77c49",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0073",
+    "display_name": "医务室体检-PRESALE002_A0073",
+    "category": "03_场景插画_照片",
+    "subcategory": "医务室体检",
+    "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0073_医务室体检.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0073",
+    "source_url": "",
+    "source_page": "PRESALE002 p12",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "医务室体检",
+      "医生服务",
+      "医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配"
+    ],
+    "replacement_group": "scene.clinic_checkup",
+    "color_profile": {
+      "width": 558,
+      "height": 680,
+      "brightness": 0.543,
+      "saturation": 0.232,
+      "orange_ratio": 0.106,
+      "green_ratio": 0.0,
+      "black_ratio": 0.129,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.008
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "f1785e5f40ce4f4ff67e4e32a4aff0cf3c05d0fe7cfcd4de3dc9c4490402d414",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0004",
+    "display_name": "医务室体检-PRESALE004_A0004",
+    "category": "03_场景插画_照片",
+    "subcategory": "医务室体检",
+    "file_path": "03_场景插画_照片/医务室体检/local_PRESALE004_A0004_医务室体检.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0004",
+    "source_url": "",
+    "source_page": "PRESALE004 p3",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医务室体检",
+      "医生服务",
+      "医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.clinic_checkup",
+    "color_profile": {
+      "width": 441,
+      "height": 818,
+      "brightness": 0.971,
+      "saturation": 0.017,
+      "orange_ratio": 0.007,
+      "green_ratio": 0.004,
+      "black_ratio": 0.0,
+      "white_ratio": 0.893,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "5a87453b2e4dc37fd6f7184eb8f94e602c341da938c5d15cb2b84180695199e1",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0013",
+    "display_name": "医务室体检-PRESALE004_A0013",
+    "category": "03_场景插画_照片",
+    "subcategory": "医务室体检",
+    "file_path": "03_场景插画_照片/医务室体检/local_PRESALE004_A0013_医务室体检.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0013",
+    "source_url": "",
+    "source_page": "PRESALE004 p3",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医务室体检",
+      "医生服务",
+      "医疗场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.clinic_checkup",
+    "color_profile": {
+      "width": 377,
+      "height": 786,
+      "brightness": 0.946,
+      "saturation": 0.067,
+      "orange_ratio": 0.043,
+      "green_ratio": 0.018,
+      "black_ratio": 0.0,
+      "white_ratio": 0.75,
+      "high_sat_ratio": 0.022
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "a92815890683287446e991c87d6ff0154eef7b052caef20de2b8c588e6e8f640",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0082",
+    "display_name": "医生沟通-PRESALE004_A0082",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0082_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0082",
+    "source_url": "",
+    "source_page": "PRESALE004 p16",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 505,
+      "height": 1092,
+      "brightness": 0.986,
+      "saturation": 0.031,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.901,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "2fead3adedf3f5c395d328fda66ea3c75cda6901eb228ae1f87992d126f6e180",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0083",
+    "display_name": "医生沟通-PRESALE004_A0083",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0083_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0083",
+    "source_url": "",
+    "source_page": "PRESALE004 p16",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 505,
+      "height": 1092,
+      "brightness": 0.968,
+      "saturation": 0.048,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.855,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "fa66608411e524ea0153cf0cc780a0f3ee8267b9c8259fe6da95908325ca4dca",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0084",
+    "display_name": "医生沟通-PRESALE004_A0084",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0084_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0084",
+    "source_url": "",
+    "source_page": "PRESALE004 p16",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 535,
+      "height": 1093,
+      "brightness": 0.929,
+      "saturation": 0.043,
+      "orange_ratio": 0.023,
+      "green_ratio": 0.001,
+      "black_ratio": 0.001,
+      "white_ratio": 0.817,
+      "high_sat_ratio": 0.01
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "8a2ed5d8ab87ab5bc0ff36b1cd74735773222d5827b3fbb05a3da67aacfe5804",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0085",
+    "display_name": "医生沟通-PRESALE004_A0085",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0085_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0085",
+    "source_url": "",
+    "source_page": "PRESALE004 p16",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 507,
+      "height": 1098,
+      "brightness": 0.959,
+      "saturation": 0.023,
+      "orange_ratio": 0.008,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.913,
+      "high_sat_ratio": 0.002
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "63405481b88a8881753afbfac503a8d593dc1d11258e85a0b603c6f80a90d76b",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0086",
+    "display_name": "医生沟通-PRESALE004_A0086",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0086_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0086",
+    "source_url": "",
+    "source_page": "PRESALE004 p16",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 508,
+      "height": 1097,
+      "brightness": 0.976,
+      "saturation": 0.021,
+      "orange_ratio": 0.008,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.888,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "b2b4a762a68c626b998b74df036b71f85a11d02e8d6a88c12e0c52e619d21ce2",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0087",
+    "display_name": "医生沟通-PRESALE004_A0087",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0087_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0087",
+    "source_url": "",
+    "source_page": "PRESALE004 p17",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 521,
+      "height": 1128,
+      "brightness": 0.907,
+      "saturation": 0.057,
+      "orange_ratio": 0.027,
+      "green_ratio": 0.048,
+      "black_ratio": 0.008,
+      "white_ratio": 0.717,
+      "high_sat_ratio": 0.019
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "0349efae400b730cc316439319eaf4ce09c9718acd2fb2ffcc55eb1df18f5cac",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0088",
+    "display_name": "医生沟通-PRESALE004_A0088",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0088_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0088",
+    "source_url": "",
+    "source_page": "PRESALE004 p17",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 521,
+      "height": 1128,
+      "brightness": 0.857,
+      "saturation": 0.173,
+      "orange_ratio": 0.014,
+      "green_ratio": 0.06,
+      "black_ratio": 0.009,
+      "white_ratio": 0.516,
+      "high_sat_ratio": 0.137
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "88cff6625b0ffb32451427f6b871c7f5d9e4f6850f5bfa0fb5b6c849c5bea32c",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0089",
+    "display_name": "医生沟通-PRESALE004_A0089",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0089_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0089",
+    "source_url": "",
+    "source_page": "PRESALE004 p17",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 521,
+      "height": 1128,
+      "brightness": 0.95,
+      "saturation": 0.037,
+      "orange_ratio": 0.02,
+      "green_ratio": 0.017,
+      "black_ratio": 0.0,
+      "white_ratio": 0.863,
+      "high_sat_ratio": 0.01
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "9f0451e13c59b90d9c1d53affd7744c20f2a4ceab0301f94b748eecb326a4fad",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0090",
+    "display_name": "医生沟通-PRESALE004_A0090",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0090_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0090",
+    "source_url": "",
+    "source_page": "PRESALE004 p17",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 521,
+      "height": 1128,
+      "brightness": 0.937,
+      "saturation": 0.043,
+      "orange_ratio": 0.025,
+      "green_ratio": 0.034,
+      "black_ratio": 0.0,
+      "white_ratio": 0.789,
+      "high_sat_ratio": 0.017
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "14395cd399f3fefd494f74a81ecd72fdb1692b41f939c81b3f65692c1439fa38",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0091",
+    "display_name": "医生沟通-PRESALE004_A0091",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0091_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0091",
+    "source_url": "",
+    "source_page": "PRESALE004 p17",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 488,
+      "height": 1057,
+      "brightness": 0.848,
+      "saturation": 0.073,
+      "orange_ratio": 0.018,
+      "green_ratio": 0.045,
+      "black_ratio": 0.003,
+      "white_ratio": 0.605,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "10509589d1b54779335125f6ff4a2f208161339f525362811ff93f0b9a019678",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE004_A0092",
+    "display_name": "医生沟通-PRESALE004_A0092",
+    "category": "03_场景插画_照片",
+    "subcategory": "医生沟通",
+    "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0092_医生沟通.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE004_A0092",
+    "source_url": "",
+    "source_page": "PRESALE004 p18",
+    "source_file": "健康宝.pdf",
+    "semantic_tags": [
+      "医生沟通",
+      "医疗服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.doctor_consultation",
+    "color_profile": {
+      "width": 514,
+      "height": 1112,
+      "brightness": 0.937,
+      "saturation": 0.037,
+      "orange_ratio": 0.037,
+      "green_ratio": 0.0,
+      "black_ratio": 0.001,
+      "white_ratio": 0.797,
+      "high_sat_ratio": 0.002
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "ba74fab897db3ee7e423054312b477597a1f7471bcb7239cce3cb8ad4ed64730",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0033",
+    "display_name": "家庭老人服务-PRESALE002_A0033",
+    "category": "03_场景插画_照片",
+    "subcategory": "家庭老人服务",
+    "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0033_家庭老人服务.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0033",
+    "source_url": "",
+    "source_page": "PRESALE002 p8",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "家庭老人服务",
+      "健康服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.family_service",
+    "color_profile": {
+      "width": 500,
+      "height": 333,
+      "brightness": 0.721,
+      "saturation": 0.228,
+      "orange_ratio": 0.179,
+      "green_ratio": 0.0,
+      "black_ratio": 0.011,
+      "white_ratio": 0.131,
+      "high_sat_ratio": 0.054
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "10052abc99c960d3ca1381d66a7187ee1f62b552a7b029c3e0b4e79a778e77ea",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0049",
+    "display_name": "家庭老人服务-PRESALE002_A0049",
+    "category": "03_场景插画_照片",
+    "subcategory": "家庭老人服务",
+    "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0049_家庭老人服务.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0049",
+    "source_url": "",
+    "source_page": "PRESALE002 p9",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "家庭老人服务",
+      "健康服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.family_service",
+    "color_profile": {
+      "width": 554,
+      "height": 474,
+      "brightness": 0.636,
+      "saturation": 0.088,
+      "orange_ratio": 0.096,
+      "green_ratio": 0.0,
+      "black_ratio": 0.17,
+      "white_ratio": 0.343,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "54a2d17e6ebccb7d33552c63767266de349e029514d6f5fc43a6a10e15c2c462",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0052",
+    "display_name": "家庭老人服务-PRESALE002_A0052",
+    "category": "03_场景插画_照片",
+    "subcategory": "家庭老人服务",
+    "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0052_家庭老人服务.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0052",
+    "source_url": "",
+    "source_page": "PRESALE002 p9",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "家庭老人服务",
+      "健康服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.family_service",
+    "color_profile": {
+      "width": 554,
+      "height": 390,
+      "brightness": 0.702,
+      "saturation": 0.034,
+      "orange_ratio": 0.051,
+      "green_ratio": 0.0,
+      "black_ratio": 0.168,
+      "white_ratio": 0.557,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "57f1652eb1ecd639ecea605727d5d9be8db9f8815b830b3fd9d5f45b55d73c50",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0053",
+    "display_name": "家庭老人服务-PRESALE002_A0053",
+    "category": "03_场景插画_照片",
+    "subcategory": "家庭老人服务",
+    "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0053_家庭老人服务.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0053",
+    "source_url": "",
+    "source_page": "PRESALE002 p9",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "家庭老人服务",
+      "健康服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.family_service",
+    "color_profile": {
+      "width": 531,
+      "height": 385,
+      "brightness": 0.707,
+      "saturation": 0.151,
+      "orange_ratio": 0.062,
+      "green_ratio": 0.0,
+      "black_ratio": 0.154,
+      "white_ratio": 0.345,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "b119ed4c3185513f88a45a1201d79dcc660c2d936435c533fe1738837164083f",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0054",
+    "display_name": "家庭老人服务-PRESALE002_A0054",
+    "category": "03_场景插画_照片",
+    "subcategory": "家庭老人服务",
+    "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0054_家庭老人服务.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0054",
+    "source_url": "",
+    "source_page": "PRESALE002 p9",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "家庭老人服务",
+      "健康服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配"
+    ],
+    "replacement_group": "scene.family_service",
+    "color_profile": {
+      "width": 533,
+      "height": 377,
+      "brightness": 0.497,
+      "saturation": 0.146,
+      "orange_ratio": 0.056,
+      "green_ratio": 0.0,
+      "black_ratio": 0.292,
+      "white_ratio": 0.159,
+      "high_sat_ratio": 0.01
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "1caed074783ab2a7423ba4d0d1983c405b6e0be629934e06a7ed838ad727532f",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE002_A0062",
+    "display_name": "家庭老人服务-PRESALE002_A0062",
+    "category": "03_场景插画_照片",
+    "subcategory": "家庭老人服务",
+    "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0062_家庭老人服务.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE002_A0062",
+    "source_url": "",
+    "source_page": "PRESALE002 p11",
+    "source_file": "中国平安企业健康保障计划（企业补充医疗）营销材料_2025年3月版.pdf",
+    "semantic_tags": [
+      "家庭老人服务",
+      "健康服务场景"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "scene.family_service",
+    "color_profile": {
+      "width": 508,
+      "height": 614,
+      "brightness": 0.892,
+      "saturation": 0.13,
+      "orange_ratio": 0.056,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.639,
+      "high_sat_ratio": 0.053
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "70c0caa9b87a4085e1d4c13a1b1cdcd95f600b394d883dd4a2cfb2701d66fee4",
+    "notes": "用于封面、行业痛点、客户场景、医养服务场景"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0299",
+    "display_name": "APP截图-PRESALE001_A0299",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE001_A0299_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0299",
+    "source_url": "",
+    "source_page": "PRESALE001 p25",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 439,
+      "height": 963,
+      "brightness": 0.874,
+      "saturation": 0.056,
+      "orange_ratio": 0.008,
+      "green_ratio": 0.0,
+      "black_ratio": 0.007,
+      "white_ratio": 0.688,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "58e0cd8f368f25767ef4d1aa32cb7e6a205f4497dd83052d55dbba82d65e0051",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0300",
+    "display_name": "APP截图-PRESALE001_A0300",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE001_A0300_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0300",
+    "source_url": "",
+    "source_page": "PRESALE001 p25",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 333,
+      "height": 690,
+      "brightness": 0.411,
+      "saturation": 0.128,
+      "orange_ratio": 0.127,
+      "green_ratio": 0.0,
+      "black_ratio": 0.224,
+      "white_ratio": 0.083,
+      "high_sat_ratio": 0.004
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "4b9156ef8430316a302ea9096624027bef4a8a055330e1df9c319ee51b3846be",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0130",
+    "display_name": "APP截图-PRESALE003_A0130",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0130_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0130",
+    "source_url": "",
+    "source_page": "PRESALE003 p35",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 371,
+      "height": 770,
+      "brightness": 0.892,
+      "saturation": 0.041,
+      "orange_ratio": 0.055,
+      "green_ratio": 0.0,
+      "black_ratio": 0.056,
+      "white_ratio": 0.764,
+      "high_sat_ratio": 0.026
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "54679120f6aeb7e51cfdbd9170bb77b88332515ce01e3a1003e3c272e2331c54",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0131",
+    "display_name": "APP截图-PRESALE003_A0131",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0131_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0131",
+    "source_url": "",
+    "source_page": "PRESALE003 p35",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 538,
+      "height": 1133,
+      "brightness": 0.804,
+      "saturation": 0.092,
+      "orange_ratio": 0.071,
+      "green_ratio": 0.009,
+      "black_ratio": 0.072,
+      "white_ratio": 0.535,
+      "high_sat_ratio": 0.027
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "9ea93899ed1bbdaeb07466ecbd9762438dc723a98e2819b240159c94eaac7a72",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0132",
+    "display_name": "APP截图-PRESALE003_A0132",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0132_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0132",
+    "source_url": "",
+    "source_page": "PRESALE003 p35",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 550,
+      "height": 1158,
+      "brightness": 0.871,
+      "saturation": 0.244,
+      "orange_ratio": 0.058,
+      "green_ratio": 0.0,
+      "black_ratio": 0.07,
+      "white_ratio": 0.369,
+      "high_sat_ratio": 0.192
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "ee6188a3dcc45380797d482d944442c823fe79631070422d01e0545b3cf3cfb5",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0133",
+    "display_name": "APP截图-PRESALE003_A0133",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0133_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0133",
+    "source_url": "",
+    "source_page": "PRESALE003 p35",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 533,
+      "height": 1122,
+      "brightness": 0.774,
+      "saturation": 0.087,
+      "orange_ratio": 0.04,
+      "green_ratio": 0.0,
+      "black_ratio": 0.071,
+      "white_ratio": 0.525,
+      "high_sat_ratio": 0.002
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "21b17fc5eb6106ae89afadcecd647add1d42ee20badb7b1f81e5fb4a28a8fb2e",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0135",
+    "display_name": "APP截图-PRESALE003_A0135",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0135_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0135",
+    "source_url": "",
+    "source_page": "PRESALE003 p36",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.866,
+      "saturation": 0.176,
+      "orange_ratio": 0.306,
+      "green_ratio": 0.002,
+      "black_ratio": 0.072,
+      "white_ratio": 0.447,
+      "high_sat_ratio": 0.083
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "0f367cddccb2f11afa38d203e85e2121801c7c4e784c0425829977babddc341f",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0136",
+    "display_name": "APP截图-PRESALE003_A0136",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0136_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0136",
+    "source_url": "",
+    "source_page": "PRESALE003 p36",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.891,
+      "saturation": 0.004,
+      "orange_ratio": 0.004,
+      "green_ratio": 0.0,
+      "black_ratio": 0.072,
+      "white_ratio": 0.834,
+      "high_sat_ratio": 0.001
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "e8f324ef1ea0ce62080b23f09a1ff179443d185343716a13fef0c602c0a4a816",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0137",
+    "display_name": "APP截图-PRESALE003_A0137",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0137_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0137",
+    "source_url": "",
+    "source_page": "PRESALE003 p36",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.872,
+      "saturation": 0.312,
+      "orange_ratio": 0.424,
+      "green_ratio": 0.0,
+      "black_ratio": 0.072,
+      "white_ratio": 0.347,
+      "high_sat_ratio": 0.257
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "cbf46232bf011b9e84fafe38164d7d74f04b1d06a70178c5d2d0b8ea5b5cd6e9",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0138",
+    "display_name": "APP截图-PRESALE003_A0138",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0138_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0138",
+    "source_url": "",
+    "source_page": "PRESALE003 p36",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.813,
+      "saturation": 0.085,
+      "orange_ratio": 0.047,
+      "green_ratio": 0.0,
+      "black_ratio": 0.072,
+      "white_ratio": 0.54,
+      "high_sat_ratio": 0.024
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "28dc5e29fffb36dbd052318a43ca295ed8dcfdf7f358abc683cae1c679d991b7",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0139",
+    "display_name": "APP截图-PRESALE003_A0139",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0139_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0139",
+    "source_url": "",
+    "source_page": "PRESALE003 p36",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.765,
+      "saturation": 0.049,
+      "orange_ratio": 0.018,
+      "green_ratio": 0.0,
+      "black_ratio": 0.059,
+      "white_ratio": 0.59,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "6e8bf14778a55375d0fbeec646ef1b66bae0cb1bf921a3013cfc367479bd9d4c",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0140",
+    "display_name": "APP截图-PRESALE003_A0140",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0140_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0140",
+    "source_url": "",
+    "source_page": "PRESALE003 p37",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 548,
+      "height": 1153,
+      "brightness": 0.901,
+      "saturation": 0.016,
+      "orange_ratio": 0.014,
+      "green_ratio": 0.002,
+      "black_ratio": 0.058,
+      "white_ratio": 0.819,
+      "high_sat_ratio": 0.002
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "d72101201d3d94d3ca09561610700c5f781cb8511af064fc1766c84adf8faabd",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0141",
+    "display_name": "APP截图-PRESALE003_A0141",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0141_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0141",
+    "source_url": "",
+    "source_page": "PRESALE003 p37",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 548,
+      "height": 1153,
+      "brightness": 0.872,
+      "saturation": 0.059,
+      "orange_ratio": 0.039,
+      "green_ratio": 0.01,
+      "black_ratio": 0.058,
+      "white_ratio": 0.691,
+      "high_sat_ratio": 0.007
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "359e33f013dbc825d5c0c77a92bdf5ae80a4184538f80dee0640b3c35f5f0356",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0143",
+    "display_name": "APP截图-PRESALE003_A0143",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0143_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0143",
+    "source_url": "",
+    "source_page": "PRESALE003 p38",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 586,
+      "height": 1237,
+      "brightness": 0.78,
+      "saturation": 0.088,
+      "orange_ratio": 0.04,
+      "green_ratio": 0.0,
+      "black_ratio": 0.057,
+      "white_ratio": 0.527,
+      "high_sat_ratio": 0.002
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "c47256dccf9e12f2aa36d791eb06e9af976a84d430a2faf80087e9119d489078",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0149",
+    "display_name": "APP截图-PRESALE003_A0149",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0149_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0149",
+    "source_url": "",
+    "source_page": "PRESALE003 p38",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.888,
+      "saturation": 0.007,
+      "orange_ratio": 0.001,
+      "green_ratio": 0.001,
+      "black_ratio": 0.072,
+      "white_ratio": 0.82,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "5af57e3b5868976c6d496e1f77bd6884ce43c161cc5f6218360555c00772282c",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0150",
+    "display_name": "APP截图-PRESALE003_A0150",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0150_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0150",
+    "source_url": "",
+    "source_page": "PRESALE003 p38",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.838,
+      "saturation": 0.061,
+      "orange_ratio": 0.041,
+      "green_ratio": 0.001,
+      "black_ratio": 0.075,
+      "white_ratio": 0.638,
+      "high_sat_ratio": 0.024
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "eeb1eb25aa4204d6a9ee9e742c6ec1ebbe324c13b2dd7ae4b51cb86bcb1d0d57",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0151",
+    "display_name": "APP截图-PRESALE003_A0151",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0151_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0151",
+    "source_url": "",
+    "source_page": "PRESALE003 p38",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.874,
+      "saturation": 0.016,
+      "orange_ratio": 0.018,
+      "green_ratio": 0.001,
+      "black_ratio": 0.072,
+      "white_ratio": 0.787,
+      "high_sat_ratio": 0.01
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "a6d650373894303977206b602fc29e12ea4771611c5a2d81ffc8ad2f014b6b9b",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0152",
+    "display_name": "APP截图-PRESALE003_A0152",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0152_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0152",
+    "source_url": "",
+    "source_page": "PRESALE003 p38",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 508,
+      "height": 1067,
+      "brightness": 0.763,
+      "saturation": 0.056,
+      "orange_ratio": 0.018,
+      "green_ratio": 0.001,
+      "black_ratio": 0.059,
+      "white_ratio": 0.583,
+      "high_sat_ratio": 0.001
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "b3271c7206f2f8a26e0b7f408076b229eea6b3e97b2963a484ba20816b888c2b",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0153",
+    "display_name": "APP截图-PRESALE003_A0153",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0153_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0153",
+    "source_url": "",
+    "source_page": "PRESALE003 p39",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 467,
+      "height": 980,
+      "brightness": 0.78,
+      "saturation": 0.042,
+      "orange_ratio": 0.048,
+      "green_ratio": 0.0,
+      "black_ratio": 0.09,
+      "white_ratio": 0.507,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "c49253fbe3aff92ad1232cde066a9d099726ad70ffc85fad02220b5e11694a86",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "local.PRESALE003_A0154",
+    "display_name": "APP截图-PRESALE003_A0154",
+    "category": "04_设备产品图",
+    "subcategory": "APP截图",
+    "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0154_APP截图.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE003_A0154",
+    "source_url": "",
+    "source_page": "PRESALE003 p39",
+    "source_file": "企康会员产品手册_V9.7_20250310.pdf",
+    "semantic_tags": [
+      "APP截图",
+      "履约链路",
+      "服务流程"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "proof.app_screenshot",
+    "color_profile": {
+      "width": 468,
+      "height": 980,
+      "brightness": 0.774,
+      "saturation": 0.044,
+      "orange_ratio": 0.055,
+      "green_ratio": 0.0,
+      "black_ratio": 0.093,
+      "white_ratio": 0.489,
+      "high_sat_ratio": 0.001
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "76c4a006e04cd044be8f3d8b8e5accd2c1496a3ad86f64eeb244d4a424b16f13",
+    "notes": "展示APP、小程序、权益领取、履约路径或客户侧页面"
+  },
+  {
+    "asset_id": "gen.icon_speaker",
+    "display_name": "智能音箱",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/pa_icon_speaker.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "智能音箱",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "8de80b53b46e8d9f9c20918ac1dff796184177e55bf179cd91ee4f9278f7bfcb",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.5056529",
+    "display_name": "智能音箱-音箱-01",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/iconfont_device_speaker_5056529_音箱-01.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "5056529",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=音箱",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "智能音箱",
+      "音箱",
+      "音箱-01"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "0e2c045f5346eb04ef632e1b37a0a9ef257ff4952f934e6cc4ad0ea2ca83b849",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.5124380",
+    "display_name": "智能音箱-音响",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/iconfont_device_speaker_5124380_音响.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "5124380",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=音箱",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "智能音箱",
+      "音箱",
+      "音响,音箱"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "449f84832c9ad7774c9c06aa931c192c3195e0bbeb89321818cee73d57aaf152",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0025",
+    "display_name": "智能音箱-PRESALE001_A0025",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0025_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0025",
+    "source_url": "",
+    "source_page": "PRESALE001 p7",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 494,
+      "height": 316,
+      "brightness": 0.846,
+      "saturation": 0.136,
+      "orange_ratio": 0.237,
+      "green_ratio": 0.0,
+      "black_ratio": 0.003,
+      "white_ratio": 0.541,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "45da552a3587f526efd35cddd22d9bbd78bbce2475632e83026919e12aad5595",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0026",
+    "display_name": "智能音箱-PRESALE001_A0026",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0026_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0026",
+    "source_url": "",
+    "source_page": "PRESALE001 p7",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 599,
+      "height": 848,
+      "brightness": 0.957,
+      "saturation": 0.081,
+      "orange_ratio": 0.105,
+      "green_ratio": 0.004,
+      "black_ratio": 0.0,
+      "white_ratio": 0.798,
+      "high_sat_ratio": 0.021
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "b1caac0d992d9a4a73ad0c9e96afd5682798dc9c696823aa3d2056e065f408fd",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0027",
+    "display_name": "智能音箱-PRESALE001_A0027",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0027_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0027",
+    "source_url": "",
+    "source_page": "PRESALE001 p7",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 581,
+      "height": 848,
+      "brightness": 0.954,
+      "saturation": 0.162,
+      "orange_ratio": 0.31,
+      "green_ratio": 0.023,
+      "black_ratio": 0.0,
+      "white_ratio": 0.577,
+      "high_sat_ratio": 0.01
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "53153af22dbe425b45a3d90db988d8747e8848529fc3e5e632c1b25b5991d79c",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0028",
+    "display_name": "智能音箱-PRESALE001_A0028",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0028_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0028",
+    "source_url": "",
+    "source_page": "PRESALE001 p7",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 577,
+      "height": 290,
+      "brightness": 0.432,
+      "saturation": 0.257,
+      "orange_ratio": 0.444,
+      "green_ratio": 0.0,
+      "black_ratio": 0.141,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "a8b6fd88ba0979f1f747dabddc5804f0a1ec14fe51d7ac4e4505b3313a10a934",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0034",
+    "display_name": "智能音箱-PRESALE001_A0034",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0034_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0034",
+    "source_url": "",
+    "source_page": "PRESALE001 p7",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 634,
+      "height": 299,
+      "brightness": 0.647,
+      "saturation": 0.236,
+      "orange_ratio": 0.103,
+      "green_ratio": 0.0,
+      "black_ratio": 0.017,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "32dea3b43ee5dfe8a4744f12a01224dadb3ac035c680fb52fd41033d102fe07f",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0149",
+    "display_name": "智能音箱-PRESALE001_A0149",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0149_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0149",
+    "source_url": "",
+    "source_page": "PRESALE001 p11",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 917,
+      "height": 372,
+      "brightness": 0.971,
+      "saturation": 0.072,
+      "orange_ratio": 0.077,
+      "green_ratio": 0.0,
+      "black_ratio": 0.001,
+      "white_ratio": 0.894,
+      "high_sat_ratio": 0.061
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "e424e6b47bc948377502b8a4245d1ac79fef756d1470862cc6ea91657d96c603",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0150",
+    "display_name": "智能音箱-PRESALE001_A0150",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0150_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0150",
+    "source_url": "",
+    "source_page": "PRESALE001 p11",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 917,
+      "height": 372,
+      "brightness": 0.97,
+      "saturation": 0.073,
+      "orange_ratio": 0.091,
+      "green_ratio": 0.0,
+      "black_ratio": 0.001,
+      "white_ratio": 0.879,
+      "high_sat_ratio": 0.06
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "fcd2f07b0d94faf78a5616bb5ea976917b9a420cabe8a449b67bf90e672e8740",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0303",
+    "display_name": "智能音箱-PRESALE001_A0303",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0303_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0303",
+    "source_url": "",
+    "source_page": "PRESALE001 p26",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 229,
+      "height": 494,
+      "brightness": 0.794,
+      "saturation": 0.139,
+      "orange_ratio": 0.002,
+      "green_ratio": 0.0,
+      "black_ratio": 0.152,
+      "white_ratio": 0.64,
+      "high_sat_ratio": 0.097
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "848358a7f07b0ed52ee7939e22d03808df30e914c25596c96a79e63250e67f49",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0310",
+    "display_name": "智能音箱-PRESALE001_A0310",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0310_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0310",
+    "source_url": "",
+    "source_page": "PRESALE001 p27",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 573,
+      "height": 1153,
+      "brightness": 0.968,
+      "saturation": 0.019,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.016,
+      "black_ratio": 0.0,
+      "white_ratio": 0.917,
+      "high_sat_ratio": 0.012
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "c95ee8703df8d11384ffc450c292779543208aec986ac16eec9be450b0cf8a20",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0315",
+    "display_name": "智能音箱-PRESALE001_A0315",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0315_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0315",
+    "source_url": "",
+    "source_page": "PRESALE001 p27",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 374,
+      "height": 348,
+      "brightness": 0.94,
+      "saturation": 0.022,
+      "orange_ratio": 0.001,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.781,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "6f70e657e1b9a6d35fa40ef7da9da8a2467f1d523549af716a482768bc89d75a",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0319",
+    "display_name": "智能音箱-PRESALE001_A0319",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0319_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0319",
+    "source_url": "",
+    "source_page": "PRESALE001 p27",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 332,
+      "height": 549,
+      "brightness": 0.875,
+      "saturation": 0.059,
+      "orange_ratio": 0.082,
+      "green_ratio": 0.0,
+      "black_ratio": 0.002,
+      "white_ratio": 0.553,
+      "high_sat_ratio": 0.001
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "2ecd7d605ec88b66b3b6463fe6bbc4e5a01d79873b0c6d5126e56ecb0b4157b9",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "local.PRESALE001_A0356",
+    "display_name": "智能音箱-PRESALE001_A0356",
+    "category": "04_设备产品图",
+    "subcategory": "智能音箱",
+    "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0356_智能音箱.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE001_A0356",
+    "source_url": "",
+    "source_page": "PRESALE001 p29",
+    "source_file": "202409_平安居家养老介绍_[政企合作版].pdf",
+    "semantic_tags": [
+      "智能音箱",
+      "设备",
+      "健康服务入口"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "device.speaker",
+    "color_profile": {
+      "width": 256,
+      "height": 452,
+      "brightness": 0.898,
+      "saturation": 0.106,
+      "orange_ratio": 0.043,
+      "green_ratio": 0.0,
+      "black_ratio": 0.001,
+      "white_ratio": 0.645,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "89fa97226a91b7b2c55ac02c129228c3b7d8674fc9a38c191ae79895e4ec5453",
+    "notes": "展示音箱、手表、检测设备、安防传感器、IoT联动方案"
+  },
+  {
+    "asset_id": "gen.icon_blood_pressure_monitor",
+    "display_name": "血压监测",
+    "category": "04_设备产品图",
+    "subcategory": "检测设备",
+    "file_path": "04_设备产品图/检测设备/pa_icon_blood_pressure_monitor.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "血压监测",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "device.blood_pressure_monitor",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "514a22a1b71750fc8dafbd7dfcb810d54c6cacc3fd3ae81fc49a5022fe9f328d",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.icon_ct_mri",
+    "display_name": "影像检查",
+    "category": "04_设备产品图",
+    "subcategory": "检测设备",
+    "file_path": "04_设备产品图/检测设备/pa_icon_ct_mri.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "影像检查",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "device.ct_mri",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "114c5cf7ab93795575d18629efa03c2275e5c6979c4316a4f3651468c6b4955f",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.icon_wearable_watch",
+    "display_name": "可穿戴监测",
+    "category": "04_设备产品图",
+    "subcategory": "检测设备",
+    "file_path": "04_设备产品图/检测设备/pa_icon_wearable_watch.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "可穿戴监测",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "device.wearable",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "65eea7866a80931d4fae34246b826dfd2a58f09b8d006067ef92c345f66d5c20",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.icon_medicine_box",
+    "display_name": "药箱药品",
+    "category": "04_设备产品图",
+    "subcategory": "药箱药品",
+    "file_path": "04_设备产品图/药箱药品/pa_icon_medicine_box.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "药箱药品",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "device.medicine_box",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "e7f240ec2e4672ae97f2fcbc8dc4e1e0fd31f7c95ec0afd45e8f7769240ce781",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "iconfont.1036",
+    "display_name": "药箱药品-医药箱",
+    "category": "04_设备产品图",
+    "subcategory": "药箱药品",
+    "file_path": "04_设备产品图/药箱药品/iconfont_device_medicine_box_1036_医药箱.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "1036",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=药箱",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "药箱药品",
+      "药箱",
+      "医药箱,急救箱,拯救,伤病"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "device.medicine_box",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "8084b61808fd0462a8a52ebfcc8adc025cb960ff59bdb3254718b0cf85011f22",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "iconfont.765588",
+    "display_name": "药箱药品-药箱",
+    "category": "04_设备产品图",
+    "subcategory": "药箱药品",
+    "file_path": "04_设备产品图/药箱药品/iconfont_device_medicine_box_765588_药箱.svg",
+    "format": "svg",
+    "source": "iconfont_public_search",
+    "source_asset_id": "765588",
+    "source_url": "https://www.iconfont.cn/search/index?searchType=icon&q=药箱",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "药箱药品",
+      "药箱",
+      "药箱"
+    ],
+    "style_tags": [
+      "单色线性",
+      "currentColor可控",
+      "平安橙可适配"
+    ],
+    "replacement_group": "device.medicine_box",
+    "color_profile": {
+      "palette": [
+        "currentColor"
+      ],
+      "fills": 1
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "needs_review_iconfont",
+    "html_usage": "candidate_after_license_review",
+    "sha256": "2d6b4858cadb94d0318bd4aa5b4508078445c1116e19605efe65bcb82a7f948c",
+    "notes": "iconfont公开搜索结果，已筛为单色SVG；外发前需复核授权。"
+  },
+  {
+    "asset_id": "gen.bg_medical_grid",
+    "display_name": "医疗科技网格",
+    "category": "05_背景装饰",
+    "subcategory": "医疗科技线稿",
+    "file_path": "05_背景装饰/医疗科技线稿/pa_bg_medical_grid.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "医疗科技网格",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "background.medical_tech",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "2a9d79e6af26c7b35e9a0e9a0c3ecde6b8de21aec4a5170a50000970246add29",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "gen.bg_orange_corner",
+    "display_name": "浅橙封面角标",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/pa_bg_orange_corner.svg",
+    "format": "svg",
+    "source": "generated_pingan_component",
+    "source_asset_id": "",
+    "source_url": "",
+    "source_page": "",
+    "source_file": "",
+    "semantic_tags": [
+      "浅橙封面角标",
+      "平安橙",
+      "HTML组件"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "单色线性",
+      "白底友好"
+    ],
+    "replacement_group": "background.cover_corner",
+    "color_profile": {
+      "palette": [
+        "#f05a22",
+        "#fff1e8",
+        "#ffffff"
+      ]
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "self_generated",
+    "html_usage": "default_candidate",
+    "sha256": "159447ddaebd75d9d6de175aaf24200af14e592d3deae432a011e75609c16a6d",
+    "notes": "自绘SVG组件，可直接用于HTML材料。"
+  },
+  {
+    "asset_id": "local.PRESALE006_A0090",
+    "display_name": "封面背景-PRESALE006_A0090",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE006_A0090_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE006_A0090",
+    "source_url": "",
+    "source_page": "PRESALE006 p22",
+    "source_file": "平安健康&地产服务方案1216.pdf",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 900,
+      "height": 213,
+      "brightness": 0.638,
+      "saturation": 0.47,
+      "orange_ratio": 0.06,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.088
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "4ec70d6f52920bfe5a1ae4316b4139a3d20c34451a5bc596b30a7a61e0d6440c",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0018",
+    "display_name": "封面背景-PRESALE007_A0018",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE007_A0018_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0018",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 1134,
+      "height": 360,
+      "brightness": 0.859,
+      "saturation": 0.067,
+      "orange_ratio": 0.048,
+      "green_ratio": 0.025,
+      "black_ratio": 0.001,
+      "white_ratio": 0.558,
+      "high_sat_ratio": 0.007
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "711565c8834e23d55fa714206c7317b29388593be28ae0986aa2fa43689145b7",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0057",
+    "display_name": "封面背景-PRESALE007_A0057",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE007_A0057_封面背景.png",
+    "format": "png",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0057",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 2641,
+      "height": 213,
+      "brightness": 0.902,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.688,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "cdde50aa454698e782846cee8279372cde5dd0ca86b8ede6446c7db3767b045c",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0087",
+    "display_name": "封面背景-PRESALE007_A0087",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE007_A0087_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0087",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 2860,
+      "height": 175,
+      "brightness": 0.959,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.999,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "7c25228422a497f27ba7343c74482462f9e62aadd3786ce55ae1f6f7269d7bd4",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE008_A0004",
+    "display_name": "封面背景-PRESALE008_A0004",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE008_A0004_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE008_A0004",
+    "source_url": "",
+    "source_page": "PRESALE008 p2",
+    "source_file": "平安健康企业合作方案V2.pdf",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "浅底友好"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 1995,
+      "height": 390,
+      "brightness": 0.952,
+      "saturation": 0.047,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.954,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "919b85f7e55828dc34ee9048c2449f3185e73edbd5546488c29c1c37bbadc251",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE010_A0110",
+    "display_name": "封面背景-PRESALE010_A0110",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE010_A0110_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE010_A0110",
+    "source_url": "",
+    "source_page": "PRESALE010 p1",
+    "source_file": "联通在线定制产品介绍.平安健康.pptx",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 680,
+      "height": 211,
+      "brightness": 0.836,
+      "saturation": 0.147,
+      "orange_ratio": 0.043,
+      "green_ratio": 0.0,
+      "black_ratio": 0.129,
+      "white_ratio": 0.004,
+      "high_sat_ratio": 0.009
+    },
+    "pa_style_score": 5,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "7bde0d697285817b2a0abe22fd509faac550a4909f33b7c243a130ce1379831b",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE010_A0138",
+    "display_name": "封面背景-PRESALE010_A0138",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE010_A0138_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE010_A0138",
+    "source_url": "",
+    "source_page": "PRESALE010 p1",
+    "source_file": "联通在线定制产品介绍.平安健康.pptx",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "橙色可适配",
+      "浅底友好",
+      "高饱和偏多"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 1011,
+      "height": 187,
+      "brightness": 0.839,
+      "saturation": 0.841,
+      "orange_ratio": 0.962,
+      "green_ratio": 0.0,
+      "black_ratio": 0.034,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.954
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "2e409793c91b09d3679143b905d92d36e7ab1915d1b4f25605a26d8532653136",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE010_A0139",
+    "display_name": "封面背景-PRESALE010_A0139",
+    "category": "05_背景装饰",
+    "subcategory": "封面背景",
+    "file_path": "05_背景装饰/封面背景/local_PRESALE010_A0139_封面背景.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE010_A0139",
+    "source_url": "",
+    "source_page": "PRESALE010 p1",
+    "source_file": "联通在线定制产品介绍.平安健康.pptx",
+    "semantic_tags": [
+      "背景装饰",
+      "横幅",
+      "橙色强调"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "橙色可适配",
+      "浅底友好",
+      "高饱和偏多"
+    ],
+    "replacement_group": "background.cover_strip",
+    "color_profile": {
+      "width": 1011,
+      "height": 187,
+      "brightness": 0.835,
+      "saturation": 0.839,
+      "orange_ratio": 0.962,
+      "green_ratio": 0.0,
+      "black_ratio": 0.034,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.954
+    },
+    "pa_style_score": 4,
+    "safe_for_external": true,
+    "license_status": "local_knowledge_base",
+    "html_usage": "default_candidate",
+    "sha256": "5de2000be895307da1dcf48e963d948883b0e1c2b104fe0c48ce1df6ad67d5ce",
+    "notes": "用于封面副视觉、章节页装饰、平安橙强调带"
+  },
+  {
+    "asset_id": "local.PRESALE005_A0003",
+    "display_name": "版式参考-PRESALE005_A0003",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0003_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE005_A0003",
+    "source_url": "",
+    "source_page": "PRESALE005 p1",
+    "source_file": "养老音箱材料0313.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1280,
+      "height": 800,
+      "brightness": 0.796,
+      "saturation": 0.243,
+      "orange_ratio": 0.165,
+      "green_ratio": 0.005,
+      "black_ratio": 0.007,
+      "white_ratio": 0.363,
+      "high_sat_ratio": 0.081
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "c247c1a798b33f8fa2dd1ea9e224bd6a97c9caa223978d513921e623df36ff52",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE005_A0008",
+    "display_name": "版式参考-PRESALE005_A0008",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0008_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE005_A0008",
+    "source_url": "",
+    "source_page": "PRESALE005 p1",
+    "source_file": "养老音箱材料0313.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 2000,
+      "height": 1125,
+      "brightness": 0.986,
+      "saturation": 0.018,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.956,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "5b0e0e65bccd8241a6fe1b0e55e8cc32d69ca553c75b274a10ac45e485940de4",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE005_A0009",
+    "display_name": "版式参考-PRESALE005_A0009",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0009_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE005_A0009",
+    "source_url": "",
+    "source_page": "PRESALE005 p2",
+    "source_file": "养老音箱材料0313.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 965,
+      "height": 609,
+      "brightness": 0.579,
+      "saturation": 0.63,
+      "orange_ratio": 0.037,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.069,
+      "high_sat_ratio": 0.28
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "6f29422d4c812a53fec428bdb303ec26ebcee9ee89dedce629fedd338a47800e",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE005_A0023",
+    "display_name": "版式参考-PRESALE005_A0023",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0023_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE005_A0023",
+    "source_url": "",
+    "source_page": "PRESALE005 p5",
+    "source_file": "养老音箱材料0313.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1023,
+      "height": 598,
+      "brightness": 0.966,
+      "saturation": 0.073,
+      "orange_ratio": 0.031,
+      "green_ratio": 0.015,
+      "black_ratio": 0.0,
+      "white_ratio": 0.743,
+      "high_sat_ratio": 0.025
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "a02a134285bc35958da44d53765c5aa331a52c3f1e7456c12677e223e3a31ebc",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE006_A0001",
+    "display_name": "版式参考-PRESALE006_A0001",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0001_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE006_A0001",
+    "source_url": "",
+    "source_page": "PRESALE006 p1",
+    "source_file": "平安健康&地产服务方案1216.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 2837,
+      "height": 1576,
+      "brightness": 0.882,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.092,
+      "white_ratio": 0.85,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "6927dadc452b8db3aa6c7ac7495f122cc6534c30d76d7e381f4cf3417bf7b187",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE006_A0073",
+    "display_name": "版式参考-PRESALE006_A0073",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0073_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE006_A0073",
+    "source_url": "",
+    "source_page": "PRESALE006 p18",
+    "source_file": "平安健康&地产服务方案1216.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "橙色可适配",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1280,
+      "height": 800,
+      "brightness": 0.922,
+      "saturation": 0.227,
+      "orange_ratio": 0.13,
+      "green_ratio": 0.007,
+      "black_ratio": 0.0,
+      "white_ratio": 0.452,
+      "high_sat_ratio": 0.132
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "b62834e712150adab8269266c8c30f359db1e560a14edabc49a07e79b35a2774",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE006_A0099",
+    "display_name": "版式参考-PRESALE006_A0099",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0099_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE006_A0099",
+    "source_url": "",
+    "source_page": "PRESALE006 p23",
+    "source_file": "平安健康&地产服务方案1216.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 922,
+      "height": 491,
+      "brightness": 0.8,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.182,
+      "white_ratio": 0.763,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "fc15e839313cab96badb11881aea56e0977af13ba2b297efde574dd2a542eb64",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE006_A0100",
+    "display_name": "版式参考-PRESALE006_A0100",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0100_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE006_A0100",
+    "source_url": "",
+    "source_page": "PRESALE006 p23",
+    "source_file": "平安健康&地产服务方案1216.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 922,
+      "height": 491,
+      "brightness": 0.8,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.182,
+      "white_ratio": 0.764,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "ac719632fb20263eab9cf1b742b90e950bc8a10bef0f342b769e5cbedd24eab2",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE006_A0101",
+    "display_name": "版式参考-PRESALE006_A0101",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0101_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE006_A0101",
+    "source_url": "",
+    "source_page": "PRESALE006 p23",
+    "source_file": "平安健康&地产服务方案1216.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 922,
+      "height": 491,
+      "brightness": 0.8,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.182,
+      "white_ratio": 0.763,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "a1abae45a50f061a8fb2c3315b9e46c6b6989b2baf4ed05fb586eb43449396c1",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0019",
+    "display_name": "版式参考-PRESALE007_A0019",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0019_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0019",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1080,
+      "height": 719,
+      "brightness": 0.668,
+      "saturation": 0.157,
+      "orange_ratio": 0.082,
+      "green_ratio": 0.001,
+      "black_ratio": 0.084,
+      "white_ratio": 0.024,
+      "high_sat_ratio": 0.012
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "f38326d9046af5796bfaaccead33e9d3e262cc73c7b50a27796619f1482a2e6b",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0037",
+    "display_name": "版式参考-PRESALE007_A0037",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0037_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0037",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1280,
+      "height": 718,
+      "brightness": 0.362,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.161,
+      "white_ratio": 0.011,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 3,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "e6c6398b3f2057dc79bc3ab3598e3d1ae5aad99d97673211df16af487e4214fb",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0038",
+    "display_name": "版式参考-PRESALE007_A0038",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0038_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0038",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好",
+      "高饱和偏多",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1920,
+      "height": 1109,
+      "brightness": 0.799,
+      "saturation": 0.803,
+      "orange_ratio": 0.937,
+      "green_ratio": 0.0,
+      "black_ratio": 0.062,
+      "white_ratio": 0.0,
+      "high_sat_ratio": 0.905
+    },
+    "pa_style_score": 3,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "fcd1ad6784b93c5cd1a6c471726a612f3282f57124c0b92d4c4ecc965b65c96e",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0063",
+    "display_name": "版式参考-PRESALE007_A0063",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0063_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0063",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1280,
+      "height": 720,
+      "brightness": 0.432,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.115,
+      "white_ratio": 0.04,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 3,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "9646dbb50f6b2685ec0ca01ec817c664f678c3035a913959b9a45de32fa03365",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0070",
+    "display_name": "版式参考-PRESALE007_A0070",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0070_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0070",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1278,
+      "height": 719,
+      "brightness": 0.715,
+      "saturation": 0.252,
+      "orange_ratio": 0.323,
+      "green_ratio": 0.005,
+      "black_ratio": 0.082,
+      "white_ratio": 0.286,
+      "high_sat_ratio": 0.013
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "3ef3a85f852625ca693dfe57d664571d17e9ba52bb046065e14de349eea457f3",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE007_A0086",
+    "display_name": "版式参考-PRESALE007_A0086",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0086_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE007_A0086",
+    "source_url": "",
+    "source_page": "PRESALE007 p1",
+    "source_file": "平安健康产品介绍&方案交流-联通.pptx",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1275,
+      "height": 721,
+      "brightness": 0.581,
+      "saturation": 0.266,
+      "orange_ratio": 0.12,
+      "green_ratio": 0.0,
+      "black_ratio": 0.001,
+      "white_ratio": 0.001,
+      "high_sat_ratio": 0.048
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "113b4e7d64daf0a16681cc33a9ac00defd74ac2b1da50b36dba201fa4fe67fa9",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE008_A0002",
+    "display_name": "版式参考-PRESALE008_A0002",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE008_A0002_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE008_A0002",
+    "source_url": "",
+    "source_page": "PRESALE008 p1",
+    "source_file": "平安健康企业合作方案V2.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "橙色可适配",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1280,
+      "height": 720,
+      "brightness": 0.755,
+      "saturation": 0.248,
+      "orange_ratio": 0.403,
+      "green_ratio": 0.0,
+      "black_ratio": 0.023,
+      "white_ratio": 0.229,
+      "high_sat_ratio": 0.147
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "4b4f50b398e759b54ef2edada710e6ce375723a1233d8fab3ad9840692b0491f",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE008_A0005",
+    "display_name": "版式参考-PRESALE008_A0005",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE008_A0005_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE008_A0005",
+    "source_url": "",
+    "source_page": "PRESALE008 p3",
+    "source_file": "平安健康企业合作方案V2.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "含平安橙",
+      "医疗/流程语义",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1080,
+      "height": 720,
+      "brightness": 0.937,
+      "saturation": 0.06,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.0,
+      "white_ratio": 0.858,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "cfcabff6b4456edce293584d8f04b5a8f8213713313ba40d6801429163f0d5ea",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  },
+  {
+    "asset_id": "local.PRESALE008_A0006",
+    "display_name": "版式参考-PRESALE008_A0006",
+    "category": "06_版式参考_不直接入页",
+    "subcategory": "版式参考",
+    "file_path": "06_版式参考_不直接入页/local_PRESALE008_A0006_版式参考.jpeg",
+    "format": "jpeg",
+    "source": "local_presale_curated",
+    "source_asset_id": "PRESALE008_A0006",
+    "source_url": "",
+    "source_page": "PRESALE008 p3",
+    "source_file": "平安健康企业合作方案V2.pdf",
+    "semantic_tags": [
+      "版式参考",
+      "整页参考",
+      "不直接入页"
+    ],
+    "style_tags": [
+      "平安橙适配",
+      "售前材料来源",
+      "医疗/流程语义",
+      "浅底友好",
+      "仅作版式参考"
+    ],
+    "replacement_group": "reference.layout",
+    "color_profile": {
+      "width": 1280,
+      "height": 720,
+      "brightness": 0.752,
+      "saturation": 0.0,
+      "orange_ratio": 0.0,
+      "green_ratio": 0.0,
+      "black_ratio": 0.058,
+      "white_ratio": 0.503,
+      "high_sat_ratio": 0.0
+    },
+    "pa_style_score": 4,
+    "safe_for_external": false,
+    "license_status": "local_knowledge_base",
+    "html_usage": "reference_only",
+    "sha256": "e27539d77df5948e2004c4d43b444133a0917082584b28870209305c57e8c73f",
+    "notes": "用于复刻售前页版式、复杂表格或流程图布局参考"
+  }
+]

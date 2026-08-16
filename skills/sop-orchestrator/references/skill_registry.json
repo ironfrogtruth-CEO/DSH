@@ -1,0 +1,655 @@
+{
+  "schema_version": "1.1.0",
+  "registry_policy": "Registry-backed skill selection. Master-control may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
+  "selection_policy_ref": "skill_selection_policy.md",
+  "skills": [
+    {
+      "skill_id": "goal-first-control",
+      "name": "goal-first-control",
+      "path": "/Users/marcus/.codex/skills/goal-first-control",
+      "portable_path": "skills/goal-first-control",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 0,
+      "roles": [
+        "default_entrypoint",
+        "goal_first",
+        "orchestration",
+        "pipeline_state",
+        "qa",
+        "skill_management",
+        "skill_routing"
+      ],
+      "description": "以终为始 / goal-first-control：Use this skill as the default entrypoint for complex work. It starts from the desired end state, decomposes the workflow, selects the best-fit skills/tools/models, shows node-by-node progress and artifacts, enforces QA gates, and supports rollback."
+    },
+    {
+      "skill_id": "native-chinese-expression",
+      "name": "native-chinese-expression",
+      "path": "/Users/marcus/.codex/skills/native-chinese-expression",
+      "portable_path": "skills/native-chinese-expression",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 0,
+      "roles": [
+        "chinese_expression",
+        "copy_qa",
+        "fact_preservation",
+        "default_chinese_layer",
+        "title_qa"
+      ],
+      "description": "Use natural, clear, context-appropriate modern Chinese for every Chinese reply and artifact. Apply it after facts and domain boundaries are fixed and before final delivery; use it for native-Chinese organization, title closure, fact preservation, and expression QA."
+    },
+    {
+      "skill_id": "master-control",
+      "name": "master-control",
+      "path": "/Users/marcus/.codex/skills/master-control",
+      "portable_path": "skills/master-control",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 1,
+      "roles": [
+        "legacy_entrypoint",
+        "orchestration",
+        "pipeline_state",
+        "qa",
+        "skill_routing"
+      ],
+      "description": "Legacy alias for 以终为始 / goal-first-control. Use goal-first-control as the preferred default entrypoint for complex work requiring SOP orchestration, workflow-fit routing, node-by-node progress, artifacts, QA gates, and rollback."
+    },
+    {
+      "skill_id": "sop-orchestrator",
+      "name": "sop-orchestrator",
+      "path": "/Users/marcus/.codex/skills/sop-orchestrator",
+      "portable_path": "skills/sop-orchestrator",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 5,
+      "roles": [
+        "pipeline_contract",
+        "qa",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill for complex, multi-step, multi-artifact tasks that need harness-style routing, 总控编排, source-truth separation, node-by-node status, confirmation gates, QA blocking, rollback points, and portable skill/tool/model registries. Prefer goal-first-control（以终为始）as the user-facing entrypoint when available."
+    },
+    {
+      "skill_id": "sop-export",
+      "name": "sop-export",
+      "path": "/Users/marcus/.codex/skills/sop-export",
+      "portable_path": "skills/sop-export",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "html",
+        "pdf",
+        "pipeline_contract",
+        "presentation",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the export node in a harness SOP pipeline to package verified artifacts into Markdown, HTML, PDF, PPTX, PNG, CSV, JSON, or portable skill bundles while recording paths and avoiding unvalidated output."
+    },
+    {
+      "skill_id": "sop-generate",
+      "name": "sop-generate",
+      "path": "/Users/marcus/.codex/skills/sop-generate",
+      "portable_path": "skills/sop-generate",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "pipeline_contract",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the generate node in a harness SOP pipeline to create artifacts from a confirmed structure by selecting registered skills, tools, and model aliases while keeping outputs traceable and rollback-safe."
+    },
+    {
+      "skill_id": "sop-parse",
+      "name": "sop-parse",
+      "path": "/Users/marcus/.codex/skills/sop-parse",
+      "portable_path": "skills/sop-parse",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "pipeline_contract",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the parse node in a harness SOP pipeline to separate truth sources, derived outputs, debug notes, pollution risks, constraints, and open evidence gaps before downstream structuring or generation."
+    },
+    {
+      "skill_id": "sop-review",
+      "name": "sop-review",
+      "path": "/Users/marcus/.codex/skills/sop-review",
+      "portable_path": "skills/sop-review",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "pipeline_contract",
+        "qa",
+        "review",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the review node in a harness SOP pipeline to summarize completed nodes, artifacts, QA results, failures, rollbacks, reusable patterns, and follow-up improvements after delivery."
+    },
+    {
+      "skill_id": "sop-route",
+      "name": "sop-route",
+      "path": "/Users/marcus/.codex/skills/sop-route",
+      "portable_path": "skills/sop-route",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "pipeline_contract",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the route node in a harness SOP pipeline to decide whether a request is simple direct-answer work or complex SOP work, and to identify goal, input sufficiency, truth sources, constraints, risks, validation method, and rollback points."
+    },
+    {
+      "skill_id": "sop-structure",
+      "name": "sop-structure",
+      "path": "/Users/marcus/.codex/skills/sop-structure",
+      "portable_path": "skills/sop-structure",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "pipeline_contract",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the structure node in a harness SOP pipeline to turn parsed inputs into schemas, outlines, storylines, page plans, field tables, component contracts, execution contracts, and confirmation-ready intermediate artifacts."
+    },
+    {
+      "skill_id": "sop-validate",
+      "name": "sop-validate",
+      "path": "/Users/marcus/.codex/skills/sop-validate",
+      "portable_path": "skills/sop-validate",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 10,
+      "roles": [
+        "pipeline_contract",
+        "qa",
+        "skill_management",
+        "sop_node"
+      ],
+      "description": "Use this skill as the validate node in a harness SOP pipeline to enforce QA as a blocking gate for facts, schema, components, rendering, format delivery, source traceability, and user constraints."
+    },
+    {
+      "skill_id": "html-report-editor",
+      "name": "html-report-editor",
+      "path": "/Users/marcus/.codex/skills/html-report-editor",
+      "portable_path": "skills/html-report-editor",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 20,
+      "roles": [
+        "browser",
+        "editable_deck",
+        "html",
+        "html_report",
+        "pdf",
+        "pdf_export",
+        "presentation",
+        "primary_html_editor",
+        "skill_management"
+      ],
+      "description": "Use this skill when the user asks for an editable HTML PPT/report/deck editor, HTML版PPT, 可编辑HTML汇报材料, browser-print PDF export, 16:9 report pages, asset-backed visual materials, or HTML presentation generation. This is the primary Codex-deployed alias for the local html编辑器skill."
+    },
+    {
+      "skill_id": "magazine-editor",
+      "name": "magazine-editor",
+      "path": "/Users/marcus/.codex/skills/magazine-editor",
+      "portable_path": "skills/magazine-editor",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 20,
+      "roles": [
+        "browser",
+        "editable_html",
+        "fixed_canvas",
+        "html",
+        "image",
+        "magazine_report",
+        "pdf",
+        "pdf_export",
+        "presentation",
+        "qa",
+        "skill_management"
+      ],
+      "description": "Use this skill when creating or revising fixed-canvas magazine-style HTML reports or 16:9 editable HTML presentation materials, including draggable/editable text, images, components, top/footer image layers, spec-driven rendering, browser QA, and clean PDF export."
+    },
+    {
+      "skill_id": "review-jianshibao",
+      "name": "review-jianshibao",
+      "path": "/Users/marcus/.codex/skills/review-jianshibao",
+      "portable_path": "skills/review-jianshibao",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 20,
+      "roles": [
+        "executive_reply",
+        "material_review",
+        "primary_review",
+        "review",
+        "skill_management",
+        "weekly_monthly_report",
+        "work_review"
+      ],
+      "description": "检视宝 / review-jianshibao：Use this skill when the user asks to inspect, review, challenge, or improve reports, product plans, executive instructions, task assignments, weekly/monthly reports, management retrospectives, source sufficiency, feasibility, organizational responsibility, or reply wording. This is the primary Codex-deployed alias for 检视宝."
+    },
+    {
+      "skill_id": "openai-docs",
+      "name": "openai-docs",
+      "path": "/Users/marcus/.codex/skills/.system/openai-docs",
+      "portable_path": "skills/.system/openai-docs",
+      "path_kind": "system_absolute_optional",
+      "availability": "system_skill",
+      "selection_priority": 30,
+      "roles": [
+        "api_current_truth",
+        "official_openai_docs"
+      ],
+      "description": "Use when the user asks how to build with OpenAI products or APIs and needs up-to-date official documentation with citations, help choosing the latest model for a use case, or model upgrade and prompt-upgrade guidance; prioritize OpenAI docs MCP tools, use bundled references only as helper context, and restrict any fallback browsing to official OpenAI domains."
+    },
+    {
+      "skill_id": "plugin-creator",
+      "name": "plugin-creator",
+      "path": "/Users/marcus/.codex/skills/.system/plugin-creator",
+      "portable_path": "skills/.system/plugin-creator",
+      "path_kind": "system_absolute_optional",
+      "availability": "system_skill",
+      "selection_priority": 30,
+      "roles": [
+        "codex_extension",
+        "plugin_creation"
+      ],
+      "description": "Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, or generate or update marketplace entries for plugin ordering and availability metadata."
+    },
+    {
+      "skill_id": "skill-creator",
+      "name": "skill-creator",
+      "path": "/Users/marcus/.codex/skills/.system/skill-creator",
+      "portable_path": "skills/.system/skill-creator",
+      "path_kind": "system_absolute_optional",
+      "availability": "system_skill",
+      "selection_priority": 30,
+      "roles": [
+        "skill_creation",
+        "skill_management"
+      ],
+      "description": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations."
+    },
+    {
+      "skill_id": "skill-installer",
+      "name": "skill-installer",
+      "path": "/Users/marcus/.codex/skills/.system/skill-installer",
+      "portable_path": "skills/.system/skill-installer",
+      "path_kind": "system_absolute_optional",
+      "availability": "system_skill",
+      "selection_priority": 30,
+      "roles": [
+        "github",
+        "skill_installation",
+        "skill_management"
+      ],
+      "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos)."
+    },
+    {
+      "skill_id": "pingan-asset-curator",
+      "name": "pingan-asset-curator",
+      "path": "/Users/marcus/.codex/skills/pingan-asset-curator",
+      "portable_path": "skills/pingan-asset-curator",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "domain_asset_library",
+        "html",
+        "presentation",
+        "skill_management",
+        "visual_assets"
+      ],
+      "description": "Use this skill when curating visual assets for Ping An Good Doctor HTML/PPT materials, including screening assets for Ping An corporate style, organizing /Users/marcus/Desktop/平安健康/素材库, creating tags/manifests/contact sheets, and preparing replaceable HTML asset maps."
+    },
+    {
+      "skill_id": "pingan-html-materials",
+      "name": "pingan-html-materials",
+      "path": "/Users/marcus/.codex/skills/pingan-html-materials",
+      "portable_path": "skills/pingan-html-materials",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "domain_html_materials",
+        "editable_slides",
+        "html",
+        "pdf",
+        "presentation",
+        "qa",
+        "skill_management"
+      ],
+      "description": "Use this skill when creating or revising editable HTML presentation/report materials for Ping An Good Doctor, using the workspace knowledge base and asset library to produce slide-like 16:9 pages, editable text/elements, replaceable assets, source references, QA checks, and clean PDF export."
+    },
+    {
+      "skill_id": "pingan-kb-curator",
+      "name": "pingan-kb-curator",
+      "path": "/Users/marcus/.codex/skills/pingan-kb-curator",
+      "portable_path": "skills/pingan-kb-curator",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "domain_knowledge_base",
+        "ocr_ingestion",
+        "pdf",
+        "presentation",
+        "qa",
+        "skill_management",
+        "source_trace"
+      ],
+      "description": "Use this skill when ingesting, restructuring, validating, or packaging the Ping An health knowledge base under /Users/marcus/Desktop/平安健康/知识库, including OCR/photo/PDF/PPT source internalization, wiki extraction, light knowledge graph updates, source-truth locking, and QA gate reports."
+    },
+    {
+      "skill_id": "pingan-work-review",
+      "name": "pingan-work-review",
+      "path": "/Users/marcus/.codex/skills/pingan-work-review",
+      "portable_path": "skills/pingan-work-review",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "domain_work_review",
+        "review",
+        "skill_management",
+        "weekly_monthly_report"
+      ],
+      "description": "Use this skill when evaluating Ping An health work, writing weekly/monthly reports, creating retrospectives, or running 检视宝-style reviews against the workspace knowledge base, role responsibilities, product facts, SOPs, and measurable outputs."
+    },
+    {
+      "skill_id": "build-things",
+      "name": "build-things",
+      "path": "/Users/marcus/.codex/skills/build-things",
+      "portable_path": "skills/build-things",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "special_task"
+      ],
+      "description": "Generate a Codex Super Bowl merch redemption URL (tokenized) and open it. Use when a user asks to redeem Super Bowl/Codex merch, needs a redemption token, or wants the merch redemption link."
+    },
+    {
+      "skill_id": "doc",
+      "name": "doc",
+      "path": "/Users/marcus/.codex/skills/doc",
+      "portable_path": "skills/doc",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "docx"
+      ],
+      "description": "Use when the task involves reading, creating, or editing `.docx` documents, especially when formatting or layout fidelity matters; prefer `python-docx` plus the bundled `scripts/render_docx.py` for visual checks."
+    },
+    {
+      "skill_id": "figma",
+      "name": "figma",
+      "path": "/Users/marcus/.codex/skills/figma",
+      "portable_path": "skills/figma",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "design_context",
+        "figma"
+      ],
+      "description": "Use the Figma MCP server to fetch design context, screenshots, variables, and assets from Figma, and to translate Figma nodes into production code. Trigger when a task involves Figma URLs, node IDs, design-to-code implementation, or Figma MCP setup and troubleshooting."
+    },
+    {
+      "skill_id": "figma-implement-design",
+      "name": "figma-implement-design",
+      "path": "/Users/marcus/.codex/skills/figma-implement-design",
+      "portable_path": "skills/figma-implement-design",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "design_context",
+        "design_implementation",
+        "figma",
+        "figma_to_code"
+      ],
+      "description": "Translate Figma nodes into production-ready code with 1:1 visual fidelity using the Figma MCP workflow (design context, screenshots, assets, and project-convention translation). Trigger when the user provides Figma URLs or node IDs, or asks to implement designs or components that must match Figma specs. Requires a working Figma MCP server connection."
+    },
+    {
+      "skill_id": "frontend-slides",
+      "name": "frontend-slides",
+      "path": "/Users/marcus/.codex/skills/frontend-slides",
+      "portable_path": "skills/frontend-slides",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "html",
+        "html_slides",
+        "presentation"
+      ],
+      "description": "Create stunning, animation-rich HTML presentations from scratch or by converting PowerPoint files. Use when the user wants to build a presentation, convert a PPT/PPTX to web, or create slides for a talk/pitch. Helps non-designers discover their aesthetic through visual exploration rather than abstract choices."
+    },
+    {
+      "skill_id": "gh-address-comments",
+      "name": "gh-address-comments",
+      "path": "/Users/marcus/.codex/skills/gh-address-comments",
+      "portable_path": "skills/gh-address-comments",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "github",
+        "github_pr_review_comments",
+        "review"
+      ],
+      "description": "Help address review/issue comments on the open GitHub PR for the current branch using gh CLI; verify gh auth first and prompt the user to authenticate if not logged in."
+    },
+    {
+      "skill_id": "gh-fix-ci",
+      "name": "gh-fix-ci",
+      "path": "/Users/marcus/.codex/skills/gh-fix-ci",
+      "portable_path": "skills/gh-fix-ci",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "github",
+        "github_ci_debug"
+      ],
+      "description": "Use when a user asks to debug or fix failing GitHub PR checks that run in GitHub Actions; use `gh` to inspect checks and logs, summarize failure context, draft a fix plan, and implement only after explicit approval. Treat external providers (for example Buildkite) as out of scope and report only the details URL."
+    },
+    {
+      "skill_id": "imagegen",
+      "name": "imagegen",
+      "path": "/Users/marcus/.codex/skills/imagegen",
+      "portable_path": "skills/imagegen",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "image",
+        "image_editing",
+        "image_generation"
+      ],
+      "description": "Use when the user asks to generate or edit images via the OpenAI Image API (for example: generate image, edit/inpaint/mask, background removal or replacement, transparent background, product shots, concept art, covers, or batch variants); run the bundled CLI (`scripts/image_gen.py`) and require `OPENAI_API_KEY` for live calls."
+    },
+    {
+      "skill_id": "jupyter-notebook",
+      "name": "jupyter-notebook",
+      "path": "/Users/marcus/.codex/skills/jupyter-notebook",
+      "portable_path": "skills/jupyter-notebook",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "experiments",
+        "notebook"
+      ],
+      "description": "Use when the user asks to create, scaffold, or edit Jupyter notebooks (`.ipynb`) for experiments, explorations, or tutorials; prefer the bundled templates and run the helper script `new_notebook.py` to generate a clean starting notebook."
+    },
+    {
+      "skill_id": "linear",
+      "name": "linear",
+      "path": "/Users/marcus/.codex/skills/linear",
+      "portable_path": "skills/linear",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "linear",
+        "linear_issue_management"
+      ],
+      "description": "Manage issues, projects & team workflows in Linear. Use when the user wants to read, create or updates tickets in Linear."
+    },
+    {
+      "skill_id": "notion-meeting-intelligence",
+      "name": "notion-meeting-intelligence",
+      "path": "/Users/marcus/.codex/skills/notion-meeting-intelligence",
+      "portable_path": "skills/notion-meeting-intelligence",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "notion",
+        "notion_meeting_prep"
+      ],
+      "description": "Prepare meeting materials with Notion context and Codex research; use when gathering context, drafting agendas/pre-reads, and tailoring materials to attendees."
+    },
+    {
+      "skill_id": "notion-research-documentation",
+      "name": "notion-research-documentation",
+      "path": "/Users/marcus/.codex/skills/notion-research-documentation",
+      "portable_path": "skills/notion-research-documentation",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "notion",
+        "notion_research_docs"
+      ],
+      "description": "Research across Notion and synthesize into structured documentation; use when gathering info from multiple Notion sources to produce briefs, comparisons, or reports with citations."
+    },
+    {
+      "skill_id": "notion-spec-to-implementation",
+      "name": "notion-spec-to-implementation",
+      "path": "/Users/marcus/.codex/skills/notion-spec-to-implementation",
+      "portable_path": "skills/notion-spec-to-implementation",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "notion",
+        "notion_spec_implementation"
+      ],
+      "description": "Turn Notion specs into implementation plans, tasks, and progress tracking; use when implementing PRDs/feature specs and creating Notion plans + tasks from them."
+    },
+    {
+      "skill_id": "pdf",
+      "name": "pdf",
+      "path": "/Users/marcus/.codex/skills/pdf",
+      "portable_path": "skills/pdf",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "pdf",
+        "pdf_generate",
+        "pdf_read",
+        "pdf_render_review",
+        "review"
+      ],
+      "description": "Use when tasks involve reading, creating, or reviewing PDF files where rendering and layout matter; prefer visual checks by rendering pages (Poppler) and use Python tools such as `reportlab`, `pdfplumber`, and `pypdf` for generation and extraction."
+    },
+    {
+      "skill_id": "playwright",
+      "name": "playwright",
+      "path": "/Users/marcus/.codex/skills/playwright",
+      "portable_path": "skills/playwright",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "browser",
+        "browser_qa",
+        "html_render_check"
+      ],
+      "description": "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via `playwright-cli` or the bundled wrapper script."
+    },
+    {
+      "skill_id": "playwright-interactive",
+      "name": "playwright-interactive",
+      "path": "/Users/marcus/.codex/skills/playwright-interactive",
+      "portable_path": "skills/playwright-interactive",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "browser",
+        "browser_qa",
+        "html_render_check",
+        "interactive_browser_qa",
+        "persistent_browser_debug"
+      ],
+      "description": "Persistent browser and Electron interaction through `js_repl` for fast iterative UI debugging."
+    },
+    {
+      "skill_id": "screenshot",
+      "name": "screenshot",
+      "path": "/Users/marcus/.codex/skills/screenshot",
+      "portable_path": "skills/screenshot",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "desktop_screenshot",
+        "visual_evidence"
+      ],
+      "description": "Use when the user explicitly asks for a desktop or system screenshot (full screen, specific app or window, or a pixel region), or when tool-specific capture capabilities are unavailable and an OS-level capture is needed."
+    },
+    {
+      "skill_id": "transcribe",
+      "name": "transcribe",
+      "path": "/Users/marcus/.codex/skills/transcribe",
+      "portable_path": "skills/transcribe",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "asr",
+        "audio",
+        "transcription"
+      ],
+      "description": "Transcribe audio files to text with optional diarization and known-speaker hints. Use when a user asks to transcribe speech from audio/video, extract text from recordings, or label speakers in interviews or meetings."
+    },
+    {
+      "skill_id": "ux-visual-designer",
+      "name": "ux-visual-designer",
+      "path": "/Users/marcus/.codex/skills/ux-visual-designer",
+      "portable_path": "skills/ux-visual-designer",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "ui_hierarchy",
+        "visual_design"
+      ],
+      "description": "User-centered interaction and visual design decision framework for web and mobile products. Use when requests involve page layout, information hierarchy, click/scroll/filter flows, component placement, UI states, or high-fidelity visual design choices (typography, cards, shadows, corner radius, buttons, sliders, selected states, menus). Trigger especially when design must fit specific user groups or usage contexts."
+    }
+  ]
+}

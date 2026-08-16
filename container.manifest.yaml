@@ -28,7 +28,7 @@ agent:
   permission: danger-full-access
 
 capabilities:
-  skills:                            # ~/.dsh/skills (20)
+  skills:                            # ~/.dsh/skills (44, 2026-08-15 从 Codex/Claude 继承 24 个)
     - copywriting-craft-writer
     - enterprise-health-business-analysis
     - enterprise-health-data-analysis
@@ -41,14 +41,38 @@ capabilities:
     - enterprise-health-storyline
     - enterprise-health-visual-design
     - enterprise-health-xlsx-ingestion
+    - figma
+    - figma-implement-design
+    - frontend-slides
+    - gh-address-comments
+    - gh-fix-ci
     - goal-first-control
+    - html-report-editor
     - jianshibao
+    - jupyter-notebook
+    - magazine-editor
     - native-chinese-expression
+    - notion-meeting-intelligence
+    - notion-research-documentation
+    - notion-spec-to-implementation
+    - pdf
+    - pingan-asset-curator
     - pingan-html-materials
     - pingan-kb-router
     - pingan-ppt-materials
     - pingan-qikang-kb-curator
     - pingan-qikang-visual-component-library
+    - screenshot
+    - sop-export
+    - sop-generate
+    - sop-orchestrator
+    - sop-parse
+    - sop-review
+    - sop-route
+    - sop-structure
+    - sop-validate
+    - ux-visual-designer
+    - wechat-converter
   launchers:                         # ~/.dsh/launchers
     - ashare-launch.command
     - cybermarcus-launch.command

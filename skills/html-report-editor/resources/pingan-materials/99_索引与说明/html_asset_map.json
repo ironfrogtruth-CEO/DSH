@@ -1,0 +1,1475 @@
+{
+  "library_root": "resources/pingan-materials",
+  "defaults": {
+    "audience.pressure": "gen.icon_pressure",
+    "audience.social_dining": "gen.icon_wine_glass",
+    "audience.travel": "gen.icon_travel_plane",
+    "service.cardio": "gen.icon_heart_pulse",
+    "service.checkup": "gen.icon_checkup_scan",
+    "medical.bed": "gen.icon_hospital_bed",
+    "medical.companion": "gen.icon_companion",
+    "medical.doctor": "gen.icon_doctor_service",
+    "medical.hospital": "gen.icon_hospital",
+    "medical.surgery": "gen.icon_surgery",
+    "service.immunity": "gen.icon_shield_cross",
+    "service.nutrition": "gen.icon_nutrition_bowl",
+    "service.sleep": "gen.icon_sleep_moon",
+    "service.vaccine": "gen.icon_vaccine_syringe",
+    "flow.followup": "gen.icon_followup_calendar",
+    "service.health_record": "gen.icon_health_record",
+    "service.report": "gen.icon_report_interpret",
+    "flow.arrow_right": "gen.arrow_right_chevron",
+    "flow.timeline_node": "gen.timeline_node",
+    "flow.closed_loop": "gen.arrow_loop",
+    "scene.enterprise_health": "local.PRESALE002_A0011",
+    "scene.clinic_checkup": "local.PRESALE002_A0056",
+    "scene.doctor_consultation": "local.PRESALE004_A0084",
+    "scene.family_service": "local.PRESALE002_A0033",
+    "proof.app_screenshot": "local.PRESALE001_A0299",
+    "device.speaker": "gen.icon_speaker",
+    "device.blood_pressure_monitor": "gen.icon_blood_pressure_monitor",
+    "device.ct_mri": "gen.icon_ct_mri",
+    "device.wearable": "gen.icon_wearable_watch",
+    "device.medicine_box": "gen.icon_medicine_box",
+    "background.medical_tech": "gen.bg_medical_grid",
+    "background.cover_corner": "gen.bg_orange_corner",
+    "background.cover_strip": "local.PRESALE006_A0090"
+  },
+  "groups": {
+    "audience.pressure": [
+      {
+        "asset_id": "gen.icon_pressure",
+        "display_name": "压力负荷",
+        "file_path": "01_图标_icon/人群画像/pa_icon_pressure.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.13638706",
+        "display_name": "压力负荷-压力",
+        "file_path": "01_图标_icon/人群画像/iconfont_audience_pressure_13638706_压力.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.25716464",
+        "display_name": "压力负荷-压力",
+        "file_path": "01_图标_icon/人群画像/iconfont_audience_pressure_25716464_压力.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "audience.social_dining": [
+      {
+        "asset_id": "gen.icon_wine_glass",
+        "display_name": "久坐应酬",
+        "file_path": "01_图标_icon/人群画像/pa_icon_wine_glass.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.26302605",
+        "display_name": "应酬饮酒-酒杯",
+        "file_path": "01_图标_icon/人群画像/iconfont_audience_social_dining_26302605_酒杯.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.5058344",
+        "display_name": "应酬饮酒-酒杯",
+        "file_path": "01_图标_icon/人群画像/iconfont_audience_social_dining_5058344_酒杯.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "audience.travel": [
+      {
+        "asset_id": "gen.icon_travel_plane",
+        "display_name": "高频出差",
+        "file_path": "01_图标_icon/人群画像/pa_icon_travel_plane.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.658012",
+        "display_name": "高频出差-飞机",
+        "file_path": "01_图标_icon/人群画像/iconfont_audience_travel_658012_飞机.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.990",
+        "display_name": "高频出差-旅行",
+        "file_path": "01_图标_icon/人群画像/iconfont_audience_travel_990_旅行.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.blood_pressure": [
+      {
+        "asset_id": "iconfont.10056205",
+        "display_name": "血压管理-血压",
+        "file_path": "01_图标_icon/医疗检测/iconfont_service_blood_pressure_10056205_血压.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.765557",
+        "display_name": "血压管理-血压",
+        "file_path": "01_图标_icon/医疗检测/iconfont_service_blood_pressure_765557_血压.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.cardio": [
+      {
+        "asset_id": "gen.icon_heart_pulse",
+        "display_name": "心脑血管",
+        "file_path": "01_图标_icon/医疗检测/pa_icon_heart_pulse.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "service.checkup": [
+      {
+        "asset_id": "gen.icon_checkup_scan",
+        "display_name": "体检筛查",
+        "file_path": "01_图标_icon/医疗检测/pa_icon_checkup_scan.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.5961315",
+        "display_name": "体检筛查-人体检测",
+        "file_path": "01_图标_icon/医疗检测/iconfont_service_checkup_5961315_人体检测.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.8288892",
+        "display_name": "体检筛查-体检",
+        "file_path": "01_图标_icon/医疗检测/iconfont_service_checkup_8288892_体检.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.heart": [
+      {
+        "asset_id": "iconfont.42230802",
+        "display_name": "心电心脏-pulse-line",
+        "file_path": "01_图标_icon/医疗检测/iconfont_service_heart_42230802_pulse-line.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.643279",
+        "display_name": "心电心脏-心电",
+        "file_path": "01_图标_icon/医疗检测/iconfont_service_heart_643279_心电.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "medical.bed": [
+      {
+        "asset_id": "gen.icon_hospital_bed",
+        "display_name": "住院床位",
+        "file_path": "01_图标_icon/服务能力/pa_icon_hospital_bed.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.4942304",
+        "display_name": "住院床位-病床",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_bed_4942304_病床.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.8223399",
+        "display_name": "住院床位-病床",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_bed_8223399_病床.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "medical.companion": [
+      {
+        "asset_id": "gen.icon_companion",
+        "display_name": "陪诊服务",
+        "file_path": "01_图标_icon/服务能力/pa_icon_companion.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.14233212",
+        "display_name": "陪诊服务-陪诊 ",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_companion_14233212_陪诊.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.5082611",
+        "display_name": "陪诊服务-陪诊 我的陪诊#ff5988",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_companion_5082611_陪诊_我的陪诊_ff5988.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "medical.doctor": [
+      {
+        "asset_id": "gen.icon_doctor_service",
+        "display_name": "医生服务",
+        "file_path": "01_图标_icon/服务能力/pa_icon_doctor_service.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.10268608",
+        "display_name": "医生服务-医生&医生介绍",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_doctor_10268608_医生_医生介绍.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.765377",
+        "display_name": "医生服务-医生",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_doctor_765377_医生.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "medical.hospital": [
+      {
+        "asset_id": "gen.icon_hospital",
+        "display_name": "医院资源",
+        "file_path": "01_图标_icon/服务能力/pa_icon_hospital.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.145457",
+        "display_name": "医院资源-医院",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_hospital_145457_医院.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.145740",
+        "display_name": "医院资源-医院_填充",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_hospital_145740_医院_填充.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "medical.surgery": [
+      {
+        "asset_id": "gen.icon_surgery",
+        "display_name": "手术协助",
+        "file_path": "01_图标_icon/服务能力/pa_icon_surgery.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.10056238",
+        "display_name": "手术协助-手术",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_surgery_10056238_手术.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.786200",
+        "display_name": "手术协助-外科",
+        "file_path": "01_图标_icon/服务能力/iconfont_medical_surgery_786200_外科.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.immunity": [
+      {
+        "asset_id": "gen.icon_shield_cross",
+        "display_name": "免疫防护",
+        "file_path": "01_图标_icon/服务能力/pa_icon_shield_cross.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "service.injection": [
+      {
+        "asset_id": "iconfont.10056191",
+        "display_name": "注射接种-注射器",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_injection_10056191_注射器.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.3920061",
+        "display_name": "注射接种-注射器",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_injection_3920061_注射器.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.nutrition": [
+      {
+        "asset_id": "gen.icon_nutrition_bowl",
+        "display_name": "营养管理",
+        "file_path": "01_图标_icon/服务能力/pa_icon_nutrition_bowl.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.1071062",
+        "display_name": "营养管理-营养说2",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_nutrition_1071062_营养说2.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.16275271",
+        "display_name": "营养管理-营养咨询师",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_nutrition_16275271_营养咨询师.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.sleep": [
+      {
+        "asset_id": "gen.icon_sleep_moon",
+        "display_name": "睡眠管理",
+        "file_path": "01_图标_icon/服务能力/pa_icon_sleep_moon.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.4408993",
+        "display_name": "睡眠管理-睡眠",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_sleep_4408993_睡眠.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.988847",
+        "display_name": "睡眠管理-睡眠",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_sleep_988847_睡眠.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.vaccine": [
+      {
+        "asset_id": "gen.icon_vaccine_syringe",
+        "display_name": "疫苗接种",
+        "file_path": "01_图标_icon/服务能力/pa_icon_vaccine_syringe.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.765796",
+        "display_name": "疫苗防护-疫苗",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_vaccine_765796_疫苗.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.7693982",
+        "display_name": "疫苗防护-疫苗",
+        "file_path": "01_图标_icon/服务能力/iconfont_service_vaccine_7693982_疫苗.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "flow.followup": [
+      {
+        "asset_id": "gen.icon_followup_calendar",
+        "display_name": "随访跟踪",
+        "file_path": "01_图标_icon/流程节点/pa_icon_followup_calendar.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.10885287",
+        "display_name": "随访跟踪-随访",
+        "file_path": "01_图标_icon/流程节点/iconfont_flow_followup_10885287_随访.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.16921561",
+        "display_name": "随访跟踪-随访",
+        "file_path": "01_图标_icon/流程节点/iconfont_flow_followup_16921561_随访.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.health_record": [
+      {
+        "asset_id": "gen.icon_health_record",
+        "display_name": "健康档案",
+        "file_path": "01_图标_icon/流程节点/pa_icon_health_record.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.10268557",
+        "display_name": "健康档案-健康档案",
+        "file_path": "01_图标_icon/流程节点/iconfont_service_health_record_10268557_健康档案.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.31359592",
+        "display_name": "健康档案-健康档案",
+        "file_path": "01_图标_icon/流程节点/iconfont_service_health_record_31359592_健康档案.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "service.report": [
+      {
+        "asset_id": "gen.icon_report_interpret",
+        "display_name": "报告解读",
+        "file_path": "01_图标_icon/流程节点/pa_icon_report_interpret.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.34453368",
+        "display_name": "报告解读-行业报告",
+        "file_path": "01_图标_icon/流程节点/iconfont_service_report_34453368_行业报告.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.5334129",
+        "display_name": "报告解读-报告",
+        "file_path": "01_图标_icon/流程节点/iconfont_service_report_5334129_报告.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "flow.arrow_right": [
+      {
+        "asset_id": "gen.arrow_right_chevron",
+        "display_name": "右箭头",
+        "file_path": "02_流程箭头_连接组件/右箭头/pa_arrow_right_chevron.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "gen.arrow_right_soft",
+        "display_name": "柔和右箭头",
+        "file_path": "02_流程箭头_连接组件/右箭头/pa_arrow_right_soft.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "flow.timeline_node": [
+      {
+        "asset_id": "gen.timeline_node",
+        "display_name": "时间轴节点",
+        "file_path": "02_流程箭头_连接组件/时间轴/pa_timeline_node.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "flow.closed_loop": [
+      {
+        "asset_id": "gen.arrow_loop",
+        "display_name": "闭环箭头",
+        "file_path": "02_流程箭头_连接组件/闭环箭头/pa_arrow_loop.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "scene.enterprise_health": [
+      {
+        "asset_id": "local.PRESALE002_A0011",
+        "display_name": "企业员工健康-PRESALE002_A0011",
+        "file_path": "03_场景插画_照片/企业员工健康/local_PRESALE002_A0011_企业员工健康.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0087",
+        "display_name": "企业员工健康-PRESALE002_A0087",
+        "file_path": "03_场景插画_照片/企业员工健康/local_PRESALE002_A0087_企业员工健康.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "scene.clinic_checkup": [
+      {
+        "asset_id": "local.PRESALE002_A0056",
+        "display_name": "医务室体检-PRESALE002_A0056",
+        "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0056_医务室体检.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0065",
+        "display_name": "医务室体检-PRESALE002_A0065",
+        "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0065_医务室体检.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0069",
+        "display_name": "医务室体检-PRESALE002_A0069",
+        "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0069_医务室体检.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0073",
+        "display_name": "医务室体检-PRESALE002_A0073",
+        "file_path": "03_场景插画_照片/医务室体检/local_PRESALE002_A0073_医务室体检.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0004",
+        "display_name": "医务室体检-PRESALE004_A0004",
+        "file_path": "03_场景插画_照片/医务室体检/local_PRESALE004_A0004_医务室体检.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0013",
+        "display_name": "医务室体检-PRESALE004_A0013",
+        "file_path": "03_场景插画_照片/医务室体检/local_PRESALE004_A0013_医务室体检.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "scene.doctor_consultation": [
+      {
+        "asset_id": "local.PRESALE004_A0082",
+        "display_name": "医生沟通-PRESALE004_A0082",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0082_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0083",
+        "display_name": "医生沟通-PRESALE004_A0083",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0083_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0084",
+        "display_name": "医生沟通-PRESALE004_A0084",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0084_医生沟通.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0085",
+        "display_name": "医生沟通-PRESALE004_A0085",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0085_医生沟通.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0086",
+        "display_name": "医生沟通-PRESALE004_A0086",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0086_医生沟通.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0087",
+        "display_name": "医生沟通-PRESALE004_A0087",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0087_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0088",
+        "display_name": "医生沟通-PRESALE004_A0088",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0088_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0089",
+        "display_name": "医生沟通-PRESALE004_A0089",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0089_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0090",
+        "display_name": "医生沟通-PRESALE004_A0090",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0090_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0091",
+        "display_name": "医生沟通-PRESALE004_A0091",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0091_医生沟通.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE004_A0092",
+        "display_name": "医生沟通-PRESALE004_A0092",
+        "file_path": "03_场景插画_照片/医生沟通/local_PRESALE004_A0092_医生沟通.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "scene.family_service": [
+      {
+        "asset_id": "local.PRESALE002_A0033",
+        "display_name": "家庭老人服务-PRESALE002_A0033",
+        "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0033_家庭老人服务.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0049",
+        "display_name": "家庭老人服务-PRESALE002_A0049",
+        "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0049_家庭老人服务.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0052",
+        "display_name": "家庭老人服务-PRESALE002_A0052",
+        "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0052_家庭老人服务.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0053",
+        "display_name": "家庭老人服务-PRESALE002_A0053",
+        "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0053_家庭老人服务.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0054",
+        "display_name": "家庭老人服务-PRESALE002_A0054",
+        "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0054_家庭老人服务.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE002_A0062",
+        "display_name": "家庭老人服务-PRESALE002_A0062",
+        "file_path": "03_场景插画_照片/家庭老人服务/local_PRESALE002_A0062_家庭老人服务.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "proof.app_screenshot": [
+      {
+        "asset_id": "local.PRESALE001_A0299",
+        "display_name": "APP截图-PRESALE001_A0299",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE001_A0299_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0300",
+        "display_name": "APP截图-PRESALE001_A0300",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE001_A0300_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0130",
+        "display_name": "APP截图-PRESALE003_A0130",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0130_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0131",
+        "display_name": "APP截图-PRESALE003_A0131",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0131_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0132",
+        "display_name": "APP截图-PRESALE003_A0132",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0132_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0133",
+        "display_name": "APP截图-PRESALE003_A0133",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0133_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0135",
+        "display_name": "APP截图-PRESALE003_A0135",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0135_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0136",
+        "display_name": "APP截图-PRESALE003_A0136",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0136_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0137",
+        "display_name": "APP截图-PRESALE003_A0137",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0137_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0138",
+        "display_name": "APP截图-PRESALE003_A0138",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0138_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0139",
+        "display_name": "APP截图-PRESALE003_A0139",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0139_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0140",
+        "display_name": "APP截图-PRESALE003_A0140",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0140_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0141",
+        "display_name": "APP截图-PRESALE003_A0141",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0141_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0143",
+        "display_name": "APP截图-PRESALE003_A0143",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0143_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0149",
+        "display_name": "APP截图-PRESALE003_A0149",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0149_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0150",
+        "display_name": "APP截图-PRESALE003_A0150",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0150_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0151",
+        "display_name": "APP截图-PRESALE003_A0151",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0151_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0152",
+        "display_name": "APP截图-PRESALE003_A0152",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0152_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0153",
+        "display_name": "APP截图-PRESALE003_A0153",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0153_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE003_A0154",
+        "display_name": "APP截图-PRESALE003_A0154",
+        "file_path": "04_设备产品图/APP截图/local_PRESALE003_A0154_APP截图.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "device.speaker": [
+      {
+        "asset_id": "gen.icon_speaker",
+        "display_name": "智能音箱",
+        "file_path": "04_设备产品图/智能音箱/pa_icon_speaker.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.5056529",
+        "display_name": "智能音箱-音箱-01",
+        "file_path": "04_设备产品图/智能音箱/iconfont_device_speaker_5056529_音箱-01.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.5124380",
+        "display_name": "智能音箱-音响",
+        "file_path": "04_设备产品图/智能音箱/iconfont_device_speaker_5124380_音响.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0025",
+        "display_name": "智能音箱-PRESALE001_A0025",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0025_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0026",
+        "display_name": "智能音箱-PRESALE001_A0026",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0026_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0027",
+        "display_name": "智能音箱-PRESALE001_A0027",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0027_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0028",
+        "display_name": "智能音箱-PRESALE001_A0028",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0028_智能音箱.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0034",
+        "display_name": "智能音箱-PRESALE001_A0034",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0034_智能音箱.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0149",
+        "display_name": "智能音箱-PRESALE001_A0149",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0149_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0150",
+        "display_name": "智能音箱-PRESALE001_A0150",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0150_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0303",
+        "display_name": "智能音箱-PRESALE001_A0303",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0303_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0310",
+        "display_name": "智能音箱-PRESALE001_A0310",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0310_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0315",
+        "display_name": "智能音箱-PRESALE001_A0315",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0315_智能音箱.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0319",
+        "display_name": "智能音箱-PRESALE001_A0319",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0319_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE001_A0356",
+        "display_name": "智能音箱-PRESALE001_A0356",
+        "file_path": "04_设备产品图/智能音箱/local_PRESALE001_A0356_智能音箱.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "device.blood_pressure_monitor": [
+      {
+        "asset_id": "gen.icon_blood_pressure_monitor",
+        "display_name": "血压监测",
+        "file_path": "04_设备产品图/检测设备/pa_icon_blood_pressure_monitor.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "device.ct_mri": [
+      {
+        "asset_id": "gen.icon_ct_mri",
+        "display_name": "影像检查",
+        "file_path": "04_设备产品图/检测设备/pa_icon_ct_mri.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "device.wearable": [
+      {
+        "asset_id": "gen.icon_wearable_watch",
+        "display_name": "可穿戴监测",
+        "file_path": "04_设备产品图/检测设备/pa_icon_wearable_watch.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "device.medicine_box": [
+      {
+        "asset_id": "gen.icon_medicine_box",
+        "display_name": "药箱药品",
+        "file_path": "04_设备产品图/药箱药品/pa_icon_medicine_box.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "iconfont.1036",
+        "display_name": "药箱药品-医药箱",
+        "file_path": "04_设备产品图/药箱药品/iconfont_device_medicine_box_1036_医药箱.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      },
+      {
+        "asset_id": "iconfont.765588",
+        "display_name": "药箱药品-药箱",
+        "file_path": "04_设备产品图/药箱药品/iconfont_device_medicine_box_765588_药箱.svg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "candidate_after_license_review",
+        "license_status": "needs_review_iconfont"
+      }
+    ],
+    "background.medical_tech": [
+      {
+        "asset_id": "gen.bg_medical_grid",
+        "display_name": "医疗科技网格",
+        "file_path": "05_背景装饰/医疗科技线稿/pa_bg_medical_grid.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "background.cover_corner": [
+      {
+        "asset_id": "gen.bg_orange_corner",
+        "display_name": "浅橙封面角标",
+        "file_path": "05_背景装饰/封面背景/pa_bg_orange_corner.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ],
+    "background.cover_strip": [
+      {
+        "asset_id": "local.PRESALE006_A0090",
+        "display_name": "封面背景-PRESALE006_A0090",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE006_A0090_封面背景.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0018",
+        "display_name": "封面背景-PRESALE007_A0018",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE007_A0018_封面背景.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0057",
+        "display_name": "封面背景-PRESALE007_A0057",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE007_A0057_封面背景.png",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0087",
+        "display_name": "封面背景-PRESALE007_A0087",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE007_A0087_封面背景.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE008_A0004",
+        "display_name": "封面背景-PRESALE008_A0004",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE008_A0004_封面背景.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE010_A0110",
+        "display_name": "封面背景-PRESALE010_A0110",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE010_A0110_封面背景.jpeg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE010_A0138",
+        "display_name": "封面背景-PRESALE010_A0138",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE010_A0138_封面背景.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE010_A0139",
+        "display_name": "封面背景-PRESALE010_A0139",
+        "file_path": "05_背景装饰/封面背景/local_PRESALE010_A0139_封面背景.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "local_knowledge_base"
+      }
+    ],
+    "reference.layout": [
+      {
+        "asset_id": "local.PRESALE005_A0003",
+        "display_name": "版式参考-PRESALE005_A0003",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0003_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE005_A0008",
+        "display_name": "版式参考-PRESALE005_A0008",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0008_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE005_A0009",
+        "display_name": "版式参考-PRESALE005_A0009",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0009_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE005_A0023",
+        "display_name": "版式参考-PRESALE005_A0023",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE005_A0023_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE006_A0001",
+        "display_name": "版式参考-PRESALE006_A0001",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0001_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE006_A0073",
+        "display_name": "版式参考-PRESALE006_A0073",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0073_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE006_A0099",
+        "display_name": "版式参考-PRESALE006_A0099",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0099_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE006_A0100",
+        "display_name": "版式参考-PRESALE006_A0100",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0100_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE006_A0101",
+        "display_name": "版式参考-PRESALE006_A0101",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE006_A0101_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0019",
+        "display_name": "版式参考-PRESALE007_A0019",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0019_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0037",
+        "display_name": "版式参考-PRESALE007_A0037",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0037_版式参考.jpeg",
+        "pa_style_score": 3,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0038",
+        "display_name": "版式参考-PRESALE007_A0038",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0038_版式参考.jpeg",
+        "pa_style_score": 3,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0063",
+        "display_name": "版式参考-PRESALE007_A0063",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0063_版式参考.jpeg",
+        "pa_style_score": 3,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0070",
+        "display_name": "版式参考-PRESALE007_A0070",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0070_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE007_A0086",
+        "display_name": "版式参考-PRESALE007_A0086",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE007_A0086_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE008_A0002",
+        "display_name": "版式参考-PRESALE008_A0002",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE008_A0002_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE008_A0005",
+        "display_name": "版式参考-PRESALE008_A0005",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE008_A0005_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      },
+      {
+        "asset_id": "local.PRESALE008_A0006",
+        "display_name": "版式参考-PRESALE008_A0006",
+        "file_path": "06_版式参考_不直接入页/local_PRESALE008_A0006_版式参考.jpeg",
+        "pa_style_score": 4,
+        "safe_for_external": false,
+        "html_usage": "reference_only",
+        "license_status": "local_knowledge_base"
+      }
+    ]
+  },
+  "portable": true,
+  "path_policy": "Join file_path with the active asset library root. Do not use absolute paths in generated HTML."
+}

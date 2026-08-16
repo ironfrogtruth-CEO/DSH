@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "default_required": ["source_map", "structure_contract", "qa_report", "delivery_manifest"],
+  "contracts": [
+    {
+      "contract_id": "text_markdown",
+      "applies_to": ["markdown", "copy", "sop", "prd", "minutes"],
+      "intermediate": ["source_map", "outline_or_schema", "draft_markdown", "qa_report"],
+      "final": ["final.md", "delivery_manifest.json"]
+    },
+    {
+      "contract_id": "editable_html_report",
+      "applies_to": ["html_report", "html_ppt", "editable_deck"],
+      "intermediate": ["source_map", "page_outline", "visual_contract", "asset_usage", "render_check"],
+      "final": ["report.html", "report_check.pdf", "qa_report.json", "delivery_manifest.json"]
+    },
+    {
+      "contract_id": "magazine_report",
+      "applies_to": ["magazine", "a4_report", "fixed_canvas_html"],
+      "intermediate": ["source_map", "magazine_spec.json", "render_check", "qa_report"],
+      "final": ["report.html", "report_check.pdf", "delivery_manifest.json"]
+    },
+    {
+      "contract_id": "pptx_deck",
+      "applies_to": ["pptx", "presentation"],
+      "intermediate": ["source_map", "page_outline", "visual_contract", "editability_check", "qa_report"],
+      "final": ["presentation.pptx", "preview.pdf", "delivery_manifest.json"]
+    },
+    {
+      "contract_id": "image_asset",
+      "applies_to": ["image", "visual_asset"],
+      "intermediate": ["prompt_spec", "input_image_refs", "generation_log", "visual_qa"],
+      "final": ["image.png", "prompt_record.json", "delivery_manifest.json"]
+    },
+    {
+      "contract_id": "review_report",
+      "applies_to": ["material_review", "weekly_report", "monthly_report", "retrospective"],
+      "intermediate": ["claim_task_map", "evidence_map", "risk_map", "reply_structure"],
+      "final": ["review_response.md", "qa_report.json", "delivery_manifest.json"]
+    },
+    {
+      "contract_id": "knowledge_ingestion",
+      "applies_to": ["knowledge_base", "ocr", "source_trace"],
+      "intermediate": ["source_manifest.csv", "source_manifest.json", "ocr_text", "source_index"],
+      "final": ["structured_wiki.md", "source_trace.json", "qa_report.md", "delivery_manifest.json"]
+    }
+  ]
+}

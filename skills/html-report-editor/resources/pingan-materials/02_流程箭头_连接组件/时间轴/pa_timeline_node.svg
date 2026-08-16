@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="时间轴节点">
+  <title>时间轴节点</title>
+  <circle cx="64" cy="64" r="34" fill="#fff1e8" stroke="#f05a22" stroke-width="5"/><circle cx="64" cy="64" r="13" fill="#f05a22"/><path d="M16 64h26M86 64h26" stroke="#f05a22" stroke-width="6" stroke-linecap="round"/>
+</svg>

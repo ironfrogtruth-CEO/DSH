@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>平安好医生素材库 HTML 调用测试</title>
+  <link rel="stylesheet" href="../../html编辑器skill/assets/report-theme.css">
+  <style>
+    body{padding:0;background:#e7ecf0;}
+    .slide{margin:28px auto;}
+    .test-title{position:absolute;left:54px;top:44px;font-size:34px;font-weight:900;color:#f05a22;}
+    .test-sub{position:absolute;left:56px;top:92px;font-size:17px;color:#555;}
+    .test-grid{position:absolute;left:54px;top:142px;width:742px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+    .test-card{height:118px;background:#fff;border:1px solid #e4e7eb;border-radius:8px;display:grid;place-items:center;padding:12px;box-shadow:0 4px 12px rgba(30,46,60,.05);}
+    .test-card b{font-size:16px;color:#222;}
+    .test-card span{font-size:10px;color:#777;}
+    .test-scene{position:absolute;right:58px;top:150px;width:360px;height:300px;background:#fff;border:1px solid #e4e7eb;border-radius:8px;padding:18px;display:grid;place-items:center;box-shadow:0 4px 12px rgba(30,46,60,.05);}
+    .test-flow{position:absolute;left:58px;bottom:70px;right:58px;height:90px;background:#fff;border:1px solid #e4e7eb;border-radius:8px;display:flex;align-items:center;justify-content:space-around;}
+    .test-flow span{font-size:18px;font-weight:800;color:#333;}
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <div class="slide-content">
+      <div class="test-title">平安好医生素材库调用测试</div>
+      <div class="test-sub">默认素材仅来自 safe_for_external=true 且 pa_style_score>=4 的资产</div>
+      <div class="test-grid">
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/流程节点/pa_icon_health_record.svg" data-asset-id="gen.icon_health_record" data-replacement-group="service.health_record" alt="建档">
+          <b>建档</b>
+          <span>service.health_record</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/医疗检测/pa_icon_checkup_scan.svg" data-asset-id="gen.icon_checkup_scan" data-replacement-group="service.checkup" alt="筛查">
+          <b>筛查</b>
+          <span>service.checkup</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/流程节点/pa_icon_report_interpret.svg" data-asset-id="gen.icon_report_interpret" data-replacement-group="service.report" alt="解读">
+          <b>解读</b>
+          <span>service.report</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/服务能力/pa_icon_vaccine_syringe.svg" data-asset-id="gen.icon_vaccine_syringe" data-replacement-group="service.vaccine" alt="免疫">
+          <b>免疫</b>
+          <span>service.vaccine</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/医疗检测/pa_icon_heart_pulse.svg" data-asset-id="gen.icon_heart_pulse" data-replacement-group="service.cardio" alt="心脑">
+          <b>心脑</b>
+          <span>service.cardio</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/服务能力/pa_icon_doctor_service.svg" data-asset-id="gen.icon_doctor_service" data-replacement-group="medical.doctor" alt="医生">
+          <b>医生</b>
+          <span>medical.doctor</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/服务能力/pa_icon_hospital.svg" data-asset-id="gen.icon_hospital" data-replacement-group="medical.hospital" alt="医院">
+          <b>医院</b>
+          <span>medical.hospital</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/服务能力/pa_icon_hospital_bed.svg" data-asset-id="gen.icon_hospital_bed" data-replacement-group="medical.bed" alt="住院">
+          <b>住院</b>
+          <span>medical.bed</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/服务能力/pa_icon_surgery.svg" data-asset-id="gen.icon_surgery" data-replacement-group="medical.surgery" alt="手术">
+          <b>手术</b>
+          <span>medical.surgery</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../01_图标_icon/服务能力/pa_icon_companion.svg" data-asset-id="gen.icon_companion" data-replacement-group="medical.companion" alt="陪诊">
+          <b>陪诊</b>
+          <span>medical.companion</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../04_设备产品图/智能音箱/pa_icon_speaker.svg" data-asset-id="gen.icon_speaker" data-replacement-group="device.speaker" alt="音箱">
+          <b>音箱</b>
+          <span>device.speaker</span>
+        </div>
+        <div class="test-card">
+          <img class="pa-asset-icon lg" src="../04_设备产品图/药箱药品/pa_icon_medicine_box.svg" data-asset-id="gen.icon_medicine_box" data-replacement-group="device.medicine_box" alt="药箱">
+          <b>药箱</b>
+          <span>device.medicine_box</span>
+        </div></div>
+      <div class="test-scene"><img class="pa-asset-image contain" src="../03_场景插画_照片/医务室体检/local_PRESALE002_A0056_医务室体检.jpeg" data-asset-id="local.PRESALE002_A0056" data-replacement-group="scene.clinic_checkup" alt="医务室体检"></div>
+      <div class="test-flow">
+        <span>建档</span><img class="pa-flow-arrow-img" src="../02_流程箭头_连接组件/右箭头/pa_arrow_right_chevron.svg" alt="">
+        <span>筛查</span><img class="pa-flow-arrow-img" src="../02_流程箭头_连接组件/右箭头/pa_arrow_right_chevron.svg" alt="">
+        <span>解读</span><img class="pa-flow-arrow-img" src="../02_流程箭头_连接组件/右箭头/pa_arrow_right_chevron.svg" alt="">
+        <span>干预</span><img class="pa-flow-arrow-img" src="../02_流程箭头_连接组件/右箭头/pa_arrow_right_chevron.svg" alt="">
+        <span>随访</span>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

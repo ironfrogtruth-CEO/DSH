@@ -1,0 +1,4 @@
+interface:
+  display_name: "UX Visual Designer"
+  short_description: "User-centered UX and visual design decisions"
+  default_prompt: "Design this interface from a user perspective and provide concrete layout, interaction, and visual decisions."

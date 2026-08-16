@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0.0",
+  "availability_policy": "Only current session or tool-exposed models may be called available. Future aliases remain candidates with needs_runtime_check.",
+  "dispatch_policy": {
+    "disabled_or_needs_runtime_check_models_are_never_scheduled_without_confirmation": true,
+    "selection_basis": ["required_capabilities", "node_role", "artifact_type", "latency", "fallback"],
+    "report_availability_in_node_contract": true
+  },
+  "models": [
+    {
+      "model_id": "current_codex",
+      "aliases": ["current", "codex_current", "gpt-5-current"],
+      "availability": "available_current_session",
+      "best_for": ["routing", "planning", "coding", "qa", "orchestration"],
+      "notes": "Current assistant runtime. Report checks as local/runtime checks, not user acceptance."
+    },
+    {
+      "model_id": "gpt_5_5",
+      "aliases": ["5.5", "gpt-5.5"],
+      "availability": "needs_runtime_check",
+      "best_for": ["drafting", "generation", "reasoning"],
+      "notes": "Alias reserved for future or account-specific runtime availability."
+    },
+    {
+      "model_id": "gpt_5_5_thinking",
+      "aliases": ["5.5thinking", "gpt-5.5-thinking"],
+      "availability": "needs_runtime_check",
+      "best_for": ["complex_reasoning", "qa", "architecture", "source_reconciliation"],
+      "notes": "Alias reserved for future or account-specific runtime availability."
+    },
+    {
+      "model_id": "image2",
+      "aliases": ["image2", "image_2"],
+      "availability": "needs_runtime_check",
+      "best_for": ["image_generation", "image_editing"],
+      "notes": "Do not claim literal image2 access unless the runtime exposes it. Current session has image_gen tool."
+    },
+    {
+      "model_id": "image_gen_runtime",
+      "aliases": ["image_gen", "image_generation_tool"],
+      "availability": "runtime_available_current_session",
+      "best_for": ["image_generation", "image_editing"],
+      "notes": "Use the exposed image_gen tool when available."
+    },
+    {
+      "model_id": "research",
+      "aliases": ["research", "deep_research"],
+      "availability": "needs_runtime_check",
+      "best_for": ["external_research", "source_collection", "fact_update"],
+      "notes": "Fallback to web search with source citations when research model is unavailable."
+    },
+    {
+      "model_id": "web_search_runtime",
+      "aliases": ["websearch", "web_search"],
+      "availability": "runtime_available_current_session",
+      "best_for": ["current_facts", "official_docs", "market_or_policy_updates"],
+      "notes": "Use for temporally unstable facts or explicit search requests."
+    }
+  ]
+}

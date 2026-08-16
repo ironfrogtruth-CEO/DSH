@@ -1,0 +1,72 @@
+{
+  "name": "editable-html-report-deck",
+  "brand": "平安好医生",
+  "portable": true,
+  "resource_roots": {
+    "asset_library": "resources/pingan-materials",
+    "presale_knowledge": "resources/knowledge/presale",
+    "local_full_knowledge_fallback": "../知识库",
+    "local_asset_library_fallback": "../素材库",
+    "local_knowledge_fallback": "../知识库/07_售前材料规范与素材库"
+  },
+  "knowledge_resolution_order": [
+    {
+      "name": "full_knowledge_pack",
+      "mode": "authoritative",
+      "root_candidates": [
+        "../知识库",
+        "./知识库"
+      ],
+      "required_indexes": [
+        "00_总索引/知识调用架构.md",
+        "00_总索引/分类目录索引.md",
+        "00_总索引/实体索引.csv",
+        "00_总索引/关系索引.csv",
+        "00_总索引/知识库文件清单.csv",
+        "00_总索引/检索与引用规范.md"
+      ]
+    },
+    {
+      "name": "portable_presale_subset",
+      "mode": "portable_fallback",
+      "root_candidates": [
+        "resources/knowledge/presale"
+      ],
+      "required_indexes": [
+        "INDEX.md",
+        "01_售前材料内容结构.md",
+        "05_产品场景与客户方案映射.md"
+      ]
+    }
+  ],
+  "required_runtime_files": [
+    "assets/report-theme.css",
+    "assets/editor-core.js",
+    "templates/editable-report-template.html"
+  ],
+  "asset_indexes": [
+    "resources/pingan-materials/99_索引与说明/html_asset_map.json",
+    "resources/pingan-materials/99_索引与说明/asset_manifest.json"
+  ],
+  "knowledge_indexes": [
+    "resources/knowledge/presale/INDEX.md",
+    "resources/knowledge/presale/05_产品场景与客户方案映射.md",
+    "resources/knowledge/presale/curated_assets.json"
+  ],
+  "full_knowledge_indexes": [
+    "../知识库/00_总索引/知识调用架构.md",
+    "../知识库/00_总索引/实体索引.csv",
+    "../知识库/00_总索引/关系索引.csv",
+    "../知识库/00_总索引/知识库文件清单.csv",
+    "../知识库/00_总索引/检索与引用规范.md"
+  ],
+  "html_contract": {
+    "slide_size": "1280x720",
+    "editable_unit": ".widget",
+    "asset_marker": [
+      "data-asset-id",
+      "data-replacement-group"
+    ],
+    "print_rule": "Use @media print and EditableReportDeck.prepareForPrint() before PDF export."
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "availability_policy": "Use runtime_available tools directly; run local_if_path_exists checks before use; mark needs_runtime_check tools as candidates only.",
+  "tools": [
+    {"tool_id": "local_read", "name": "Local file read", "availability": "runtime_available", "interfaces": ["functions.exec_command", "view_image"], "outputs": ["file_text", "file_metadata", "image_view"]},
+    {"tool_id": "local_search", "name": "Local search", "availability": "runtime_available", "interfaces": ["functions.exec_command:rg", "functions.exec_command:find"], "outputs": ["search_hits"]},
+    {"tool_id": "user_input", "name": "User confirmation", "availability": "runtime_available", "interfaces": ["plain_chat", "request_user_input_when_available"], "outputs": ["confirmation", "preference"]},
+    {"tool_id": "web_search", "name": "Web search", "availability": "runtime_available_when_web_tool_enabled", "interfaces": ["web.search_query", "web.open"], "outputs": ["external_sources"]},
+    {"tool_id": "ocr", "name": "OCR", "availability": "local_if_path_exists", "interfaces": ["/Users/marcus/Desktop/平安健康/tools/extract_image_ocr.py"], "outputs": ["ocr_text", "source_manifest"]},
+    {"tool_id": "pdf_extract", "name": "PDF extraction", "availability": "runtime_available_with_pdf_dependencies", "interfaces": ["pdf skill", "pdfplumber", "pypdf"], "outputs": ["pdf_text", "page_refs"]},
+    {"tool_id": "pdf_generate", "name": "PDF generation", "availability": "runtime_available_with_pdf_dependencies", "interfaces": ["pdf skill", "reportlab", "browser_print"], "outputs": ["pdf_file"]},
+    {"tool_id": "pdf_export", "name": "PDF export", "availability": "runtime_available_with_pdf_dependencies", "interfaces": ["browser_print", "pdf skill", "reportlab"], "outputs": ["pdf_file", "export_manifest"]},
+    {"tool_id": "pdf_render", "name": "PDF render QA", "availability": "needs_runtime_check", "interfaces": ["pdftoppm", "pdf skill"], "outputs": ["page_pngs", "render_qa"]},
+    {"tool_id": "html_editor", "name": "Editable HTML editor", "availability": "installed_skill", "interfaces": ["html-report-editor", "pingan-html-materials", "frontend-slides"], "outputs": ["editable_html"]},
+    {"tool_id": "magazine_editor", "name": "Magazine fixed-canvas HTML editor", "availability": "installed_skill", "interfaces": ["magazine-editor"], "outputs": ["fixed_canvas_html"]},
+    {"tool_id": "playwright", "name": "Browser render and interaction QA", "availability": "installed_skill", "interfaces": ["playwright skill"], "outputs": ["browser_screenshot", "console_log", "render_check"]},
+    {"tool_id": "screenshot", "name": "Desktop screenshot", "availability": "installed_skill", "interfaces": ["screenshot skill"], "outputs": ["screenshot_png"]},
+    {"tool_id": "image_generation", "name": "Image generation or editing", "availability": "runtime_available_current_session", "interfaces": ["image_gen.imagegen", "imagegen skill"], "outputs": ["png_or_jpg"]},
+    {"tool_id": "pptx", "name": "PPTX creation or editing", "availability": "needs_runtime_check", "interfaces": ["presentations plugin", "python-pptx", "frontend-slides fallback"], "outputs": ["pptx_file"]},
+    {"tool_id": "html_save", "name": "HTML file output", "availability": "runtime_available", "interfaces": ["apply_patch", "functions.exec_command for validation only"], "outputs": ["html_file"]},
+    {"tool_id": "zip_package", "name": "Portable ZIP packaging", "availability": "runtime_available", "interfaces": ["zip", "ditto"], "outputs": ["zip_file"]},
+    {"tool_id": "artifact_store", "name": "Artifact store", "availability": "registry_pattern", "interfaces": ["local files", "delivery manifest"], "outputs": ["artifact_paths", "artifact_metadata"]},
+    {"tool_id": "delivery_manifest_writer", "name": "Delivery manifest writer", "availability": "registry_pattern", "interfaces": ["json manifest"], "outputs": ["delivery_manifest.json"]},
+    {"tool_id": "source_trace_checker", "name": "Source trace checker", "availability": "registry_pattern", "interfaces": ["source_map", "source_trace"], "outputs": ["source_trace_report"]},
+    {"tool_id": "visual_contract_checker", "name": "Visual contract checker", "availability": "registry_pattern", "interfaces": ["visual_contract", "render metadata"], "outputs": ["visual_contract_qa"]},
+    {"tool_id": "restart_from_node", "name": "Restart from node", "availability": "orchestration_pattern", "interfaces": ["pipeline_state", "node_outputs"], "outputs": ["rollback_plan", "preserved_upstream_artifacts"]},
+    {"tool_id": "json_validate", "name": "JSON validation", "availability": "runtime_available", "interfaces": ["python3 json module", "jq if installed"], "outputs": ["validation_result"]},
+    {"tool_id": "mermaid", "name": "Mermaid diagram text", "availability": "model_generated", "interfaces": ["markdown mermaid"], "outputs": ["diagram_code"]},
+    {"tool_id": "transcribe", "name": "ASR transcription", "availability": "installed_skill_needs_api_key", "interfaces": ["transcribe skill"], "outputs": ["transcript"]},
+    {"tool_id": "tts", "name": "Text to speech", "availability": "needs_runtime_check", "interfaces": ["future_or_external_tts_tool"], "outputs": ["audio_file"]}
+  ]
+}

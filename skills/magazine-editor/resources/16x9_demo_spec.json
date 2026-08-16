@@ -1,0 +1,19 @@
+{
+  "title": "16x9固定画布示例_杂志编辑器Skill",
+  "canvas_type": "16x9",
+  "theme": {"primary": "#f05a22", "ink": "#1f2933", "paper": "#ffffff"},
+  "pages": [
+    {
+      "id": "wide-01",
+      "kind": "cover",
+      "top": {"height": 210, "opStart": 1, "opEnd": 0.16},
+      "footer": {"height": 96, "opStart": 0.1, "opEnd": 0.9},
+      "background": {"color": "#ffffff"},
+      "components": [
+        {"type":"text","name":"标题","x":88,"y":128,"w":780,"h":150,"z":30,"className":"title","html":"<h1>16:9固定画布汇报材料</h1><p>同一编辑器底座，切换 canvas_type 即可支持横版画布。</p>"},
+        {"type":"text","name":"能力卡","x":88,"y":350,"w":340,"h":170,"z":30,"className":"shape-card metric","html":"<span>固定画布</span><strong>1280×720</strong><p>适合投屏、内部汇报、横版演示。</p>"},
+        {"type":"text","name":"说明卡","x":468,"y":350,"w":620,"h":170,"z":30,"className":"shape-card","html":"<h3 style='margin:0 0 12px;color:#21483c'>编辑器设计原则</h3><p style='font-size:18px;line-height:1.65'>默认浏览态只看材料；进入编辑态后显示极简工具栏；选中组件后显示属性面板。能力完整，但界面克制。</p>"}
+      ]
+    }
+  ]
+}

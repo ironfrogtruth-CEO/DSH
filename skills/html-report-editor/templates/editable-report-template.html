@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Editable HTML Report Deck</title>
+<link rel="stylesheet" href="../assets/report-theme.css" />
+</head>
+<body data-asset-root="../resources/pingan-materials" data-download-name="report-edited.html">
+<div class="deck-tools">
+  <button id="insertText">插入自由文字</button>
+  <button id="insertImage">插入图片</button>
+  <button id="replaceImage" disabled>替换图片</button>
+  <button id="replaceAsset" disabled>替换素材</button>
+  <label class="tool-field">适配
+    <select id="imageFit" disabled>
+      <option value="cover">铺满</option>
+      <option value="contain">适应</option>
+      <option value="fill">拉伸</option>
+    </select>
+  </label>
+  <label class="tool-field">透明
+    <input id="imageOpacity" type="range" min="0" max="1" step="0.05" value="1" disabled>
+  </label>
+  <label class="tool-field">宽
+    <input id="widgetWidth" type="number" min="20" step="1" disabled>
+  </label>
+  <label class="tool-field">高
+    <input id="widgetHeight" type="number" min="20" step="1" disabled>
+  </label>
+  <button id="layerUp" disabled>上移</button>
+  <button id="layerDown" disabled>下移</button>
+  <button id="saveHtml">保存HTML</button>
+  <button id="printPdf" class="primary">打印/保存PDF</button>
+</div>
+
+<div id="textToolbar" class="text-toolbar">
+  <select id="fontSelect">
+    <option value="PingFang SC, Microsoft YaHei, Source Han Sans SC, Arial, sans-serif">默认黑体</option>
+    <option value="Microsoft YaHei, Arial, sans-serif">微软雅黑</option>
+    <option value="SimHei, Microsoft YaHei, sans-serif">黑体</option>
+    <option value="KaiTi, STKaiti, serif">楷体</option>
+    <option value="Arial, sans-serif">Arial</option>
+  </select>
+  <select id="fontSizeSelect">
+    <option value="12px">12</option>
+    <option value="14px">14</option>
+    <option value="16px" selected>16</option>
+    <option value="18px">18</option>
+    <option value="20px">20</option>
+    <option value="24px">24</option>
+    <option value="28px">28</option>
+    <option value="32px">32</option>
+    <option value="40px">40</option>
+  </select>
+  <input id="colorSelect" type="color" value="#f05a28" />
+  <button id="boldBtn">B</button>
+  <button id="underlineBtn">U</button>
+  <button id="alignLeftBtn">左对齐</button>
+  <button id="alignCenterBtn">居中</button>
+</div>
+
+<main class="deck" id="deck">
+  <section class="slide" data-page="1">
+    <div class="slide-bg-layer"></div>
+    <div class="page-tools"></div>
+    <div class="slide-content">
+      <div class="widget" style="left:64px;top:80px;width:620px;height:120px">
+        <div class="widget-content" contenteditable="true">
+          <h1 class="pa-page-title">战略全景：深化落地战略，协同资源打造服务闭环</h1>
+          <p class="pa-body" style="margin:14px 0 0;color:#555">这里是核心判断，说明本页对领导层最重要的结论。</p>
+        </div>
+      </div>
+
+      <div class="widget" style="left:66px;top:220px;width:720px;height:270px">
+        <div class="widget-content" contenteditable="true">
+          <div class="pa-card" style="height:100%;padding:18px">
+            <div class="pa-card-header">业务模式及进展</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px">
+              <div class="pa-card pad"><div class="pa-card-title green">服务能力升级</div><p class="pa-body">用薄线卡片承载业务模块。</p></div>
+              <div class="pa-card pad"><div class="pa-card-title orange">科技赋能提效</div><p class="pa-body">橙色强调方向，绿色强调成果。</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" style="left:850px;top:220px;width:290px;height:270px">
+        <div class="widget-content" contenteditable="true">
+          <div class="pa-card pad" style="height:100%">
+            <div class="pa-card-title">亮点</div>
+            <div class="pa-kpi-box" style="margin-top:18px">
+              <div class="pa-kpi-number">近15%</div>
+              <div class="pa-kpi-label">关键指标提升</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="widget" style="left:1110px;top:92px;width:70px;height:70px">
+        <div class="widget-content">
+          <img class="pa-asset-icon lg" src="../resources/pingan-materials/01_图标_icon/服务能力/pa_icon_vaccine_syringe.svg" data-asset-id="gen.icon_vaccine_syringe" data-replacement-group="service.vaccine" alt="疫苗接种">
+        </div>
+      </div>
+      <div class="pa-footer-note">注：本页为平安汇报模版示例，生成正式材料时应补齐口径、数据来源和业务依据。</div>
+      <div class="pa-page-number">1</div>
+    </div>
+  </section>
+</main>
+
+<script type="application/json" id="paAssetMap">
+{
+  "library_root": "../resources/pingan-materials",
+  "defaults": {
+    "service.vaccine": "gen.icon_vaccine_syringe",
+    "service.health_record": "gen.icon_health_record",
+    "service.checkup": "gen.icon_checkup_scan"
+  },
+  "groups": {
+    "service.vaccine": [
+      {
+        "asset_id": "gen.icon_vaccine_syringe",
+        "display_name": "疫苗接种",
+        "file_path": "01_图标_icon/服务能力/pa_icon_vaccine_syringe.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      },
+      {
+        "asset_id": "gen.icon_shield_cross",
+        "display_name": "免疫防护",
+        "file_path": "01_图标_icon/服务能力/pa_icon_shield_cross.svg",
+        "pa_style_score": 5,
+        "safe_for_external": true,
+        "html_usage": "default_candidate",
+        "license_status": "self_generated"
+      }
+    ]
+  }
+}
+</script>
+<script src="../assets/editor-core.js"></script>
+</body>
+</html>

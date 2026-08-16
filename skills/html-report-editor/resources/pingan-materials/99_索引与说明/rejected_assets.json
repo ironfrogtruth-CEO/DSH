@@ -1,0 +1,1156 @@
+[
+  {
+    "asset_id": "PRESALE001_A0029",
+    "category": "智能硬件/设备图",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0103",
+    "category": "智能硬件/设备图",
+    "reason": "疑似纯橙色块或过度裁切",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0105",
+    "category": "智能硬件/设备图",
+    "reason": "疑似纯橙色块或过度裁切",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0107",
+    "category": "智能硬件/设备图",
+    "reason": "疑似纯橙色块或过度裁切",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0293",
+    "category": "智能硬件/设备图",
+    "reason": "多彩高饱和",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0304",
+    "category": "智能硬件/设备图",
+    "reason": "暗色空块风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0308",
+    "category": "智能硬件/设备图",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0318",
+    "category": "智能硬件/设备图",
+    "reason": "多彩高饱和",
+    "pa_style_score": 2,
+    "score_reasons": "浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0320",
+    "category": "智能硬件/设备图",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0348",
+    "category": "智能硬件/设备图",
+    "reason": "设备图暗色占比过高",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0354",
+    "category": "智能硬件/设备图",
+    "reason": "设备图暗色占比过高",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0358",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 4,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0361",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE001_A0362",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0009",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0013",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0014",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0015",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0017",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0018",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0019",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0020",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0022",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0023",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0034",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0072",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0075",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0077",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0078",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE002_A0079",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0155",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0159",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0160",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0162",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0163",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0164",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0165",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0168",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0169",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE003_A0170",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0002",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "橙色可适配|高饱和偏多|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0005",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0006",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0007",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0008",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0012",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0021",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0026",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0046",
+    "category": "场景照片/插画",
+    "reason": "场景图偏暗或黑底过重",
+    "pa_style_score": 4,
+    "score_reasons": "橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0072",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0073",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0075",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0076",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0077",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE004_A0078",
+    "category": "场景照片/插画",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0007",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0015",
+    "category": "整页/大图版式参考",
+    "reason": "多彩高饱和",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多|仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0010",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0011",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0013",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0014",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0020",
+    "category": "整页/大图版式参考",
+    "reason": "多彩高饱和",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多|仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0024",
+    "category": "智能硬件/设备图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE005_A0027",
+    "category": "横幅/装饰条",
+    "reason": "暗色空块风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0003",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 4,
+    "score_reasons": "含平安橙|橙色可适配|浅底友好|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0007",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0008",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "橙色可适配|暗色占比过高|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0013",
+    "category": "横幅/装饰条",
+    "reason": "黑底装饰占比过高",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0014",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0016",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "含平安橙|医疗/流程语义|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0015",
+    "category": "横幅/装饰条",
+    "reason": "暗色空块风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0019",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高|尺寸偏小",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0021",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高|尺寸偏小",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0022",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高|尺寸偏小",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0023",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0024",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0025",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0026",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0054",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "医疗/流程语义|暗色占比过高|尺寸偏小",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0067",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0086",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0127",
+    "category": "横幅/装饰条",
+    "reason": "暗色空块风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0131",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0132",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0133",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE006_A0137",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "橙色可适配|浅底友好|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0025",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "橙色可适配|浅底友好|高饱和偏多|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0031",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "橙色可适配|浅底友好|高饱和偏多|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0054",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 4,
+    "score_reasons": "橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0056",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 4,
+    "score_reasons": "橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0064",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0065",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0066",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0067",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "橙色可适配|暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0024",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE007_A0039",
+    "category": "横幅/装饰条",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0088",
+    "category": "横幅/装饰条",
+    "reason": "黑底装饰占比过高",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0110",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0119",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "浅底友好|疑似文字Logo或竖条|尺寸偏小",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0174",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0175",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 1,
+    "score_reasons": "医疗/流程语义|暗色占比过高|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0177",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0179",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "医疗/流程语义|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0193",
+    "category": "整页/大图版式参考",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多|仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0199",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0200",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|橙色可适配",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0201",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "医疗/流程语义|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0202",
+    "category": "移动端/履约截图",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 5,
+    "score_reasons": "含平安橙|医疗/流程语义|橙色可适配|浅底友好",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE008_A0212",
+    "category": "整页/大图版式参考",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 4,
+    "score_reasons": "浅底友好|仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0010",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0013",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0014",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0062",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0063",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0064",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "医疗/流程语义|橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE009_A0080",
+    "category": "整页/大图版式参考",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 4,
+    "score_reasons": "医疗/流程语义|浅底友好|仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0034",
+    "category": "图标/Logo",
+    "reason": "本地Logo/文字图标外发风险",
+    "pa_style_score": 2,
+    "score_reasons": "浅底友好|疑似文字Logo或竖条",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0136",
+    "category": "整页/大图版式参考",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 3,
+    "score_reasons": "仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0141",
+    "category": "整页/大图版式参考",
+    "reason": "分类数量达到精选上限",
+    "pa_style_score": 4,
+    "score_reasons": "橙色可适配|仅作版式参考",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0033",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0043",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0045",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 2,
+    "score_reasons": "橙色可适配|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0075",
+    "category": "横幅/装饰条",
+    "reason": "暗色空块风险",
+    "pa_style_score": 1,
+    "score_reasons": "暗色占比过高",
+    "source": "local"
+  },
+  {
+    "asset_id": "PRESALE010_A0101",
+    "category": "横幅/装饰条",
+    "reason": "平安风格评分不足",
+    "pa_style_score": 3,
+    "score_reasons": "橙色可适配|浅底友好|高饱和偏多",
+    "source": "local"
+  },
+  {
+    "asset_id": 17605470,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "注射"
+  },
+  {
+    "asset_id": 39826487,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "注射"
+  },
+  {
+    "asset_id": 34622643,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "注射"
+  },
+  {
+    "asset_id": 827640,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "健康档案"
+  },
+  {
+    "asset_id": 31340416,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "健康档案"
+  },
+  {
+    "asset_id": 15103883,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "健康档案"
+  },
+  {
+    "asset_id": 17605437,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "报告"
+  },
+  {
+    "asset_id": 20154004,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "报告"
+  },
+  {
+    "asset_id": 5483859,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "报告"
+  },
+  {
+    "asset_id": 8798039,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "报告"
+  },
+  {
+    "asset_id": 17605529,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "体检"
+  },
+  {
+    "asset_id": 8289022,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "体检"
+  },
+  {
+    "asset_id": 17605540,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "营养"
+  },
+  {
+    "asset_id": 17605453,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "医生"
+  },
+  {
+    "asset_id": 16978065,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "陪诊"
+  },
+  {
+    "asset_id": 16978062,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "陪诊"
+  },
+  {
+    "asset_id": 3781371,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "音箱"
+  },
+  {
+    "asset_id": 3894464,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "音箱"
+  },
+  {
+    "asset_id": 5017554,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "音箱"
+  },
+  {
+    "asset_id": 10555222,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "音箱"
+  },
+  {
+    "asset_id": 5138650,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "音箱"
+  },
+  {
+    "asset_id": 3762276,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "音箱"
+  },
+  {
+    "asset_id": 17605442,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "药箱"
+  },
+  {
+    "asset_id": 5091786,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "酒杯"
+  },
+  {
+    "asset_id": 5048419,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "酒杯"
+  },
+  {
+    "asset_id": 5060088,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "酒杯"
+  },
+  {
+    "asset_id": 4808434,
+    "source": "iconfont",
+    "reason": "非单色SVG",
+    "query": "随访"
+  }
+]

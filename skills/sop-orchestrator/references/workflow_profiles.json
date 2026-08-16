@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "default_profile": "sop_default",
+  "profiles": [
+    {
+      "profile_id": "sop_default",
+      "display_name": "通用 SOP",
+      "steps": [
+        {"step_id": "route", "name": "路由", "order": 1, "artifact": "route_decision"},
+        {"step_id": "parse", "name": "解析", "order": 2, "artifact": "source_map"},
+        {"step_id": "structure", "name": "结构化", "order": 3, "artifact": "structure_contract"},
+        {"step_id": "generate", "name": "生成", "order": 4, "artifact": "draft_or_artifact"},
+        {"step_id": "validate", "name": "验证", "order": 5, "artifact": "qa_report"},
+        {"step_id": "export", "name": "导出", "order": 6, "artifact": "delivery_manifest"},
+        {"step_id": "review", "name": "复盘", "order": 7, "artifact": "review_summary"}
+      ]
+    },
+    {
+      "profile_id": "ppt_or_html_deck",
+      "display_name": "HTML/PPT 汇报材料",
+      "steps": [
+        {"step_id": "interview", "name": "需求采访", "order": 1, "artifact": "requirements_contract"},
+        {"step_id": "source_branch", "name": "来源分支", "order": 2, "artifact": "source_strategy"},
+        {"step_id": "materials", "name": "素材与证据", "order": 3, "artifact": "source_brief"},
+        {"step_id": "outline", "name": "大纲故事线", "order": 4, "artifact": "page_outline"},
+        {"step_id": "style", "name": "风格锁定", "order": 5, "artifact": "visual_contract"},
+        {"step_id": "pages", "name": "逐页生产", "order": 6, "artifact": "page_plan_and_render"},
+        {"step_id": "delivery", "name": "导出交付", "order": 7, "artifact": "delivery_manifest"}
+      ]
+    },
+    {
+      "profile_id": "document_review",
+      "display_name": "材料检视与复盘",
+      "steps": [
+        {"step_id": "route", "name": "判断材料类型", "order": 1, "artifact": "review_route"},
+        {"step_id": "parse", "name": "抽取结论和要求", "order": 2, "artifact": "claim_task_map"},
+        {"step_id": "evidence", "name": "事实与职责核验", "order": 3, "artifact": "evidence_map"},
+        {"step_id": "structure", "name": "形成回复结构", "order": 4, "artifact": "reply_structure"},
+        {"step_id": "generate", "name": "生成回复/安排", "order": 5, "artifact": "response_draft"},
+        {"step_id": "validate", "name": "口径与可执行性 QA", "order": 6, "artifact": "review_qa"},
+        {"step_id": "review", "name": "沉淀偏好", "order": 7, "artifact": "review_summary"}
+      ]
+    }
+  ]
+}

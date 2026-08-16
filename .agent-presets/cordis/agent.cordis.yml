@@ -239,6 +239,23 @@
     fetch: true
     searchTimeoutMs: 60000
 
+# ── 持久 shell ──────────────────────────────────────────────────────────────
+
+# `bash_persistent`: 同一会话内保留 cwd 与导出环境变量的持久 bash(状态跨调用
+# 存续)。终端服务(`terminals` + bash 后端)在 host 组合(profiles/web/cordis.patch.yml),
+# 这里只贡献模型侧工具行,消费 host 注册表,故无需 realm。
+- id: tool-bash-persistent
+  name: '@deepseek-ai/dsh-tool-bash-persistent'
+
+# ── 时间上下文 ──────────────────────────────────────────────────────────────
+
+# 每步注入当前时间与已用时长(经 `agents` 服务),便于代理感知时间流逝。
+- id: time-context
+  name: '@deepseek-ai/dsh-time-context'
+  config:
+    timeZone: Asia/Shanghai
+    refreshIntervalMs: 60000
+
 # ── self-modification ───────────────────────────────────────────────────────
 
 # Read the live runtime, mount a temporary plugin, unmount it. The toolset is a

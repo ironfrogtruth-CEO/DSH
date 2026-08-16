@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "required_runtime_fields": [
+    "template_id",
+    "skill_id",
+    "tool_ids",
+    "input_mapping",
+    "context_mapping",
+    "prompt_template",
+    "input_schema",
+    "output_schema",
+    "runtime_config",
+    "constraints",
+    "fallback",
+    "execution_unit",
+    "structured_output_schema",
+    "model_policy",
+    "qa_gates",
+    "rollback_policy",
+    "artifact_contract"
+  ],
+  "execution_units": ["local", "llm", "skill_runtime", "tool_runtime", "external_api", "browser", "image_generation", "human_confirmation"],
+  "default_rollback_policy": {
+    "enabled": true,
+    "on_user_reject": "rerun_current_node",
+    "on_schema_fail": "rerun_with_error_context",
+    "preserve_upstream_artifacts": true,
+    "clear_current_and_downstream": true
+  },
+  "default_artifact_contract": {
+    "stage": "intermediate",
+    "required_artifacts": [],
+    "trace_required": true
+  },
+  "node_resolution_fields": [
+    "resolved_skill_id",
+    "resolved_tool_ids",
+    "resolved_model_policy",
+    "resolved_qa_gates",
+    "resolved_artifact_contract",
+    "resolved_rollback_policy",
+    "resolved_context_sources",
+    "validation_status"
+  ]
+}
