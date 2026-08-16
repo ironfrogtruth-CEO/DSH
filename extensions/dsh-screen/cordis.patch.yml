@@ -1,0 +1,4 @@
+# dsh-screen bundle patch: Computer Use 最小闭环(截图+OCR+点击+输入)
+- insert:
+    - id: dsh-screen
+      name: '@local/dsh-screen'

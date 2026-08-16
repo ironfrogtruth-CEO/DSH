@@ -3,6 +3,8 @@
 # 2) MCP 客户端 — 只接免费 + 国内可用(无需翻墙) + 零配置即可用的服务器:
 #    - playwright : 本地 stdio, 免费开源, 可控制真实 Chrome(与内置浏览器工具互补)
 #    - sequential-thinking : 本地 stdio, 免费, 结构化推理辅助
+#    - wechat-mp : 公众号助手(国内, 免费; 需在微信公众平台获取 AppSecret 后填入)
+#    - tencent-docs : 腾讯文档(国内, 免费; 需在 docs.qq.com 开放平台获取个人访问令牌后填入)
 #    均为 failOnStartupError: false: 连接失败时优雅降级,不影响启动
 #    (figma/notion 为境外服务且需 OAuth 令牌, 2026-08-15 已移除)
 - insert:
@@ -11,6 +13,9 @@
 
     - id: terminal-bash
       name: '@deepseek-ai/dsh-terminal-bash'
+
+    - id: schedule
+      name: '@deepseek-ai/dsh-schedule'
 
     - id: mcp-playwright
       name: '@deepseek-ai/dsh-mcp-client'
@@ -36,4 +41,31 @@
         env: {}
         cwd: /Users/marcus/Desktop
         toolCallTimeoutMs: 30000
+        failOnStartupError: false
+
+    - id: mcp-wechat
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: wechat-mp
+        command: npx
+        args:
+          - '-y'
+          - '@xihe-lab/wechat-mp-mcp-server@latest'
+        env:
+          WECHAT_APP_ID: wx5d8afee05a2c7a25
+          WECHAT_APP_SECRET: 待填入-AppSecret
+        cwd: /Users/marcus/Desktop
+        toolCallTimeoutMs: 60000
+        failOnStartupError: false
+
+    - id: mcp-tencent-docs
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: streamable-http
+        serverName: tencent-docs
+        url: https://docs.qq.com/openapi/mcp
+        headers:
+          Authorization: Bearer 待填入-腾讯文档个人访问令牌
+        toolCallTimeoutMs: 60000
         failOnStartupError: false

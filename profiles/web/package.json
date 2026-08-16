@@ -4,6 +4,9 @@
   "dependencies": {
     "@local/dsh-browser": "link:/Users/marcus/.dsh/extensions/dsh-browser",
     "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
+    "@local/dsh-git": "link:/Users/marcus/.dsh/extensions/dsh-git",
+    "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
+    "@local/dsh-screen": "link:/Users/marcus/.dsh/extensions/dsh-screen",
     "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell"
   },
   "dsh": {
@@ -13,6 +16,9 @@
         "@deepseek-ai/dsh-web-app",
         "@local/dsh-browser",
         "@local/dsh-dsbalance",
+        "@local/dsh-git",
+        "@local/dsh-memory",
+        "@local/dsh-screen",
         "@local/dsh-shrimp-shell"
       ]
     }

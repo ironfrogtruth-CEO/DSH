@@ -1,0 +1,4 @@
+# dsh-memory bundle patch: 持久记忆工具
+- insert:
+    - id: dsh-memory
+      name: '@local/dsh-memory'

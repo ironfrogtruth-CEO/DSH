@@ -1,0 +1,4 @@
+# dsh-git bundle patch: Git/GitHub 工作流工具集
+- insert:
+    - id: dsh-git
+      name: '@local/dsh-git'
