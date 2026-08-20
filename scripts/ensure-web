@@ -31,6 +31,8 @@ fi
 SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-browser/index.js" \
   "$HOME/.dsh/extensions/dsh-memory/index.js" \
+  "$HOME/.dsh/extensions/dsh-git/index.js" \
+  "$HOME/.dsh/extensions/dsh-git/client.js" \
   "$HOME/.dsh/extensions/zhipu-media/index.js" \
   "$HOME/.dsh/extensions/zhipu-media/client.js" \
   "$HOME/.dsh/mcp-servers/zhipu-mcp/server.mjs" \

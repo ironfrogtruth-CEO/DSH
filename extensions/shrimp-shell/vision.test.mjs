@@ -156,4 +156,8 @@ test('虾缸品牌与状态灯保留已验收的桌面合同', () => {
   assert.match(client, /let indicatorItems = \[\]/)
   assert.match(client, /markBlockedSeen\(item\.ref, item\.signal_stamps\.blocked\)/)
   assert.match(client, /normalized\.signals\.blocked \|\| normalized\.signals\.artifacts_ready/)
+  assert.match(client, /id: 'shrimp-heartbeat', order: 5/)
+  assert.match(client, /id: 'shrimp-files', order: 10/)
+  assert.match(client, /dsh:utility-open/)
+  assert.doesNotMatch(client, /slots\.inject\('sidebar\.heartbeat'/)
 })

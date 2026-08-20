@@ -32,7 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         installMainMenu()
-        ensureService()
 
         let rect = NSRect(x: 0, y: 0, width: 1280, height: 840)
         window = NSWindow(
@@ -87,7 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        loadWithRetry()
+        // 先等待 ensure-web 完成可能发生的 Host 重载，再连续确认两次 HTTP
+        // 可用后加载页面，避免 WebView 命中旧插件 rev。
+        ensureService { [weak self] in
+            self?.waitForStableService()
+        }
     }
 
     // 关闭窗口即退出 app;dsh 服务保持后台运行,下次双击秒开
@@ -241,12 +244,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         webView.evaluateJavaScript(js) { _, _ in }
     }
 
-    // 后台确保服务运行(不打开浏览器,不杀已有实例)
-    func ensureService() {
+    // 后台确保服务运行。脚本可能先停掉旧 Host 再拉起新 Host，因此必须等
+    // 脚本结束后再探测页面，不能看到旧 3080 就立即加载。
+    func ensureService(completion: @escaping () -> Void) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")
         p.arguments = [ENSURE_SCRIPT]
-        try? p.run()
+        p.terminationHandler = { _ in
+            DispatchQueue.main.async(execute: completion)
+        }
+        do {
+            try p.run()
+        } catch {
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
+    func waitForStableService(attempt: Int = 0, stableChecks: Int = 0) {
+        guard attempt < 40, let url = URL(string: UI_URL) else {
+            loadWithRetry()
+            return
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 1.5
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, _ in
+            let ok = (response as? HTTPURLResponse).map { 200..<500 ~= $0.statusCode } ?? false
+            let nextStable = ok ? stableChecks + 1 : 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                guard let self = self else { return }
+                if nextStable >= 2 {
+                    self.loadWithRetry()
+                } else {
+                    self.waitForStableService(attempt: attempt + 1, stableChecks: nextStable)
+                }
+            }
+        }.resume()
     }
 
     func loadWithRetry() {

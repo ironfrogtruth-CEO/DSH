@@ -5,19 +5,24 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "index.js",
+    "client.js",
     "cordis.patch.yml"
   ],
   "dependencies": {
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
     }
   }
 }

@@ -601,6 +601,8 @@ window.__ModuleLoader__.load({
         '.shrimp-files-btn:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.1)); border-color: color-mix(in srgb, var(--dsw-alias-label-secondary, #8a8f98) 44%, transparent); }',
         '.shrimp-files-btn:focus-visible { outline: 2px solid #5b8ff9; outline-offset: 2px; }',
         '.shrimp-files-btn svg { width: 16px; height: 16px; flex: 0 0 16px; color: #ed654f; }',
+        '.shrimp-heartbeat-btn svg { color: #d99022; }',
+        '.shrimp-heartbeat-btn[aria-expanded="true"] { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.1)); border-color: color-mix(in srgb, #d99022 42%, transparent); }',
         'body[data-ds-dark-theme] .shrimp-files-btn { background: var(--dsw-alias-bg-base, transparent); color: var(--dsw-alias-label-primary, #f5f6f7); }',
         // 图片入口：本地免费识图，结果作为文字上下文回交当前 DeepSeek 模型。
         '.shrimp-image-picker { display: inline-flex; align-items: center; }',
@@ -1710,7 +1712,7 @@ window.__ModuleLoader__.load({
 
       // ---- 会话头部“产物”按钮 ----
       ctx.effect(() => slots.inject('conversation.session.header.utilities', () => slots.register(
-        { name: 'conversation.session.header.utilities', id: 'shrimp-files', order: 5, label: '产物' },
+        { name: 'conversation.session.header.utilities', id: 'shrimp-files', order: 10, label: '产物' },
         (props) => {
           const sessionId = props && props.sessionId
           React.useEffect(() => {
@@ -1795,6 +1797,22 @@ window.__ModuleLoader__.load({
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
+        position: 'relative',
+      }
+      const sidePopoverStyle = {
+        position: 'fixed',
+        zIndex: 10020,
+        top: 62,
+        right: 126,
+        boxSizing: 'border-box',
+        width: 'min(390px, calc(100vw - 28px))',
+        maxHeight: 'min(72vh, 620px)',
+        overflow: 'auto',
+        padding: 10,
+        border: '1px solid var(--dsw-alias-border-l2)',
+        borderRadius: 14,
+        background: 'var(--dsw-alias-bg-layer-1, #fff)',
+        boxShadow: '0 18px 54px rgba(20,24,31,.22), 0 3px 12px rgba(20,24,31,.1)',
       }
       const sideEntryStyle = {
         boxSizing: 'border-box',
@@ -1927,8 +1945,8 @@ window.__ModuleLoader__.load({
         // [local-mod] cron 定时:value 格式 'cron:<周几串:1/3/5/7/0>:<HH>:<MM>'(7 代表周日,内部 0)
         { label: '每周一三五日 18:30', value: 'cron:1357:18:30' },
       ]
-      ctx.effect(() => slots.inject('sidebar.heartbeat', () => slots.register(
-        { name: 'sidebar.heartbeat', id: 'shrimp-heartbeat', order: 0, label: '心跳',
+      ctx.effect(() => slots.inject('conversation.session.header.utilities', () => slots.register(
+        { name: 'conversation.session.header.utilities', id: 'shrimp-heartbeat', order: 5, label: '心跳',
           inject: () => ({
             openSession: async (sid, workspaceId) => {
               // 先切换到会话所属工作区,再打开会话(避免 unknown session)
@@ -1946,11 +1964,38 @@ window.__ModuleLoader__.load({
           const [expanded, setExpanded] = React.useState({})
           const [histOpen, setHistOpen] = React.useState({})
           const [editing, setEditing] = React.useState(null)
+          const rootRef = React.useRef(null)
           // [local-mod] 运行态:taskId → 启动时刻(ms);出现更新的产出或超时 15 分钟后结束
           const [running, setRunning] = React.useState({})
           const refresh = () => {
             api('/api/shrimp/heartbeat/list').then((d) => { if (d && d.ok) setData(d) })
           }
+          React.useEffect(() => {
+            refresh()
+            const timer = setInterval(refresh, 30000)
+            return () => clearInterval(timer)
+          }, [])
+          React.useEffect(() => {
+            if (!open) return undefined
+            const close = (event) => {
+              if (event.type === 'keydown' && event.key !== 'Escape') return
+              if (event.type === 'mousedown' && rootRef.current && rootRef.current.contains(event.target)) return
+              setOpen(false)
+            }
+            document.addEventListener('mousedown', close)
+            document.addEventListener('keydown', close)
+            return () => {
+              document.removeEventListener('mousedown', close)
+              document.removeEventListener('keydown', close)
+            }
+          }, [open])
+          React.useEffect(() => {
+            const onUtilityOpen = (event) => {
+              if (event && event.detail && event.detail.id !== 'heartbeat') setOpen(false)
+            }
+            window.addEventListener('dsh:utility-open', onUtilityOpen)
+            return () => window.removeEventListener('dsh:utility-open', onUtilityOpen)
+          }, [])
           React.useEffect(() => {
             if (!open) return
             let alive = true
@@ -2053,13 +2098,19 @@ window.__ModuleLoader__.load({
           // [local-mod] 状态指示:任意任务运行中 → 头部旋转绿环;否则最近 24h 有产出 → 绿色光晕
           const header = React.createElement('button', {
             type: 'button',
-            style: hover ? { ...sideEntryStyle, ...sideEntryHoverStyle } : sideEntryStyle,
+            className: 'shrimp-files-btn shrimp-heartbeat-btn',
             title: anyRunning
               ? '有心跳任务正在执行(对应任务行显示绿色旋转指示)'
               : '心跳:琥珀色光晕 = 该任务有未读产出(最近 24 小时内,点「会话」查看后消失);绿色 = 正在运行;点击任务行展开历史',
+            'aria-label': '心跳',
+            'aria-expanded': open,
             onMouseEnter: () => setHover(true),
             onMouseLeave: () => setHover(false),
-            onClick: () => setOpen(!open),
+            onClick: () => {
+              const next = !open
+              if (next) window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'heartbeat' } }))
+              setOpen(next)
+            },
           },
             React.createElement('span', { style: sideIconStyle }, reactIcon(sideIcons.heartbeat)),
             React.createElement('span', null, '心跳'),
@@ -2070,7 +2121,7 @@ window.__ModuleLoader__.load({
                 : null,
             tasks.length > 0 ? React.createElement('span', { style: sideBadgeStyle }, String(tasks.length)) : null,
           )
-          if (!open) return header
+          if (!open) return React.createElement('div', { ref: rootRef, style: sideEntryWrap }, header)
           const rows = tasks.length === 0
             ? React.createElement('div', { style: { padding: '8px 10px', color: 'var(--dsw-alias-label-tertiary)', fontSize: 12 } }, '暂无心跳任务')
             : tasks.map((task) => {
@@ -2099,16 +2150,16 @@ window.__ModuleLoader__.load({
                   : React.createElement('span', { style: { width: 8, height: 8, borderRadius: '50%', border: '1px solid var(--dsw-alias-label-tertiary)', background: 'transparent', flex: 'none' }, title: hist.length > 0 ? '产出已查看' : '暂无近期产出' })
               // [local-mod] 行改为两行布局:第 1 行 = 状态+名称(名称独占全宽可完整显示),第 2 行 = 操作按钮
               const rowBtn = React.createElement('div', {
-                role: 'button',
-                tabIndex: 0,
-                'aria-expanded': exp,
-                style: { ...sideRowStyle, padding: '6px 10px 6px 14px', flexDirection: 'column', alignItems: 'stretch', gap: 4 },
-                onClick: toggleExpand,
-                onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand() } },
+                style: { ...sideRowStyle, padding: '6px 10px 6px 14px', flexDirection: 'column', alignItems: 'stretch', gap: 4, cursor: 'default' },
                 onMouseEnter: (e) => { e.currentTarget.style.background = 'var(--dsw-alias-interactive-bg-hover)' },
                 onMouseLeave: (e) => { e.currentTarget.style.background = 'transparent' },
               },
-                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
+                React.createElement('button', {
+                  type: 'button',
+                  'aria-expanded': exp,
+                  style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, width: '100%', padding: 0, border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', textAlign: 'left' },
+                  onClick: toggleExpand,
+                },
                   React.createElement('span', { style: { display: 'inline-flex', flex: '0 0 auto', color: 'var(--dsw-alias-label-tertiary)', transform: exp ? 'rotate(90deg)' : 'none', transition: 'transform .14s ease' } }, reactIcon(sideIcons.chevron, 12)),
                   React.createElement('span', { style: sideIconStyle }, reactIcon(sideIcons.clock)),
                   statusEl,
@@ -2213,9 +2264,15 @@ window.__ModuleLoader__.load({
               ) : null
               return React.createElement('div', { key: task.id }, rowBtn, editPanel, histBody)
             })
-          return React.createElement('div', { style: sideEntryWrap }, header, React.createElement('div', { style: { marginTop: 4 } }, rows))
+          const popoverHead = React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 34, padding: '0 4px 8px', borderBottom: '1px solid var(--dsw-alias-border-l1)' } },
+            React.createElement('strong', { style: { fontSize: 14 } }, '心跳任务'),
+            React.createElement('span', { style: { ...sideBadgeStyle, marginLeft: 0 } }, String(tasks.length)),
+            React.createElement('button', { type: 'button', style: { ...actionButton(false), minHeight: 27, marginLeft: 'auto', padding: '0 9px', fontSize: 11 }, onClick: refresh }, '刷新'),
+            React.createElement('button', { type: 'button', 'aria-label': '关闭心跳', style: { width: 28, height: 28, border: 0, borderRadius: 8, background: 'transparent', color: 'var(--dsw-alias-label-secondary)', cursor: 'pointer', fontSize: 18 }, onClick: () => setOpen(false) }, '×'),
+          )
+          return React.createElement('div', { ref: rootRef, style: sideEntryWrap }, header, React.createElement('div', { style: sidePopoverStyle }, popoverHead, React.createElement('div', { style: { marginTop: 6 } }, rows)))
         },
-      )), 'shrimp-shell: heartbeat entry')
+      )), 'shrimp-shell: heartbeat utility')
 
       // ---- 侧边栏:Git 备份入口(所有工作区提交备份,按新到旧保留 3 个) ----
       ctx.effect(() => slots.inject('sidebar.gitbackup', () => slots.register(
