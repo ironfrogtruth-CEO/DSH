@@ -1,0 +1,7 @@
+# zhipu-media bundle patch: 智谱媒体体验增强
+# 1) 拖拽上传蒙版卡死兜底修复(client)
+# 2) mcp__zhipu__generate_image 生图卡片 + 点击放大预览(client + host 静态路由)
+# 3) 工具调用卡片折叠(client)
+- insert:
+    - id: zhipu-media
+      name: '@local/zhipu-media'

@@ -10,7 +10,21 @@ let PORT = 3080
 let UI_URL = "http://127.0.0.1:\(PORT)"
 let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/ensure-web"
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScriptMessageHandler {
+// WKWebView 会吃掉无边框标题栏的鼠标事件。用一条完全透明的原生视图
+// 接管顶部空白区域的按下事件，恢复系统窗口拖动，同时避开左侧红绿灯和右侧工具按钮。
+final class WindowDragRegionView: NSView {
+    override var mouseDownCanMoveWindow: Bool { true }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     var window: NSWindow!
     var webView: WKWebView!
     var loadInFlight = false
@@ -23,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let rect = NSRect(x: 0, y: 0, width: 1280, height: 840)
         window = NSWindow(
             contentRect: rect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -32,16 +46,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.titlebarSeparatorStyle = .none
+        window.isMovableByWindowBackground = true
         window.minSize = NSSize(width: 960, height: 600)
         window.center()
 
         let config = WKWebViewConfiguration()
+        // 只在原生客户端标记 macOS 窗口安全区；普通浏览器不改动布局。
+        let desktopMarker = WKUserScript(
+            source: "document.documentElement.dataset.shrimpDesktop = 'true'",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(desktopMarker)
         webView = WKWebView(frame: rect, configuration: config)
         webView.navigationDelegate = self
+        webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         // 原生↔Web 语音桥: Web 端按钮 → 原生 SFSpeechRecognizer
         webView.configuration.userContentController.add(self, name: "shrimpVoice")
-        window.contentView = webView
+        let contentContainer = NSView(frame: rect)
+        contentContainer.autoresizingMask = [.width, .height]
+        webView.frame = contentContainer.bounds
+        webView.autoresizingMask = [.width, .height]
+        contentContainer.addSubview(webView)
+        window.contentView = contentContainer
+
+        let dragHeight: CGFloat = 32
+        let dragLeft: CGFloat = 96
+        let dragRight: CGFloat = 300
+        let dragRegion = WindowDragRegionView(frame: NSRect(
+            x: dragLeft,
+            y: max(0, contentContainer.bounds.height - dragHeight),
+            width: max(120, contentContainer.bounds.width - dragLeft - dragRight),
+            height: dragHeight
+        ))
+        dragRegion.autoresizingMask = [.width, .minYMargin]
+        dragRegion.setAccessibilityElement(false)
+        contentContainer.addSubview(dragRegion, positioned: .above, relativeTo: webView)
+
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
@@ -213,6 +255,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         if let url = URL(string: UI_URL) {
             webView.load(URLRequest(url: url))
         }
+    }
+
+    // 大神内部页保留在当前窗口；充值等外部链接交给系统默认浏览器。
+    func isInternalURL(_ url: URL) -> Bool {
+        return url.scheme == "http" && url.host == "127.0.0.1" && url.port == PORT
+    }
+
+    func openExternalURL(_ url: URL) {
+        guard url.scheme == "https" || url.scheme == "http" else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        guard let url = navigationAction.request.url else {
+            decisionHandler(.allow)
+            return
+        }
+        if isInternalURL(url) || url.scheme == "about" {
+            decisionHandler(.allow)
+            return
+        }
+        openExternalURL(url)
+        decisionHandler(.cancel)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        createWebViewWith configuration: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction,
+        windowFeatures: WKWindowFeatures
+    ) -> WKWebView? {
+        if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+            if isInternalURL(url) {
+                webView.load(URLRequest(url: url))
+            } else {
+                openExternalURL(url)
+            }
+        }
+        return nil
     }
 
     // 服务未就绪(连接被拒) → 2 秒后重试

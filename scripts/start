@@ -5,24 +5,16 @@ export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 PORT="${DSH_PORT:-3080}"
 URL="http://127.0.0.1:$PORT"
 LOG="$HOME/.dsh/web.log"
-DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
 
 if ! command -v /usr/local/bin/node >/dev/null 2>&1; then
   echo "错误: 未找到 node (/usr/local/bin/node)" >&2; exit 1
 fi
-if [ ! -f "$DSH_BIN" ]; then
-  echo "错误: 容器未安装,请先: cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact" >&2; exit 1
+if [ ! -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ]; then
+  echo "错误: 容器未安装,请先: cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.8 --save-exact" >&2; exit 1
 fi
 
-# 已在运行 → 直接打开
-if lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-  open "$URL"
-  echo "dsh 已在运行: $URL"
-  exit 0
-fi
-
-# 启动(后台,日志到 ~/.dsh/web.log)
-nohup /usr/local/bin/node "$DSH_BIN" web >"$LOG" 2>&1 &
+# ensure-web 同时负责幂等补丁与源码变更重载。
+"$HOME/.dsh/scripts/ensure-web"
 for i in $(seq 1 30); do
   sleep 1
   if lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then break; fi

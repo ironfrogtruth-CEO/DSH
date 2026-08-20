@@ -2,12 +2,14 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
+    "@dsh-market/plugin": "^0.2.1",
     "@local/dsh-browser": "link:/Users/marcus/.dsh/extensions/dsh-browser",
     "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
     "@local/dsh-git": "link:/Users/marcus/.dsh/extensions/dsh-git",
     "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
     "@local/dsh-screen": "link:/Users/marcus/.dsh/extensions/dsh-screen",
-    "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell"
+    "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell",
+    "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media"
   },
   "dsh": {
     "profile": {
@@ -19,7 +21,9 @@
         "@local/dsh-git",
         "@local/dsh-memory",
         "@local/dsh-screen",
-        "@local/dsh-shrimp-shell"
+        "@local/dsh-shrimp-shell",
+        "@local/zhipu-media",
+        "@dsh-market/plugin"
       ]
     }
   }

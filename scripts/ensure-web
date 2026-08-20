@@ -2,19 +2,55 @@
 # ensure-web — 确保 dsh web 服务在运行(不打开浏览器)
 # 已在运行 → 直接返回(绝不杀现有实例);未运行 → 后台拉起
 PORT="${DSH_PORT:-3080}"
-if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-  exit 0
-fi
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
 LOG="$HOME/.dsh/web.log"
+STATE="$HOME/.dsh/.web-load-signature"
 mkdir -p "$HOME/.dsh"
 if [ ! -f "$DSH_BIN" ]; then
-  echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact" >>"$LOG"
+  echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.8 --save-exact" >>"$LOG"
   exit 1
 fi
 # LLM 适配器补丁(历史图片块降级为文字占位,防线程报废);幂等,install 升级后自动重打
 /usr/local/bin/node "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" >>"$LOG" 2>&1 || true
+# edit 工具自动观察补丁(先读后写策略自动满足,消除 FS_NOT_OBSERVED);幂等
+/usr/local/bin/node "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" >>"$LOG" 2>&1 || true
+
+# 本地 shrimp-shell 是独立 ESM 包，必须拥有自己的声明依赖。依赖目录被
+# 清理或首次迁移时补装一次；已存在时不访问网络、不重复安装。
+SHRIMP_SHELL_DIR="$HOME/.dsh/extensions/shrimp-shell"
+if [ ! -f "$SHRIMP_SHELL_DIR/node_modules/@deepseek-ai/dsh-tools/package.json" ]; then
+  if ! /usr/local/bin/npm install --prefix "$SHRIMP_SHELL_DIR" --ignore-scripts --no-audit --no-fund >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: shrimp-shell 依赖安装失败" >>"$LOG"
+    exit 1
+  fi
+fi
+
+# 端口已监听不等于代码已加载。插件或适配器内容变化时自动重启一次，
+# 避免 App 启动后继续使用旧 Node 进程（本次截图污染复发的直接原因）。
+SIGNATURE=$(/usr/bin/shasum -a 256 \
+  "$HOME/.dsh/extensions/dsh-browser/index.js" \
+  "$HOME/.dsh/extensions/dsh-memory/index.js" \
+  "$HOME/.dsh/extensions/zhipu-media/index.js" \
+  "$HOME/.dsh/extensions/zhipu-media/client.js" \
+  "$HOME/.dsh/mcp-servers/zhipu-mcp/server.mjs" \
+  "$HOME/.dsh/extensions/shrimp-shell/index.js" \
+  "$HOME/.dsh/extensions/shrimp-shell/client.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js" \
+  2>/dev/null | /usr/bin/shasum -a 256 | /usr/bin/awk '{print $1}')
+LOADED=""
+[ -f "$STATE" ] && LOADED=$(/bin/cat "$STATE" 2>/dev/null || true)
+if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  if [ -n "$SIGNATURE" ] && [ "$SIGNATURE" = "$LOADED" ]; then
+    exit 0
+  fi
+  echo "$(date '+%F %T') ensure-web: 检测到插件/适配器已更新，重载 Host" >>"$LOG"
+  "$HOME/.dsh/scripts/stop" >>"$LOG" 2>&1
+fi
 cd "$HOME" || exit 1
-/usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web >>"$LOG" 2>&1 &
+/usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web </dev/null >>"$LOG" 2>&1 &
+[ -n "$SIGNATURE" ] && /bin/echo "$SIGNATURE" >"$STATE"
 exit 0

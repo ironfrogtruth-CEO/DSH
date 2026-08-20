@@ -1,5 +1,5 @@
 {
-  "name": "@local/dsh-shrimp-shell",
+  "name": "@local/zhipu-media",
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
@@ -12,11 +12,11 @@
   "files": [
     "index.js",
     "client.js",
+    "index.test.mjs",
+    "client.test.mjs",
     "cordis.patch.yml"
   ],
-  "dependencies": {
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
-  },
+  "dependencies": {},
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
