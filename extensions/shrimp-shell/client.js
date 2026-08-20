@@ -90,6 +90,44 @@ window.__ModuleLoader__.load({
         return !/(^|[/_.-])(qa|qc|debug|internal|prompt|schema|manifest|trace|diagnostic)([/_.-]|$)/i.test(lower)
       }
       const filterCustomerArtifacts = (value) => unwrapItems(value).filter(isCustomerArtifact)
+      const formatArtifactSize = (value) => {
+        const bytes = Number(value)
+        if (!Number.isFinite(bytes) || bytes < 0) return '未知大小'
+        if (bytes < 1024) return `${bytes} B`
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`
+        if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`
+        return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+      }
+      const formatArtifactTime = (value) => {
+        if (!value) return '未知时间'
+        const date = new Date(value)
+        if (Number.isNaN(date.getTime())) return '未知时间'
+        return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+      }
+      const artifactTypeLabel = (artifact) => {
+        const explicit = String(artifact && (artifact.type || artifact.file_type || artifact.extension) || '').replace(/^\./, '').trim()
+        const name = artifactFileName(artifact).split(/[?#]/, 1)[0]
+        const ext = name.match(/\.([a-z0-9]+)$/i)?.[1]
+        if (explicit && !['image', 'file', 'document', 'binary', 'artifact'].includes(explicit.toLowerCase())) return explicit.toUpperCase()
+        return ext ? ext.toUpperCase() : 'FILE'
+      }
+      const compactRunNodes = (value, limit = 8) => {
+        const nodes = (Array.isArray(value) ? value : []).map((node, index) => ({ ...node, __source_index: index })).sort((left, right) => Number(left.order_index ?? left.__source_index) - Number(right.order_index ?? right.__source_index))
+        if (nodes.length <= limit) return nodes
+        const current = nodes.findIndex((node) => ['running', 'processing', 'failed', 'blocked', 'stopped', 'cancelled'].includes(String(node.status || '').toLowerCase()))
+        const keep = new Set([0, 1, nodes.length - 2, nodes.length - 1])
+        const center = current >= 0 ? current : 2
+        for (let index = Math.max(0, center - 1); index <= Math.min(nodes.length - 1, center + 1); index += 1) keep.add(index)
+        const indexes = [...keep].sort((a, b) => a - b)
+        const compacted = []
+        let previous = -1
+        for (const index of indexes) {
+          if (previous >= 0 && index - previous > 1) compacted.push({ __ellipsis: true, node_id: `ellipsis-${previous}-${index}` })
+          compacted.push(nodes[index])
+          previous = index
+        }
+        return compacted
+      }
       const shrimpSignalStamp = (row, kind, run) => {
         const state = String(row && (row.state || row.lifecycle_status || row.status) || 'draft').toLowerCase()
         if (kind === 'artifact') return String((run && (run.updated_at || run.finished_at || run.completed_at)) || row && (row.artifacts_updated_at || row.updated_at || row.created_at) || `${state}:artifact`)
@@ -166,6 +204,29 @@ window.__ModuleLoader__.load({
         }, stage.title)), h('div', {
           style: { marginTop: 3, color: 'var(--dsw-alias-label-tertiary)', fontSize: 10 },
         }, statusLabel[stage.status] || stage.status))))
+      }
+
+      function ShrimpRunRail({ nodes, run }) {
+        const source = Array.isArray(nodes) ? nodes : []
+        if (source.length === 0) return null
+        const visible = compactRunNodes(source)
+        const runStatus = String(run && run.status || '').toLowerCase()
+        return h('section', { className: 'shrimp-run-rail', 'aria-label': '工作流节点' },
+          h('div', { className: 'shrimp-run-rail-head' },
+            h('strong', null, '运行节点'),
+            h('span', null, `${source.length} 个节点`),
+            run && run.progress_percent !== undefined ? h('span', { className: 'shrimp-run-progress' }, `${Number(run.progress_percent || 0).toFixed(1)}%`) : null),
+          h('div', { className: 'shrimp-run-track' }, visible.map((node, index) => {
+            if (node.__ellipsis) return h('div', { key: node.node_id, className: 'shrimp-run-more', title: '中间节点已收起' }, '…')
+            const state = String(node.status || (runStatus ? 'pending' : 'pending')).toLowerCase()
+            let normalized = state === 'succeeded' || state === 'completed' ? 'done' : state === 'processing' || state === 'queued' ? 'running' : state === 'error' ? 'failed' : state
+            if (state === 'stopped' || state === 'cancelled') normalized = String(node.node_id || '') === String(run && run.current_node_id || '') ? 'blocked' : 'pending'
+            const name = node.node_name || node.name || node.node_id || `节点 ${index + 1}`
+            return h('div', { key: node.node_id || `${name}-${index}`, className: `shrimp-run-node is-${normalized}`, title: `${name} · ${node.progress_label || statusLabel[normalized] || normalized}` },
+              h('span', { className: 'shrimp-run-node-dot', 'aria-hidden': true }),
+              h('span', { className: 'shrimp-run-node-name' }, name),
+              h('span', { className: 'shrimp-run-node-state' }, normalized === 'done' ? '已完成' : normalized === 'running' ? `${Math.round(Number(node.progress_percent || 0))}%` : normalized === 'failed' || normalized === 'blocked' ? '已阻断' : '待运行'))
+          })))
       }
 
       function GateRows({ plan }) {
@@ -380,6 +441,7 @@ window.__ModuleLoader__.load({
         const [heartbeats, setHeartbeats] = React.useState([])
         const [selected, setSelected] = React.useState(null)
         const [detail, setDetail] = React.useState(null)
+        const [runSummary, setRunSummary] = React.useState(null)
         const [artifacts, setArtifacts] = React.useState([])
         const [knowledgeBases, setKnowledgeBases] = React.useState([])
         const [selectedKnowledgeIds, setSelectedKnowledgeIds] = React.useState([])
@@ -400,7 +462,7 @@ window.__ModuleLoader__.load({
         }
         React.useEffect(() => { load(); const timer = setInterval(load, 12_000); return () => clearInterval(timer) }, [])
         const openItem = async (item) => {
-          setSelected(item); setDetail(null); setArtifacts([]); setKnowledgeBases([]); setSelectedKnowledgeIds([]); setError(''); setBusy(true)
+          setSelected(item); setDetail(null); setRunSummary(null); setArtifacts([]); setKnowledgeBases([]); setSelectedKnowledgeIds([]); setError(''); setBusy(true)
           const currentRun = runForShrimp(item, runs)
           const normalized = normalizeShrimp(item, currentRun)
           const signalStamps = normalized.signal_stamps || {}
@@ -423,9 +485,34 @@ window.__ModuleLoader__.load({
               } catch (knowledgeError) { setError(`知识库读取失败：${apiError(knowledgeError)}`) }
             }
             const run = currentRun
-            if (run && run.id) { const value = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); setArtifacts(filterCustomerArtifacts(value)); markArtifactSeen(item.ref, run.updated_at || signalStamps.artifact) }
+            if (run && run.id) {
+              try { setRunSummary(await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/summary`)) } catch {}
+              const value = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); setArtifacts(filterCustomerArtifacts(value)); markArtifactSeen(item.ref, run.updated_at || signalStamps.artifact)
+            }
           } catch (e) { setError(apiError(e)) } finally { setBusy(false) }
         }
+        React.useEffect(() => {
+          if (!selected || selected.identity !== 'pipeline' || !selected.ref) return undefined
+          const run = runForShrimp(selected, runs)
+          if (!run || !run.id) return undefined
+          let alive = true
+          let timer = null
+          const read = async () => {
+            try {
+              const value = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/summary`)
+              if (!alive) return
+              setRunSummary(value)
+              const status = String(value && value.status || '').toLowerCase()
+              if (['done', 'completed', 'succeeded', 'failed', 'blocked', 'cancelled', 'stopped'].includes(status)) {
+                try { const artifactValue = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); if (alive) setArtifacts(filterCustomerArtifacts(artifactValue)) } catch {}
+                if (timer) clearInterval(timer)
+              }
+            } catch {}
+          }
+          timer = setInterval(read, 5000)
+          read()
+          return () => { alive = false; clearInterval(timer) }
+        }, [selected && selected.ref, runs])
         React.useEffect(() => {
           const consume = (detailValue) => {
             const ref = detailValue && detailValue.ref
@@ -458,7 +545,7 @@ window.__ModuleLoader__.load({
             setBusy(true); setError('')
             try {
               await tankApi(`/api/v1/dsh/catch-drafts/${encodeURIComponent(selected.ref)}:abandon`, { method: 'POST', headers: { 'Idempotency-Key': `dsh-abandon:${selected.ref}:${Date.now()}` }, body: JSON.stringify({ confirm_title: selected.display_name || selected.title || selected.ref }) })
-              setSelected(null); setDetail(null); setArtifacts([]); setKnowledgeBases([]); setSelectedKnowledgeIds([]); await load()
+              setSelected(null); setDetail(null); setRunSummary(null); setArtifacts([]); setKnowledgeBases([]); setSelectedKnowledgeIds([]); await load()
             } catch (e) { setError(`放弃抓虾失败：${apiError(e)}`) } finally { setBusy(false) }
           }
           const saveKnowledgeBindings = async () => {
@@ -469,21 +556,44 @@ window.__ModuleLoader__.load({
               await openItem(selected)
             } catch (e) { setError(`知识库保存失败：${apiError(e)}`) } finally { setKnowledgeBusy(false) }
           }
-          const head = h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, statusBadge(selected.state || (isDraft ? 'draft' : 'ready')), selected.updated_at ? h('span', { style: viewMuted }, new Date(selected.updated_at).toLocaleString()) : null, selected.ref ? h('code', { style: { ...viewMuted, padding: '2px 6px', borderRadius: 5 } }, selected.ref) : null)
+          const rawHeadStatus = String(!isDraft && runSummary && runSummary.status || selected.state || (isDraft ? 'draft' : 'ready')).toLowerCase()
+          const headStatus = ['stopped', 'cancelled', 'failed', 'blocked'].includes(rawHeadStatus) ? 'blocked' : ['running', 'queued', 'processing', 'trialing'].includes(rawHeadStatus) ? 'running' : ['done', 'completed', 'succeeded', 'artifacts_ready'].includes(rawHeadStatus) ? 'completed' : rawHeadStatus
+          const headTime = !isDraft && runSummary && runSummary.updated_at || selected.updated_at
+          const head = h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, statusBadge(headStatus), headTime ? h('span', { style: viewMuted }, new Date(headTime).toLocaleString()) : null, selected.ref ? h('code', { style: { ...viewMuted, padding: '2px 6px', borderRadius: 5 } }, selected.ref) : null)
           const draftRun = detail && detail.item && detail.item.run ? detail.item.run : null
           const draftRunPanel = isDraft && draftRun && (draftRun.status || draftRun.state || draftRun.progress_percent || draftRun.artifact_count) ? h('div', { style: { ...card, marginTop: 14, padding: 13 } }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, h('strong', null, '最近一次试跑'), statusBadge(draftRun.state || draftRun.status || 'queued'), draftRun.progress_percent !== undefined ? h('span', { style: viewMuted }, `${draftRun.progress_percent}%`) : null), draftRun.current_node_name ? h('div', { style: { ...viewMuted, marginTop: 6 } }, `当前节点：${draftRun.current_node_name}`) : null, draftRun.error_summary ? h('div', { style: { color: '#d94b50', marginTop: 6, fontSize: 12 } }, draftRun.error_summary) : null, draftRun.artifact_count ? h('div', { style: { ...viewMuted, marginTop: 6 } }, `已有 ${draftRun.artifact_count} 个产物，可在运行完成后从“项目与产物”打开。`) : null) : null
           let body = busy && !detail ? h('div', { style: viewMuted }, '正在读取虾详情…') : null
           if (!busy && !detail) body = h('div', { style: viewMuted }, '详情加载失败，请重试。')
           if (detail && isDraft) body = h('div', null, head, h('div', { style: { marginTop: 16 } }, h(ShrimpStageBar, { plan: detail.wizard && detail.wizard.plan }), h(GateRows, { plan: detail.wizard && detail.wizard.plan })), draftRunPanel, h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 } }, h('button', { type: 'button', style: actionButton(true), onClick: () => requestCatch({ draftId: selected.ref }) }, '继续抓虾'), h('button', { type: 'button', disabled: busy, style: { ...actionButton(false), color: '#d94b50', borderColor: '#d94b50' }, onClick: abandonSelectedDraft }, '放弃抓虾')))
           if (detail && !isDraft) {
-            const artifactsBody = artifacts.length ? h('div', { style: { display: 'grid', gap: 6, marginTop: 8 } }, h('strong', null, '最近产物'), ...artifacts.map((artifact) => h('button', { type: 'button', key: artifact.id || artifact.artifact_id, style: { ...actionButton(false), justifyContent: 'flex-start' }, onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun && latestRun.id, artifactId: artifact.id || artifact.artifact_id, artifact } })) }, artifact.name || artifact.display_name || artifact.id || '产物'))) : null
             const summary = detail.summary || {}
             const knowledgeBindings = Array.isArray(summary.knowledge_bindings) ? summary.knowledge_bindings.filter((binding) => binding && (binding.knowledge_base_name || binding.knowledge_base_id)) : []
-            const knowledgeBody = h('div', { style: { display: 'grid', gap: 8, padding: '10px 11px', borderRadius: 9, background: 'var(--dsw-alias-bg-layer-2, rgba(128,128,128,.06))' } }, h('strong', { style: { fontSize: 12 } }, '知识绑定'), knowledgeBindings.length ? h('div', { style: { display: 'grid', gap: 5 } }, knowledgeBindings.map((binding, index) => h('div', { key: binding.role || binding.knowledge_base_id || index, style: { display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, fontSize: 11 } }, h('span', { style: { color: 'var(--dsw-alias-label-tertiary)', flex: '0 0 76px' } }, binding.role || '知识库'), h('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 } }, binding.knowledge_base_name || '未命名知识库'), h('span', { style: viewMuted }, binding.revision_selector || binding.revision_id || '当前版本')))) : h('span', { style: viewMuted }, '当前未绑定知识库'), knowledgeBases.length ? h('div', { style: { display: 'grid', gap: 5, marginTop: 3 } }, h('span', { style: { ...viewMuted, fontSize: 11 } }, '修改关联（可多选）'), knowledgeBases.map((kb) => h('label', { key: kb.id, style: { display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, fontSize: 12, cursor: 'pointer' } }, h('input', { type: 'checkbox', checked: selectedKnowledgeIds.includes(String(kb.id)), onChange: (event) => setSelectedKnowledgeIds((current) => event.target.checked ? [...new Set([...current, String(kb.id)])] : current.filter((id) => id !== String(kb.id))) }), h('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, kb.name || kb.display_name || kb.id), h('span', { style: { ...viewMuted, marginLeft: 'auto', fontSize: 10 } }, kb.status || ''))), h('button', { type: 'button', disabled: knowledgeBusy, style: { ...actionButton(false), justifySelf: 'start' }, onClick: saveKnowledgeBindings }, knowledgeBusy ? '保存中…' : '保存知识库配置')) : h('span', { style: { ...viewMuted, fontSize: 11 } }, '没有可配置的知识库'))
-            const controls = h('div', { style: { display: 'grid', gap: 10, marginTop: 16 } }, h('div', { style: viewMuted }, summary.description || summary.display_name || '这是已发布的生产工作流。运行、产物与阻断状态都留在大神内。'), knowledgeBody, h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('button', { type: 'button', disabled: busy || !(selected.capabilities && selected.capabilities.can_run), style: actionButton(true), onClick: () => runItem(selected) }, activeRun ? '运行中…' : '运行这只虾'), latestRun ? h('button', { type: 'button', style: actionButton(false), onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun.id } })) }, '打开最近一次产物') : null), h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, h('span', { style: viewMuted }, '心跳'), selectedHeartbeat && selectedHeartbeat.enabled !== false ? statusBadge('running', `已开启 · 每 ${Math.max(1, Math.round((selectedHeartbeat.interval || 0) / 60))} 分钟`) : h('span', { style: viewMuted }, '未开启'), h('button', { type: 'button', disabled: busy, style: actionButton(false), onClick: () => toggleHeartbeat(selected, !(selectedHeartbeat && selectedHeartbeat.enabled !== false)) }, selectedHeartbeat && selectedHeartbeat.enabled !== false ? '关闭心跳' : '开启心跳')), artifactsBody)
-            body = h('div', null, head, controls)
+            const runView = runSummary || detail.item && detail.item.run || latestRun || null
+            const staticNodes = Array.isArray(summary.nodes) ? summary.nodes.map((node) => ({ ...node, node_name: node.node_name || node.name, status: 'pending', progress_percent: 0 })) : []
+            const runNodes = runSummary && Array.isArray(runSummary.nodes) && runSummary.nodes.length ? runSummary.nodes : staticNodes
+            const nodeRail = h(ShrimpRunRail, { nodes: runNodes, run: runView })
+            const artifactsBody = h('section', { style: { marginTop: 2 } },
+              h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } }, h('strong', { style: { fontSize: 12 } }, '最近产物'), h('span', { style: { ...viewMuted, fontSize: 10 } }, `${artifacts.length} 个文件`)),
+              artifacts.length ? h('div', { className: 'shrimp-artifact-list' }, artifacts.map((artifact) => h('button', {
+                type: 'button', key: artifact.id || artifact.artifact_id, className: 'shrimp-artifact-card',
+                onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun && latestRun.id, artifactId: artifact.id || artifact.artifact_id, artifact } })),
+              }, h('span', { className: 'shrimp-artifact-type' }, artifactTypeLabel(artifact)), h('span', { className: 'shrimp-artifact-main' }, h('span', { className: 'shrimp-artifact-name', title: artifactFileName(artifact) }, artifactFileName(artifact) || '未命名产物'), h('span', { className: 'shrimp-artifact-sub' }, `${artifactTypeLabel(artifact)} · ${formatArtifactSize(artifact.size_bytes ?? artifact.size)}`)), h('time', { className: 'shrimp-artifact-time' }, formatArtifactTime(artifact.created_at || artifact.updated_at || artifact.mtime))))) : h('div', { style: { ...viewMuted, marginTop: 7 } }, '最近一次运行还没有文件产物'))
+            const knowledgeBody = h('section', { style: { padding: '10px 11px', borderRadius: 11, background: 'var(--dsw-alias-bg-layer-2, rgba(128,128,128,.06))' } },
+              h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } }, h('strong', { style: { fontSize: 12 } }, '知识库'), h('span', { style: { ...viewMuted, fontSize: 10 } }, `已绑定 ${knowledgeBindings.length} 个 · 已选 ${selectedKnowledgeIds.length} 个`)),
+              knowledgeBases.length ? h('div', { className: 'shrimp-kb-grid' }, knowledgeBases.map((kb) => {
+                const selectedKb = selectedKnowledgeIds.includes(String(kb.id))
+                return h('label', { key: kb.id, className: `shrimp-kb-card${selectedKb ? ' is-selected' : ''}`, title: kb.name || kb.display_name || kb.id }, h('input', { type: 'checkbox', checked: selectedKb, onChange: (event) => setSelectedKnowledgeIds((current) => event.target.checked ? [...new Set([...current, String(kb.id)])] : current.filter((id) => id !== String(kb.id))) }), h('span', { className: 'shrimp-kb-name' }, kb.name || kb.display_name || kb.id), h('span', { className: 'shrimp-kb-state' }, kb.status || '可用'))
+              })) : h('div', { style: { ...viewMuted, marginTop: 7 } }, '没有可配置的知识库'),
+              knowledgeBases.length ? h('button', { type: 'button', disabled: knowledgeBusy, style: { ...actionButton(false), marginTop: 9 }, onClick: saveKnowledgeBindings }, knowledgeBusy ? '保存中…' : '保存知识库配置') : null)
+            const controls = h('div', { style: { display: 'grid', gap: 12, marginTop: 14 } },
+              h('div', { style: viewMuted }, summary.description || summary.display_name || '这是已发布的生产工作流。运行、产物与阻断状态都留在大神内。'),
+              knowledgeBody,
+              h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('button', { type: 'button', disabled: busy || !(selected.capabilities && selected.capabilities.can_run), style: actionButton(true), onClick: () => runItem(selected) }, activeRun ? '运行中…' : '运行这只虾'), latestRun ? h('button', { type: 'button', style: actionButton(false), onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun.id } })) }, '打开最近一次产物') : null),
+              h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, h('span', { style: viewMuted }, '心跳'), selectedHeartbeat && selectedHeartbeat.enabled !== false ? statusBadge('running', `已开启 · 每 ${Math.max(1, Math.round((selectedHeartbeat.interval || 0) / 60))} 分钟`) : h('span', { style: viewMuted }, '未开启'), h('button', { type: 'button', disabled: busy, style: actionButton(false), onClick: () => toggleHeartbeat(selected, !(selectedHeartbeat && selectedHeartbeat.enabled !== false)) }, selectedHeartbeat && selectedHeartbeat.enabled !== false ? '关闭心跳' : '开启心跳')),
+              artifactsBody)
+            body = h('div', null, head, nodeRail, controls)
           }
-          return h('div', { style: viewContainer, 'data-shrimp-view': 'library-detail' }, [h('div', { key: 'head', style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 } }, h('button', { type: 'button', style: actionButton(false), onClick: () => { setSelected(null); setDetail(null); setArtifacts([]); setKnowledgeBases([]); setSelectedKnowledgeIds([]) } }, '← 返回我的虾'), h('h1', { style: { ...viewTitle, fontSize: 20 } }, selected.display_name || selected.ref || '虾详情')), error ? h('div', { key: 'error', role: 'alert', style: { ...card, marginTop: 0, color: '#d94b50' } }, error) : null, h('div', { key: 'body', style: card }, body, offline ? h('div', { style: { marginTop: 12, ...viewMuted } }, '页面仍留在大神内；虾缸恢复后会自动重试。') : null)])
+          return h('div', { style: viewContainer, 'data-shrimp-view': 'library-detail' }, [h('div', { key: 'head', style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 } }, h('button', { type: 'button', style: actionButton(false), onClick: () => { setSelected(null); setDetail(null); setRunSummary(null); setArtifacts([]); setKnowledgeBases([]); setSelectedKnowledgeIds([]) } }, '← 返回我的虾'), h('h1', { style: { ...viewTitle, fontSize: 20 } }, selected.display_name || selected.ref || '虾详情')), error ? h('div', { key: 'error', role: 'alert', style: { ...card, marginTop: 0, color: '#d94b50', borderColor: 'color-mix(in srgb, #d94b50 32%, transparent)' } }, error) : null, h('div', { key: 'body', style: card }, body, offline ? h('div', { style: { marginTop: 12, ...viewMuted } }, '页面仍留在大神内；虾缸恢复后会自动重试。') : null)])
         }
         const ordered = [...items].sort((a, b) => Number(['trialing', 'running', 'queued'].includes(String(b.state || '').toLowerCase())) - Number(['trialing', 'running', 'queued'].includes(String(a.state || '').toLowerCase())) || String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
         const rows = ordered.map((item) => {
@@ -603,6 +713,29 @@ window.__ModuleLoader__.load({
         '.shrimp-files-btn svg { width: 16px; height: 16px; flex: 0 0 16px; color: #ed654f; }',
         '.shrimp-heartbeat-btn svg { color: #d99022; }',
         '.shrimp-heartbeat-btn[aria-expanded="true"] { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.1)); border-color: color-mix(in srgb, #d99022 42%, transparent); }',
+        '@keyframes shrimp-node-pass { 0% { transform: translateX(-120%); opacity: 0; } 28% { opacity: .8; } 72% { opacity: .8; } 100% { transform: translateX(220%); opacity: 0; } }',
+        '@keyframes shrimp-node-breathe { 0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, #ed654f 12%, transparent), 0 0 12px color-mix(in srgb, #ed654f 28%, transparent); } 50% { box-shadow: 0 0 0 3px color-mix(in srgb, #ed654f 18%, transparent), 0 0 22px color-mix(in srgb, #ed654f 48%, transparent); } }',
+        '.shrimp-run-rail { margin-top: 14px; padding: 12px; overflow: hidden; border: 1px solid var(--dsw-alias-border-l2); border-radius: 13px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 92%, transparent); }',
+        '.shrimp-run-rail-head { display: flex; align-items: center; gap: 8px; min-height: 22px; margin-bottom: 10px; color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
+        '.shrimp-run-rail-head strong { color: var(--dsw-alias-label-primary); font-size: 13px; }',
+        '.shrimp-run-progress { margin-left: auto; color: #ed654f; font-variant-numeric: tabular-nums; }',
+        '.shrimp-run-track { position: relative; display: flex; align-items: stretch; gap: 13px; min-width: 0; overflow: hidden; padding: 6px 2px 7px; }',
+        '.shrimp-run-track::before { content: ""; position: absolute; top: 50%; right: 6px; left: 6px; height: 2px; background: var(--dsw-alias-border-l2); transform: translateY(-50%); }',
+        '.shrimp-run-node { --node-color: #9299a3; position: relative; display: grid; grid-template-columns: 9px minmax(0,1fr); grid-template-rows: auto auto; column-gap: 7px; flex: 1 1 112px; min-width: 82px; max-width: 138px; min-height: 52px; padding: 8px 9px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--node-color) 28%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--node-color) 6%, var(--dsw-alias-bg-base, #fff)); }',
+        '.shrimp-run-node { z-index: 1; }',
+        '.shrimp-run-node.is-done { --node-color: #2c9a68; } .shrimp-run-node.is-running { --node-color: #ed654f; animation: shrimp-node-breathe 1.8s ease-in-out infinite; } .shrimp-run-node.is-failed, .shrimp-run-node.is-blocked { --node-color: #d94b50; }',
+        '.shrimp-run-node.is-running::before { content: ""; position: absolute; inset: -20% auto -20% 0; width: 42%; background: linear-gradient(90deg, transparent, color-mix(in srgb, #fff 58%, transparent), transparent); transform: translateX(-120%); animation: shrimp-node-pass 1.65s linear infinite; }',
+        '.shrimp-run-node-dot { z-index: 1; grid-row: 1 / 3; align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--node-color); box-shadow: 0 0 8px color-mix(in srgb, var(--node-color) 52%, transparent); }',
+        '.shrimp-run-node-name { z-index: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-size: 11.5px; font-weight: 620; }',
+        '.shrimp-run-node-state { z-index: 1; color: var(--node-color); font-size: 9.5px; font-variant-numeric: tabular-nums; }',
+        '.shrimp-run-more { z-index: 1; display: grid; place-items: center; flex: 0 0 28px; color: var(--dsw-alias-label-tertiary); background: var(--dsw-alias-bg-layer-1); font-size: 18px; letter-spacing: 2px; }',
+        '.shrimp-kb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; margin-top: 8px; }',
+        '.shrimp-kb-card { position: relative; display: grid; grid-template-columns: 18px minmax(0,1fr); grid-template-rows: auto auto; gap: 1px 7px; min-width: 0; padding: 8px 9px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-base); cursor: pointer; transition: border-color .14s ease, background .14s ease, box-shadow .14s ease; }',
+        '.shrimp-kb-card:hover { background: var(--dsw-alias-interactive-bg-hover); } .shrimp-kb-card.is-selected { border-color: color-mix(in srgb, #4e7de9 52%, transparent); background: color-mix(in srgb, #4e7de9 8%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, #4e7de9 8%, transparent); }',
+        '.shrimp-kb-card input { grid-row: 1 / 3; align-self: center; width: 16px; height: 16px; margin: 0; accent-color: #4e7de9; } .shrimp-kb-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-size: 11.5px; font-weight: 580; } .shrimp-kb-state { color: var(--dsw-alias-label-tertiary); font-size: 9.5px; }',
+        '.shrimp-artifact-list { display: grid; gap: 7px; margin-top: 8px; } .shrimp-artifact-card { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 54px; padding: 7px 9px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); cursor: pointer; text-align: left; } .shrimp-artifact-card:hover { background: var(--dsw-alias-interactive-bg-hover); }',
+        '.shrimp-artifact-type { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: color-mix(in srgb, #ed654f 9%, transparent); color: #d85b47; font-size: 9px; font-weight: 700; letter-spacing: .02em; } .shrimp-artifact-main { min-width: 0; } .shrimp-artifact-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 620; } .shrimp-artifact-sub { display: block; margin-top: 2px; color: var(--dsw-alias-label-tertiary); font-size: 9.5px; } .shrimp-artifact-time { color: var(--dsw-alias-label-tertiary); font-size: 9.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }',
+        '@media (prefers-reduced-motion: reduce) { .shrimp-run-node.is-running, .shrimp-run-node.is-running::before { animation: none !important; } }',
         'body[data-ds-dark-theme] .shrimp-files-btn { background: var(--dsw-alias-bg-base, transparent); color: var(--dsw-alias-label-primary, #f5f6f7); }',
         // 图片入口：本地免费识图，结果作为文字上下文回交当前 DeepSeek 模型。
         '.shrimp-image-picker { display: inline-flex; align-items: center; }',
@@ -1255,9 +1388,10 @@ window.__ModuleLoader__.load({
                 const name = document.createElement('span')
                 name.className = 'nm'
                 name.textContent = artifactDisplayName(artifact)
+                name.title = artifactDisplayName(artifact)
                 const meta = document.createElement('span')
                 meta.className = 'meta'
-                meta.textContent = '虾缸运行产物'
+                meta.textContent = `${artifactTypeLabel(artifact)} · ${formatArtifactSize(artifact.size_bytes ?? artifact.size)} · ${formatArtifactTime(artifact.created_at || artifact.updated_at || artifact.mtime)}`
                 row.appendChild(icon); row.appendChild(name); row.appendChild(meta)
                 row.addEventListener('click', () => showRemoteArtifact(preview, artifact, row))
                 artifacts.content.prepend(row)
@@ -1298,11 +1432,12 @@ window.__ModuleLoader__.load({
               if (data.cwd && file.path.startsWith(data.cwd)) {
                 rel = file.path.slice(data.cwd.length).replace(/^\//, '')
               }
-              name.textContent = rel
+              const fileName = rel.split('/').filter(Boolean).pop() || rel
+              name.textContent = fileName
               name.title = file.path
               const meta = document.createElement('span')
               meta.className = 'meta'
-              meta.textContent = fmtSize(file.size) + ' · ' + fmtTime(file.mtime)
+              meta.textContent = `${artifactTypeLabel({ name: fileName })} · ${fmtSize(file.size)} · ${fmtTime(file.mtime)}`
               row.appendChild(icon)
               row.appendChild(name)
               row.appendChild(meta)
