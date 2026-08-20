@@ -1,0 +1,43 @@
+{
+  "name": "dsh-profile-web-intelligence",
+  "private": true,
+  "dependencies": {
+    "@dsh-market/plugin": "link:/Users/marcus/.dsh/profiles/web/node_modules/@dsh-market/plugin",
+    "@local/dsh-browser": "link:/Users/marcus/.dsh/extensions/dsh-browser",
+    "@local/dsh-code-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-code-intelligence",
+    "@local/dsh-compaction-v2": "link:/Users/marcus/.dsh/extensions/dsh-compaction-v2",
+    "@local/dsh-cross-session": "link:/Users/marcus/.dsh/extensions/dsh-cross-session",
+    "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
+    "@local/dsh-evals": "link:/Users/marcus/.dsh/extensions/dsh-evals",
+    "@local/dsh-frontend-qa": "link:/Users/marcus/.dsh/extensions/dsh-frontend-qa",
+    "@local/dsh-git": "link:/Users/marcus/.dsh/extensions/dsh-git",
+    "@local/dsh-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-intelligence",
+    "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
+    "@local/dsh-screen": "link:/Users/marcus/.dsh/extensions/dsh-screen",
+    "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell",
+    "@local/dsh-tool-policy": "link:/Users/marcus/.dsh/extensions/dsh-tool-policy",
+    "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@local/dsh-browser",
+        "@local/dsh-dsbalance",
+        "@local/dsh-git",
+        "@local/dsh-memory",
+        "@local/dsh-screen",
+        "@local/dsh-shrimp-shell",
+        "@local/zhipu-media",
+        "@dsh-market/plugin",
+        "@local/dsh-tool-policy",
+        "@local/dsh-intelligence",
+        "@local/dsh-code-intelligence",
+        "@local/dsh-cross-session",
+        "@local/dsh-frontend-qa",
+        "@local/dsh-evals"
+      ]
+    }
+  }
+}

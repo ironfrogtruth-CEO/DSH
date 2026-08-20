@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-vision-live-acceptance",
+  "timeZone": "Asia/Shanghai",
+  "testedAt": "2026-08-20T17:03:27+08:00",
+  "sessionId": "session-13b96e96-cdcc-438b-ac60-27727f39ad7a",
+  "route": {
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash",
+    "policy": "bridge"
+  },
+  "rootCause": {
+    "sourceEventSeq": 9506,
+    "sourceEventType": "tool/result",
+    "tool": "browser_open",
+    "content": "nested image block from browser screenshot",
+    "firstFailedTurnEndSeq": 9513,
+    "errorCode": "UNSUPPORTED_CONTENT"
+  },
+  "recoveryAcceptance": {
+    "status": "passed",
+    "afterHostReload": true,
+    "inputEventSeq": 9543,
+    "assistantTextChunkSeq": 10622,
+    "turnEndSeq": 10627,
+    "turnEndReason": "completed",
+    "expectedText": "会话已恢复。",
+    "originalLogRewritten": false,
+    "activeRequestSanitized": true
+  },
+  "directImageAcceptance": {
+    "status": "passed",
+    "fixture": "extensions/shrimp-shell/assets/hero-mark-cropped.png",
+    "visionProvider": "zhipu-mcp",
+    "visionModel": "glm-4v-flash",
+    "userMessageEventSeq": 10632,
+    "userMessageContainsImageBlock": false,
+    "assistantMessageEventSeq": 10996,
+    "turnEndSeq": 10998,
+    "turnEndReason": "completed",
+    "rawImageSentToDeepSeek": false
+  },
+  "focusedTests": {
+    "file": "extensions/shrimp-shell/vision.test.mjs",
+    "passed": 12,
+    "failed": 0
+  },
+  "screenshot": "output/deepseek-harness-evolution/validation/vision-live-acceptance.png"
+}

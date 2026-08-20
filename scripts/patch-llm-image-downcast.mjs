@@ -12,6 +12,8 @@
  *   - dsh-llm-pi-ai 的 textOnlyContext()
  * 设置环境变量 DSH_LLM_STRICT_IMAGES=1 可恢复旧的硬拒绝行为(视觉模型部署)。
  *
+ * 仅适用于 rc.7 及更早版本。rc.8 起官方适配器已按模型能力
+ * 区分文本和原生图片路径，继续改写 bundle 反而会破坏原生多模态。
  * 幂等:已含标记的文件直接跳过;install 升级后重跑即可(ensure-web 已接线)。
  * 用法:node ~/.dsh/scripts/patch-llm-image-downcast.mjs
  */
@@ -19,31 +21,34 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-const MARKER = '[dsh-patch:image-downcast v1]'
+const MARKER = '[dsh-patch:image-downcast v2]'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+// rc.8 起，DeepSeek 与 pi-ai 适配器已原生处理图片能力声明、
+// 持久附件与请求体上限。旧补丁只能服务于 rc.7 及更早版本。
+const dshPackage = path.join(root, 'install/node_modules/@deepseek-ai/dsh/package.json')
+try {
+	const installed = JSON.parse(await readFile(dshPackage, 'utf8'))
+	const match = /^0\.1\.0-rc\.(\d+)$/.exec(String(installed.version || ''))
+	if (!match || Number(match[1]) >= 8) {
+		console.log(`[patch] 跳过: DSH ${installed.version} 已原生支持按模型能力处理图片`)
+		process.exit(0)
+	}
+} catch (error) {
+	console.error(`[patch] 警告:无法读取 DSH 版本，按旧版兼容补丁继续: ${error.message}`)
+}
 
 const DOWNCAST_BODY = `if (!contentHasImage(blocks)) return;
 	if (process.env.DSH_LLM_STRICT_IMAGES === "1") throw new LlmError("The DeepSeek chat-completions adapter does not support image content.", "UNSUPPORTED_CONTENT");
-	// ${MARKER} 历史中的图片块降级为文字占位(否则该 block 永久留在历史里,
-	// 之后每一轮序列化都抛 UNSUPPORTED_CONTENT,线程报废)。视觉模型部署设
-	// DSH_LLM_STRICT_IMAGES=1 恢复硬拒绝。
-	for (const block of blocks) {
-		if (block.type === "image") {
-			const id = block.attachment?.attachmentId ?? "unknown";
-			block.type = "text";
-			block.text = "[图片已跳过: 当前 DeepSeek 模型不支持图像输入 (attachment: " + id + ")]";
-			delete block.attachment;
-		} else if (block.type === "tool-result" && Array.isArray(block.content)) {
-			for (const inner of block.content) {
-				if (inner.type === "image") {
-					const id2 = inner.attachment?.attachmentId ?? "unknown";
-					inner.type = "text";
-					inner.text = "[截图/图片已跳过: 当前模型不支持图像输入 (attachment: " + id2 + ")]";
-					delete inner.attachment;
-				}
-			}
-		}
-	}`
+	// ${MARKER} 会话消息可能是冻结对象,不做原地改写。
+	// flattenText() 在序列化阶段生成文字占位。`
+
+const DEEPSEEK_FLATTEN_OLD = `function flattenText(blocks) {
+	return blocks.filter((block) => block.type === "text").map((block) => block.text).join("");
+}`
+const DEEPSEEK_FLATTEN_NEW = `function flattenText(blocks) {
+	return blocks.map((block) => block.type === "text" ? block.text : block.type === "image" ? \`[图片已转为文字识别结果；原始附件未发送给当前 DeepSeek 文本模型: \${block.attachment?.attachmentId ?? "unknown"}]\` : "").join("");
+}`
 
 const targets = [
   {
@@ -62,28 +67,28 @@ const targets = [
 
 const piBody = `if (contentHasImage(message.content)) {
 			if (process.env.DSH_LLM_STRICT_IMAGES === "1") throw new LlmError("pi-ai image conversion requires the durable attachment service", "UNSUPPORTED_CONTENT");
-			// ${MARKER} 无附件服务的纯文本路径:图片块降级为文字占位,避免历史残留导致线程报废。
-			for (const block of message.content) {
-				if (block.type === "image") {
-					const id = block.attachment?.attachmentId ?? "unknown";
-					block.type = "text";
-					block.text = "[图片已跳过: 当前模型不支持图像输入 (attachment: " + id + ")]";
-					delete block.attachment;
-				} else if (block.type === "tool-result" && Array.isArray(block.content)) {
-					for (const inner of block.content) {
-						if (inner.type === "image") {
-							const id2 = inner.attachment?.attachmentId ?? "unknown";
-							inner.type = "text";
-							inner.text = "[截图/图片已跳过: 当前模型不支持图像输入 (attachment: " + id2 + ")]";
-							delete inner.attachment;
-						}
-					}
-				}
-			}
+			// ${MARKER} 只读消息不做原地改写；flattenText/toolResultText 生成文字占位。
 		}`
 
+const PI_FLATTEN_OLD = `function flattenText(message) {
+	return message.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+}
+/** Flatten text recursively inside one tool result. */
+function toolResultText(blocks) {
+	return blocks.map((block) => block.type === "text" ? block.text : block.type === "tool-result" ? toolResultText(block.content) : "").join("");
+}`
+const PI_FLATTEN_NEW = `function flattenText(message) {
+	return message.content.map((block) => block.type === "text" ? block.text : block.type === "image" ? \`[图片已转为文字识别结果；原始附件未发送给当前文本模型: \${block.attachment?.attachmentId ?? "unknown"}]\` : "").join("");
+}
+/** Flatten text recursively inside one tool result. */
+function toolResultText(blocks) {
+	return blocks.map((block) => block.type === "text" ? block.text : block.type === "image" ? \`[图片已转为文字识别结果；原始附件未发送给当前文本模型: \${block.attachment?.attachmentId ?? "unknown"}]\` : block.type === "tool-result" ? toolResultText(block.content) : "").join("");
+}`
+
 const replacements = [
+  { file: targets[0].file, old: DEEPSEEK_FLATTEN_OLD, new: DEEPSEEK_FLATTEN_NEW, name: 'dsh-llm-deepseek: flattenText' },
   { ...targets[0], new: `function assertTextOnly(blocks) {\n\t${DOWNCAST_BODY}\n}` },
+  { file: targets[1].file, old: PI_FLATTEN_OLD, new: PI_FLATTEN_NEW, name: 'dsh-llm-pi-ai: flattenText' },
   { ...targets[1], new: piBody },
 ]
 
@@ -97,7 +102,8 @@ for (const { file, old, new: next, name } of replacements) {
     console.error(`[patch] 跳过(文件不存在): ${file} (${err.code})`)
     continue
   }
-  if (src.includes(MARKER)) {
+  const guardAlreadyPatched = (name.includes('assertTextOnly') || name.includes('textOnlyContext')) && src.includes(MARKER)
+  if (src.includes(next) || guardAlreadyPatched) {
     console.log(`[patch] 已打过补丁,跳过: ${name}`)
     continue
   }

@@ -7,8 +7,8 @@ echo "== 恢复容器 =="
 [ -f "$HOME/.dsh/container.manifest.yaml" ] || { echo "❌ 未找到 manifest,确认已解包"; exit 1; }
 
 if [ ! -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ]; then
-  echo "安装固定运行时 @deepseek-ai/dsh@0.1.0-rc.6 ..."
-  cd "$HOME/.dsh/install" && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact --no-audit --no-fund || exit 1
+  echo "安装固定运行时 @deepseek-ai/dsh@0.1.0-rc.8 ..."
+  cd "$HOME/.dsh/install" && npm install @deepseek-ai/dsh@0.1.0-rc.8 --save-exact --no-audit --no-fund || exit 1
 fi
 
 chmod +x "$HOME/.dsh/bin/dsh" "$HOME/.dsh/scripts/"* 2>/dev/null

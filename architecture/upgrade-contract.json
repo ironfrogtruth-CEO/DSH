@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "baselineVersion": "0.1.0-rc.8",
+  "candidateVersion": null,
+  "installStrategy": {
+    "stagingRequired": true,
+    "allowInPlaceOverwrite": false,
+    "switchOnlyAfterAllGatesPass": true,
+    "offlineRollbackArtifactRequired": true
+  },
+  "uiContract": {
+    "manifest": "output/deepseek-harness-evolution/ui-integrity/ui-baseline.sha256.json",
+    "baselineScreenshot": "output/deepseek-harness-evolution/ui-integrity/current/home-1440x1000.png",
+    "allowAutomaticRebaseline": false,
+    "protectedPatterns": [
+      "apps/*.swift",
+      "extensions/**/client.js",
+      "custom-ui-patches/**/*.{js,css,tsx,jsx}"
+    ],
+    "requiredFlows": [
+      "home-load",
+      "session-switch",
+      "composer-text-send",
+      "composer-image-route",
+      "settings-open",
+      "existing-tool-card-render"
+    ]
+  },
+  "capabilityContract": {
+    "requiredProfiles": [
+      "profiles/headless",
+      "profiles/web-intelligence"
+    ],
+    "requiredExtensions": [
+      "extensions/dsh-intelligence",
+      "extensions/dsh-compaction-v2",
+      "extensions/dsh-memory",
+      "extensions/dsh-cross-session",
+      "extensions/dsh-code-intelligence",
+      "extensions/dsh-frontend-qa",
+      "extensions/dsh-evals",
+      "extensions/dsh-tool-policy",
+      "extensions/shrimp-shell"
+    ],
+    "requiredBehaviors": [
+      "append-only-session-events",
+      "deepseek-text-model-vision-bridge",
+      "structured-continuation-capsule",
+      "compaction-memory-candidate",
+      "memory-candidate-review",
+      "cross-session-project-isolation",
+      "taskgraph-evidence-gates",
+      "code-index-candidate-labels",
+      "ui-read-only-qa"
+    ]
+  },
+  "gates": [
+    {
+      "id": "runtime-contract",
+      "command": "node scripts/verify-host-architecture.mjs --format json"
+    },
+    {
+      "id": "ui-integrity",
+      "command": "node scripts/verify-ui-integrity.mjs check --manifest output/deepseek-harness-evolution/ui-integrity/ui-baseline.sha256.json --json"
+    },
+    {
+      "id": "intelligence-regression",
+      "command": "node scripts/run-intelligence-regression.mjs --output output/deepseek-harness-evolution/validation/intelligence-regression-upgrade.json"
+    },
+    {
+      "id": "headless-loader",
+      "command": "node profiles/headless/verify-profile.mjs --smoke"
+    },
+    {
+      "id": "doctor",
+      "command": "./scripts/doctor"
+    },
+    {
+      "id": "reliable-preset",
+      "command": "node skills/reliable-development/scripts/verify_reliable_preset.mjs"
+    },
+    {
+      "id": "upgrade-readiness",
+      "command": "node scripts/verify-upgrade-readiness.mjs --mode candidate --staging-root <candidate-root> --json"
+    }
+  ],
+  "dataContract": {
+    "canonicalState": [
+      "sessions",
+      "memories",
+      "storages"
+    ],
+    "mustRemainAppendOnly": [
+      "session event logs",
+      "compaction source events",
+      "memory provenance events"
+    ],
+    "derivedIndexesMustBeRebuildable": true,
+    "migrationOnCopyFirst": true,
+    "rollbackVerificationRequired": true
+  },
+  "rollback": {
+    "targetVersion": "0.1.0-rc.8",
+    "preserveFailedCandidateForDiagnosis": true,
+    "deleteOrRewriteCanonicalData": false
+  }
+}

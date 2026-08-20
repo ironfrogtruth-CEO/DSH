@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-web-intelligence-candidate-acceptance",
+  "stage": "initial-loader-and-render-only",
+  "supersededBy": "output/deepseek-harness-evolution/validation/web-intelligence-live-acceptance.json",
+  "testedAt": "2026-08-20T17:10:40+08:00",
+  "profile": "web-intelligence",
+  "defaultProfileChanged": false,
+  "uiFilesModifiedByCandidate": false,
+  "composition": {
+    "reusesCurrentWebBundles": true,
+    "toolPolicyMode": "observe",
+    "compactionProvider": "@local/dsh-compaction-v2",
+    "hostExtensions": [
+      "@local/dsh-intelligence",
+      "@local/dsh-memory",
+      "@local/dsh-code-intelligence",
+      "@local/dsh-cross-session",
+      "@local/dsh-frontend-qa",
+      "@local/dsh-evals",
+      "@local/dsh-tool-policy"
+    ]
+  },
+  "checks": {
+    "dumpConfig": "passed",
+    "webHelpFullLoader": "passed",
+    "startupOnCandidatePort": "passed",
+    "candidatePort": 3081,
+    "homeHttpStatus": 200,
+    "visionPolicy": "bridge",
+    "browserSnapshot": "passed",
+    "candidateStoppedAfterCheck": true,
+    "productionPortStillListening": true
+  },
+  "dataIsolation": {
+    "newModuleStoresDirectedToTmp": true,
+    "modelOrToolCallExecuted": false,
+    "canonicalSessionMutationByCandidate": false
+  },
+  "evidence": {
+    "screenshot": "output/deepseek-harness-evolution/validation/web-intelligence-candidate.png",
+    "profileReadme": "profiles/web-intelligence/README.md"
+  },
+  "boundary": "This proves composition, Loader, startup and unchanged Web rendering. It is not real model/tool acceptance for the candidate profile and does not authorize switching the default Web profile."
+}

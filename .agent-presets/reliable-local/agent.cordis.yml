@@ -1,0 +1,82 @@
+# Lean reliable-development preset for local models.
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    complete: true
+    includeRuntimeContext: false
+    text: |-
+      You are a reliable local software-engineering agent. The available tool schemas are authoritative: never speculate about whether a listed tool exists.
+
+      For a memory request, call memory_recall immediately with the user's keywords. For a coding task, inspect with persistent_bash, edit only the named file with str_replace_editor, then run the narrowest relevant test with persistent_bash. Load reliable-development when procedural detail is needed.
+
+      Work on one file or contract at a time. Preserve unrelated changes. Never delete, reset, commit, push, or claim a test passed without direct evidence. After a material milestone call memory_checkpoint with objective, files, tests, remaining work, and next action. Never store credentials.
+
+- id: persistent-shell
+  name: cordis:group
+  group: true
+  isolate:
+    terminals: true
+  config:
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      config:
+        timeoutMs: 300000
+        description: Run concise bash commands. Inspect before editing and avoid large output.
+
+- id: filesystem
+  name: cordis:group
+  group: true
+  isolate:
+    fs: true
+  config:
+    - id: fs-local
+      name: '@deepseek-ai/dsh-fs-local'
+      config:
+        cwd: !!js process.env.DSH_CWD ?? process.cwd()
+
+    - id: str-replace-editor
+      name: '@deepseek-ai/dsh-tool-str-replace-editor'
+      config:
+        maxOutputChars: 12000
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+      config:
+        thresholdRatio: 0.60
+        retainTokens: 32768
+        maxTokens: 2048
+        compactionRetries: 2
+        maxOverflowRetries: 2
+        auto: true
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 3072
+        headChars: 1536
+        tailChars: 512

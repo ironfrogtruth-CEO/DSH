@@ -1,0 +1,2 @@
+name: 可靠本地开发模式
+description: 为本机 Gemma 等中型模型精简上下文与工具决策，保留持久 Shell、精确编辑、Skills、记忆和自动压缩。

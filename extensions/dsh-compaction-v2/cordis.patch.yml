@@ -1,0 +1,7 @@
+# dsh-compaction-v2 bundle patch: opt-in Host compaction engine replacement.
+# Replace the profile's original compaction-basic row; never mount both rows.
+# The package has no client half and must not be enabled until the rc.8 profile
+# has an explicit compatibility/rollback decision.
+- insert:
+    - id: dsh-compaction-v2
+      name: '@local/dsh-compaction-v2'

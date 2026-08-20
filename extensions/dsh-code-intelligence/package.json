@@ -1,0 +1,39 @@
+{
+  "name": "@local/dsh-code-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./store": "./store.js",
+    "./scanner": "./scanner.js",
+    "./extractors": "./extractors.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "store.js",
+    "scanner.js",
+    "extractors.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec *.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dsh": {
+    "hostOnly": true,
+    "explicitInvocation": true,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

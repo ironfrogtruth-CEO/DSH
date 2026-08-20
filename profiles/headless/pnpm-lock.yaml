@@ -1,0 +1,34 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@local/dsh-code-intelligence':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-code-intelligence
+        version: link:../../extensions/dsh-code-intelligence
+      '@local/dsh-compaction-v2':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-compaction-v2
+        version: link:../../extensions/dsh-compaction-v2
+      '@local/dsh-cross-session':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-cross-session
+        version: link:../../extensions/dsh-cross-session
+      '@local/dsh-evals':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-evals
+        version: link:../../extensions/dsh-evals
+      '@local/dsh-frontend-qa':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-frontend-qa
+        version: link:../../extensions/dsh-frontend-qa
+      '@local/dsh-intelligence':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-intelligence
+        version: link:../../extensions/dsh-intelligence
+      '@local/dsh-memory':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-memory
+        version: link:../../extensions/dsh-memory
+      '@local/dsh-tool-policy':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-tool-policy
+        version: link:../../extensions/dsh-tool-policy

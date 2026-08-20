@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-automatic-pressure-compaction-live-acceptance",
+  "testedAt": "2026-08-20T18:33:58+08:00",
+  "profile": "web-intelligence",
+  "preset": "isolated reliable-development copy",
+  "isolation": {
+    "temporaryDshHome": true,
+    "formalDataRead": false,
+    "formalDataWritten": false,
+    "formalThresholdsChanged": false,
+    "lowThresholdOnlyInTemporaryPreset": true
+  },
+  "testPolicy": {
+    "thresholdRatio": 0.005,
+    "retainTokens": 500,
+    "auto": true,
+    "purpose": "force the pressure path with a small synthetic conversation; not a production recommendation"
+  },
+  "sessionId": "session-b65bbe4b-1301-464c-b867-20f95c8d6e7e",
+  "triggerTurn": 4,
+  "automaticCompactions": [
+    {
+      "compactionId": "072e39e3-9345-4921-83a7-5fa2409d4e9c",
+      "startSeq": 604,
+      "summarySeq": 605,
+      "endSeq": 607,
+      "shadowedNodes": 3,
+      "sourceCommandId": null,
+      "capsuleRevision": 1
+    },
+    {
+      "compactionId": "66208067-ecb4-4203-8371-3f5c8433d1bd",
+      "startSeq": 608,
+      "summarySeq": 609,
+      "endSeq": 611,
+      "shadowedNodes": 1,
+      "sourceCommandId": null,
+      "capsuleRevision": 2
+    },
+    {
+      "compactionId": "f388b217-6e80-4c72-9304-56649ebb6c8a",
+      "startSeq": 612,
+      "summarySeq": 613,
+      "endSeq": 615,
+      "shadowedNodes": 1,
+      "sourceCommandId": null,
+      "capsuleRevision": 3
+    }
+  ],
+  "boundedConvergence": {
+    "attempts": 3,
+    "infiniteLoop": false,
+    "turnCompleted": true,
+    "turnEndSeq": 787,
+    "turnEndReason": "completed",
+    "assistantText": "压力四完成"
+  },
+  "retention": {
+    "allSummariesStructured": true,
+    "allCapsulesCommitted": true,
+    "capsules": 3,
+    "memoryCandidates": 3,
+    "goalRetentionRate": 1,
+    "uiConstraintRetentionRate": 1,
+    "pathRetentionRate": 1,
+    "numberRetentionRate": 1
+  },
+  "restartAndRecovery": {
+    "normalThresholdRestoredBeforeRestart": true,
+    "restarted": true,
+    "assistantMessageSeq": 925,
+    "turnEndSeq": 927,
+    "turnEndReason": "completed",
+    "goalRecovered": true,
+    "uiConstraintRecovered": true,
+    "pathRecovered": true,
+    "numberRecovered": true,
+    "testCommandRecovered": true
+  },
+  "screenshot": "output/deepseek-harness-evolution/validation/automatic-pressure-compaction-live.png",
+  "boundary": "This proves the automatic agent/pre-step pressure path, bounded repeated compaction, capsule/candidate persistence, restart and continuation under an intentionally low temporary threshold. Production thresholds still need long-duration natural-load soak."
+}

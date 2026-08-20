@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "root": ".",
+  "protectedPatterns": [
+    "apps/*.swift",
+    "extensions/**/client.js",
+    "custom-ui-patches/**/*.{js,css,tsx,jsx}"
+  ],
+  "files": [
+    {
+      "path": "apps/大神.swift",
+      "sha256": "ac89934b522acd25dea0053801e3430028a823c8c13db5b1686e7ab04bd906a4"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-conversation/client.js.modified",
+      "sha256": "9dced64920ac6a98a728c39e4d5fbffe074ae7e3ffe4fc5c05a2a13623dc6387"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-conversation/client.js.original",
+      "sha256": "dc48b35b74c71ddfe321d5a8e2604bbbbbc7e5136876740616ef4292b4e61b52"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-jobs/client.js.modified",
+      "sha256": "6e4dc2ceefb92ff4852a215b1904d56fff76c367531a598f8d95dc64c7be86e6"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-jobs/client.js.original",
+      "sha256": "0abba67c6624acea34b46bef1fa22bb83004f98674622b7991f62e7e68655748"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-skill/client.js.modified",
+      "sha256": "da97549a1f2f09bd84997c6a86a64a319d3c2272986d8473eebc58fad0dd8251"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-skill/client.js.original",
+      "sha256": "22b7db444a212a6a6fd56aac6388a07b82a8246cf0a00b6adb6491c66e4e7d7b"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-subagent/client.js.modified",
+      "sha256": "aac2b2cd20e53acb403558c41679c3aa18b70a816ef954e5e4ba3f9a38ab1d02"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-subagent/client.js.original",
+      "sha256": "3e4d2e7985e244558d92926fd30ebbd00bf9344c2cea9b0b5d4aac7188c22f83"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-trajectory/client.js.modified",
+      "sha256": "b7fcdb20f001c51dd76612a7608d9852157a749578133ecb8501717ef0e7b63b"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-trajectory/client.js.original",
+      "sha256": "3f73ae35d357083556609e45d5b350dbf06303d4370c86116af0954235c5e7b6"
+    },
+    {
+      "path": "custom-ui-patches/dsh-session-log-export/client.js.modified",
+      "sha256": "1a150b9741b432eedf7e94f542c568899401150ab4dfbec4d6507bf649220924"
+    },
+    {
+      "path": "custom-ui-patches/dsh-session-log-export/client.js.original",
+      "sha256": "480dc31686b80f1310f3dddd0e746c5f0ce6785cd6201e6815a35e1a8292db12"
+    },
+    {
+      "path": "custom-ui-patches/shrimp-shell/client.js.modified",
+      "sha256": "04ea30566015ded0813c91add46d1de67e6c194b98f49ee50912ec0421300764"
+    },
+    {
+      "path": "custom-ui-patches/shrimp-shell/client.js.original",
+      "sha256": "b7548c6f705770f6cb62fc5925f73dc37a5ef33f19415e60dcaa39cc3feb1d1c"
+    },
+    {
+      "path": "custom-ui-patches/shrimp-shell/index.js.modified",
+      "sha256": "7539bbe58bf19df5bf78101eab0a74e2ccf896e40228fd27ccb0309b44e72b42"
+    },
+    {
+      "path": "custom-ui-patches/shrimp-shell/index.js.original",
+      "sha256": "0e4147ccea99c41f7f28a8d964568ec110faf3f4f94cba895095e7ad005dfad4"
+    },
+    {
+      "path": "extensions/balance-card/client.js",
+      "sha256": "5e9530ec16323d683fe3bb6c1d04164b1bb0f891a84f807724e5ada593650389"
+    },
+    {
+      "path": "extensions/dsbalance-bundle/client.js",
+      "sha256": "d5ab02c47c1b415adb91b72105e9d2ec892e59fc26e281212070c235af0098cf"
+    },
+    {
+      "path": "extensions/shrimp-shell/client.js",
+      "sha256": "a5c8b9391c74f5b77ac56207f2683097c56868fe1c9090319f07656177c8d68e"
+    },
+    {
+      "path": "extensions/zhipu-media/client.js",
+      "sha256": "a9a985a65f6a96e7056fdf7d5243e5cf9fab90fcf94ea5c8072bad379b3deecb"
+    }
+  ]
+}

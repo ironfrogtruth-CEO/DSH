@@ -1,7 +1,11 @@
 // dsh-browser — Host half: Playwright 浏览器工具集
 // 随 profile 加载,注册 6 个工具:
 //   browser_open / browser_act / browser_screenshot / browser_text / browser_pdf / browser_close
-// 截图通过 attachments 服务以图片块呈现(模型支持视觉时直接可见),并可选保存到磁盘;
+// 截图通过 attachments 服务保存,并在 Web UI 的工具卡片中展示(value.image);
+// 但默认不再把 image block 注入会话历史:当前 DeepSeek 官方线路是纯文本,
+// 序列化整段历史时遇到任何 image block 都会抛 UNSUPPORTED_CONTENT,
+// 且该 block 会永久留在历史里导致之后每一轮(即使纯文字)都失败。
+// 若确有视觉模型会话,设环境变量 DSH_BROWSER_EMIT_IMAGE=1 恢复旧行为。
 // 页面正文经 browser_text 提取,保证无视觉模型时也能"阅读"页面。
 import { writeFile } from 'node:fs/promises'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -10,6 +14,10 @@ import { chromium } from 'playwright'
 
 export const name = 'dsh-browser'
 export const inject = ['tools', 'fs']
+
+// 默认不向会话历史注入截图图片块(DeepSeek 官方线路不支持图片内容);
+// 设置 DSH_BROWSER_EMIT_IMAGE=1 可恢复旧行为(视觉模型会话)。
+const EMIT_IMAGE_BLOCKS = process.env.DSH_BROWSER_EMIT_IMAGE === '1'
 
 // ── 进程级浏览器单例(所有会话共享,串行访问) ──
 let browserPromise = null
@@ -86,7 +94,9 @@ function imageValue(ref, savedPath) {
 
 function imageBlocks(ref, envelopeText) {
   const blocks = [{ type: 'text', text: envelopeText }]
-  if (ref) {
+  // 默认只注入文字封装;仅当显式开启 EMIT_IMAGE_BLOCKS 时才附加截图图片块。
+  // UI 卡片里的截图展示走 output.render 的 value.image,不依赖这里的图片块。
+  if (ref && EMIT_IMAGE_BLOCKS) {
     blocks.push({
       type: 'image',
       attachment: {

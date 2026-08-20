@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-compaction-v2-live-acceptance",
+  "testedAt": "2026-08-20T18:09:53+08:00",
+  "profile": "web-intelligence",
+  "preset": "reliable-development candidate copy",
+  "isolation": {
+    "temporaryDshHome": true,
+    "temporarySession": true,
+    "temporaryCapsuleStore": true,
+    "temporaryMemoryStore": true,
+    "formalDataRead": false,
+    "formalDataWritten": false,
+    "defaultWebProfileChanged": false,
+    "mainPresetChangedDuringAcceptance": false
+  },
+  "integrationFixesProven": [
+    "Web profile does not register Compaction v2 globally",
+    "reliable-development agent realm selects Compaction v2",
+    "dshCompactionV2 private service is isolated with compaction and toolResultPruner",
+    "missing summary structure triggers one transcript-as-data repair attempt",
+    "summary still missing required headings fails closed",
+    "capsule extraction reads real user messages, not plugin checkpoint or skill catalog messages"
+  ],
+  "successfulCompaction": {
+    "sessionId": "session-c1b9ed8c-cb48-46b9-9145-16456e1cefcc",
+    "compactionId": "f9254f28-b804-439b-ac7e-35327dc3aa71",
+    "startSeq": 1239,
+    "summarySeq": 1240,
+    "surfaceReplacementSeq": 1241,
+    "endSeq": 1242,
+    "shadowedNodes": 7,
+    "uiReportedShadowedTokens": 6531,
+    "summaryRequiredHeadings": true,
+    "summaryHasStructuredCapsule": true,
+    "summaryPreservesUiConstraint": true,
+    "summaryPreservesPath": true,
+    "summaryPreservesNumber": true
+  },
+  "capsule": {
+    "recordId": "capsule-record:18ba2c7d862bc8f01600bcaead12a183",
+    "revision": 2,
+    "capsuleHash": "3fc975fcbc3b05eeab357e4aee0fc8ba0f58d8698ad040140b1765579927b849",
+    "status": "committed",
+    "goalCorrect": true,
+    "uiConstraintRetained": true,
+    "pathRetained": "/workspace/v2/src/context.js",
+    "numberRetained": "7319",
+    "sourceMessageIds": 2,
+    "skillCatalogNoiseUsedAsGoal": false
+  },
+  "memoryCandidate": {
+    "id": "memory-3fc975fcbc3b05eeab357e4aee0fc8ba0f58d8698ad040140b1765579927b849",
+    "scope": "project:82642c7fc775e47303fbea8d50219b88",
+    "kind": "episodic",
+    "status": "candidate",
+    "source": "compaction:session-c1b9ed8c-cb48-46b9-9145-16456e1cefcc:f9254f28-b804-439b-ac7e-35327dc3aa71",
+    "ordinaryRecallEligible": false
+  },
+  "postCompactionRecovery": {
+    "assistantMessageSeq": 1516,
+    "turnEndSeq": 1518,
+    "turnEndReason": "completed",
+    "goalRecovered": true,
+    "uiConstraintRecovered": true,
+    "pathRecovered": true,
+    "numberRecovered": true,
+    "testCommandRecovered": true,
+    "toolCalls": 0
+  },
+  "screenshot": "output/deepseek-harness-evolution/validation/compaction-v2-live-recovery.png",
+  "boundary": "This proves one real manual compaction, durable replacement, capsule commit, memory candidate creation and post-compaction continuation. Automatic pressure thresholds and repeated long-run compaction still require broader soak testing."
+}

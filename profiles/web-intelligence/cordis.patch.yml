@@ -1,0 +1,90 @@
+# Candidate-only Web intelligence layer. It deliberately mirrors the existing
+# Web service inserts without changing any client/UI bundle.
+- insert:
+    - id: terminal
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+
+    - id: schedule
+      name: '@deepseek-ai/dsh-schedule'
+
+    - id: mcp-playwright
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: playwright
+        command: npx
+        args:
+          - '@playwright/mcp@latest'
+        env: {}
+        cwd: /Users/marcus/Desktop
+        toolCallTimeoutMs: 120000
+        failOnStartupError: false
+
+    - id: mcp-sequential-thinking
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: sequential-thinking
+        command: npx
+        args:
+          - '@modelcontextprotocol/server-sequential-thinking@latest'
+        env: {}
+        cwd: /Users/marcus/Desktop
+        toolCallTimeoutMs: 30000
+        failOnStartupError: false
+
+    - id: mcp-wechat
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: wechat-mp
+        command: npx
+        args:
+          - '-y'
+          - '@xihe-lab/wechat-mp-mcp-server@latest'
+        env:
+          WECHAT_APP_ID: wx5d8afee05a2c7a25
+          WECHAT_APP_SECRET: 待填入-AppSecret
+        cwd: /Users/marcus/Desktop
+        toolCallTimeoutMs: 60000
+        failOnStartupError: false
+
+    - id: mcp-tencent-docs
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: streamable-http
+        serverName: tencent-docs
+        url: https://docs.qq.com/openapi/mcp
+        headers:
+          Authorization: Bearer 待填入-腾讯文档个人访问令牌
+        toolCallTimeoutMs: 60000
+        failOnStartupError: false
+
+    - id: mcp-zhipu
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: zhipu
+        command: node
+        args:
+          - /Users/marcus/.dsh/mcp-servers/zhipu-mcp/server.mjs
+        env: {}
+        cwd: /Users/marcus/Desktop
+        toolCallTimeoutMs: 700000
+        failOnStartupError: false
+
+# Keep the shipped Host-level provider. Reliable-development owns an isolated
+# per-agent compaction realm and selects v2 there. Registering v2 globally as
+# well would duplicate its private dshCompactionV2 service on session mount.
+
+- id: dsh-tool-policy
+  name: '@local/dsh-tool-policy'
+  config:
+    mode: observe
+    operationMode: act
+    workspaceRoots:
+      - /Users/marcus/Desktop
+      - /Users/marcus/.dsh

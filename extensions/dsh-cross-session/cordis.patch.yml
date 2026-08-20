@@ -1,0 +1,4 @@
+# dsh-cross-session bundle patch: explicit Host-only cross-session tools
+- insert:
+    - id: dsh-cross-session
+      name: '@local/dsh-cross-session'

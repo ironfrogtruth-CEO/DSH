@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "code-context-basic",
+  "title": "代码上下文选择保留必需文件",
+  "taskType": "code-context",
+  "description": "离线词法代码候选排序，检查必需文件、符号和 token budget。",
+  "input": {
+    "query": "parser router",
+    "topK": 2,
+    "tokenBudget": 220,
+    "allowedPaths": ["src"],
+    "files": [
+      { "path": "src/parser.js", "content": "// parser implementation\nexport function parse() { return true }" },
+      { "path": "src/router.js", "content": "// parser router context\nexport function route() { return parse() }" },
+      { "path": "tests/parser.test.js", "content": "test parser" }
+    ]
+  },
+  "expected": {
+    "requiredPaths": ["src/parser.js", "src/router.js"],
+    "requiredSymbols": ["parse", "route"],
+    "enforceExact": true
+  }
+}

@@ -1,0 +1,6 @@
+# dsh-code-intelligence bundle patch: Host-only explicit code index tools.
+# It has no client half and does not subscribe to context, session, or UI hooks.
+# The profile must opt in explicitly before these tools are registered.
+- insert:
+    - id: dsh-code-intelligence
+      name: '@local/dsh-code-intelligence'

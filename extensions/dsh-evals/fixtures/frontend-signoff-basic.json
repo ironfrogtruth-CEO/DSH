@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "frontend-signoff-basic",
+  "title": "前端 signoff 必须通过阻断项",
+  "taskType": "frontend-signoff",
+  "description": "离线检查 DOM、视觉、交互和无障碍 signoff 是否齐全且通过。",
+  "input": {
+    "gateClaim": true,
+    "requiredChecks": ["dom", "visual", "interaction", "accessibility"],
+    "checks": [
+      { "id": "dom", "kind": "dom", "blocking": true, "pass": true, "evidence": "dom snapshot" },
+      { "id": "visual", "kind": "visual", "blocking": true, "pass": true, "evidence": "screenshot diff" },
+      { "id": "interaction", "kind": "interaction", "blocking": true, "pass": true, "evidence": "playwright trace" },
+      { "id": "accessibility", "kind": "accessibility", "blocking": true, "pass": true, "evidence": "axe report" }
+    ]
+  },
+  "expected": {
+    "requiredChecks": ["dom", "visual", "interaction", "accessibility"],
+    "enforceExact": true
+  }
+}

@@ -1,0 +1,6 @@
+# dsh-frontend-qa bundle patch: Host-only explicit design/visual QA tools.
+# No browser is launched and no client/UI bundle is loaded or modified.
+# The profile must opt in explicitly before these tools are registered.
+- insert:
+    - id: dsh-frontend-qa
+      name: '@local/dsh-frontend-qa'

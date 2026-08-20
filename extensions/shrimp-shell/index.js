@@ -47,6 +47,8 @@ const VISION_PROMPT = [
   '必须包含：1. 图片类型与主体；2. 可读文字、数字和表格；3. 界面/图表的结构和状态；4. 重要的位置关系。',
   '看不清的内容标记为“无法确认”，不得猜测。用结构化短段落输出，不要加客套话，总长不超过 500 个汉字。',
 ].join('\n')
+const VISION_RESULT_CACHE = new Map()
+const VISION_RESULT_CACHE_LIMIT = 128
 
 const sendJson = (res, code, body) => {
   res.writeHead(code, {
@@ -424,6 +426,125 @@ export async function recognizeImage({
   return fallbackReason ? { ...local, fallbackFrom, fallbackReason } : local
 }
 
+export function containsImageBlocks(blocks) {
+  return Array.isArray(blocks) && blocks.some((block) => block && (block.type === 'image' || (block.type === 'tool-result' && containsImageBlocks(block.content))))
+}
+
+function visionBridgeError(code, message, cause) {
+  const error = new Error(message, cause ? { cause } : undefined)
+  error.code = code
+  return error
+}
+
+function cacheVisionResult(cache, key, value) {
+  if (!key) return
+  cache.delete(key)
+  cache.set(key, value)
+  while (cache.size > VISION_RESULT_CACHE_LIMIT) cache.delete(cache.keys().next().value)
+}
+
+/**
+ * Replace image blocks (including tool-result descendants) with text before a
+ * text-only model sees the request. The input array is never mutated; a failed
+ * recognition therefore cannot leave a half-rewritten history behind.
+ */
+export async function bridgeImageBlocks(blocks, { attachments, recognizer = recognizeImage, cache = VISION_RESULT_CACHE, signal } = {}) {
+  if (!Array.isArray(blocks) || !containsImageBlocks(blocks)) return blocks
+  if (!attachments || typeof attachments.readImage !== 'function') throw visionBridgeError('VISION_BRIDGE_UNAVAILABLE', '当前文本模型需要识图桥，但 durable attachment service 不可用')
+  const output = []
+  for (const block of blocks) {
+    if (!block || block.type === 'text' || block.type === 'reasoning' || block.type === 'tool-call') {
+      output.push(block)
+      continue
+    }
+    if (block.type === 'tool-result') {
+      output.push({ ...block, content: await bridgeImageBlocks(block.content, { attachments, recognizer, cache, signal }) })
+      continue
+    }
+    if (block.type !== 'image') {
+      output.push(block)
+      continue
+    }
+    const attachmentId = block.attachment && block.attachment.attachmentId ? String(block.attachment.attachmentId) : ''
+    const stored = await attachments.readImage(block.attachment, signal)
+    const imageBase64 = Buffer.from(stored.data).toString('base64')
+    const mimeType = stored.ref && stored.ref.mediaType ? stored.ref.mediaType : 'image/png'
+    const cacheKey = attachmentId ? `${attachmentId}:${mimeType}` : ''
+    let result = cacheKey ? cache.get(cacheKey) : null
+    if (!result) {
+      try {
+        result = await recognizer({ imageBase64, mimeType })
+      } catch (error) {
+        throw visionBridgeError('VISION_BRIDGE_FAILED', `图片识图失败，原始图片不会发送给当前文本模型：${errorText(error)}`, error)
+      }
+      const summary = compactVisionSummary(result && result.content, 1_000)
+      if (!summary) throw visionBridgeError('VISION_BRIDGE_EMPTY', '图片识图没有返回可用文字，原始图片不会发送给当前文本模型')
+      result = { provider: result.provider || 'unknown', model: result.model || 'unknown', summary }
+      cacheVisionResult(cache, cacheKey, result)
+    }
+    output.push({
+      type: 'text',
+      text: `[图片识图结果；原始附件未发送给当前文本模型，provider=${result.provider}, model=${result.model}]\n${result.summary}`,
+    })
+  }
+  return output
+}
+
+function selectedModel(options, ctx) {
+  if (options && (options.provider || options.model)) return { provider: options.provider, model: options.model }
+  try { return ctx.agentDefaultModel.currentSelection() } catch { return {} }
+}
+
+async function routeNeedsVisionBridge(options, ctx) {
+  const selection = selectedModel(options, ctx)
+  const provider = String(selection.provider || '').toLowerCase()
+  const model = String(selection.model || '').toLowerCase()
+  if (provider.includes('deepseek') || model.includes('deepseek')) return true
+  if (!provider || !model) return true
+  try {
+    const info = await ctx.llm.resolveModelInfo(selection.provider, selection.model)
+    return !(Array.isArray(info && info.inputModalities) && info.inputModalities.includes('image'))
+  } catch {
+    return true
+  }
+}
+
+export async function bridgeLlmOptions(options, ctx, { attachments, recognizer = recognizeImage, cache = VISION_RESULT_CACHE, signal } = {}) {
+  if (!options || !Array.isArray(options.messages) || !options.messages.some((message) => containsImageBlocks(message && message.content))) return options
+  if (!(await routeNeedsVisionBridge(options, ctx))) return options
+  const store = attachments || (typeof ctx.get === 'function' ? ctx.get('attachments') : null)
+  const messages = []
+  for (const message of options.messages) {
+    if (!message || !containsImageBlocks(message.content)) messages.push(message)
+    else messages.push({ ...message, content: await bridgeImageBlocks(message.content, { attachments: store, recognizer, cache, signal }) })
+  }
+  // The LLM waterfall consumes this request object. Replacing messages here
+  // prevents the adapter from ever receiving the raw image-bearing array.
+  return { ...options, messages }
+}
+
+/**
+ * rc.8 `llm/stream` is a synchronous waterfall whose `next` accepts no
+ * replacement arguments. Return an async generator immediately; after the
+ * async vision bridge completes, dispatch transformed options directly via
+ * the runtime adapter boundary. The official invariant sees the original
+ * frozen request first, while DeepSeek never sees a raw image block.
+ */
+export function createVisionStreamMiddleware(ctx, bridgeOptions = {}) {
+  return (options, next) => {
+    if (!options || !Array.isArray(options.messages) || !options.messages.some((message) => containsImageBlocks(message && message.content))) return next()
+    return (async function* bridgeStream() {
+      const transformed = await bridgeLlmOptions(options, ctx, bridgeOptions)
+      const stream = transformed === options
+        ? next()
+        : (typeof ctx.llm.adapterStream === 'function'
+            ? ctx.llm.adapterStream(transformed)
+            : (() => { throw visionBridgeError('VISION_BRIDGE_DISPATCH_UNAVAILABLE', '无法通过 rc.8 adapterStream 发送已转换的纯文本请求') })())
+      for await (const chunk of stream) yield chunk
+    }())
+  }
+}
+
 async function sessionWorkspace(ctx, sessionId) {
   if (!sessionId) throw new Error('缺少 session')
   // 当前会话优先从内存读取头信息，避免为了 cwd 重放整份超长会话日志。
@@ -519,6 +640,15 @@ function mimeFor(path) {
 }
 
 export function apply(ctx) {
+  // ---- Host LLM seam: DeepSeek text routes never receive raw image blocks --
+  // including images nested inside tool results. The client bridge is the
+  // normal path for user uploads; this listener is the final Host safety net
+  // for browser screenshots, read_image results, stale history, and clients
+  // that misreport model capabilities. Native image-capable non-DeepSeek
+  // routes remain untouched.
+  if (typeof ctx.on === 'function') {
+    ctx.effect(() => ctx.on('llm/stream', createVisionStreamMiddleware(ctx)), 'shrimp-shell: text-model vision bridge')
+  }
   // ---- 虾缸同机 API 代理 + 会话工具 ------------------------------------
   // 代理只接受显式 allowlist 路径；工具复用同一入口，保证对话和两个原生
   // 视图看到的是同一份虾缸数据。工具不会自动发布，也不会把绝对文件路径

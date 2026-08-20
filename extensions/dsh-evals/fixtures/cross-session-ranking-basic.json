@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "cross-session-ranking-basic",
+  "title": "跨会话排序保持项目范围",
+  "taskType": "cross-session-ranking",
+  "description": "离线词法排序验证跨 session 召回和 project scope。",
+  "input": {
+    "query": "alpha migration",
+    "topK": 2,
+    "allowedProjectId": "project:alpha",
+    "forbiddenProjects": ["project:beta"],
+    "sessions": [
+      { "id": "session-alpha-1", "projectId": "project:alpha", "text": "alpha migration decision" },
+      { "id": "session-alpha-2", "projectId": "project:alpha", "text": "alpha migration validation" },
+      { "id": "session-beta-1", "projectId": "project:beta", "text": "alpha migration unrelated" }
+    ]
+  },
+  "expected": {
+    "relevantIds": ["session-alpha-1", "session-alpha-2"],
+    "enforceExact": true
+  }
+}

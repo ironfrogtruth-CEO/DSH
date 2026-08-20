@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dsh-evals/fixture@1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "fixtureId", "title", "taskType", "input", "expected"],
+  "properties": {
+    "schemaVersion": { "const": 1, "type": "integer" },
+    "fixtureId": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "taskType": {
+      "type": "string",
+      "enum": ["compaction-retention", "memory-retrieval", "task-resume", "code-context", "cross-session-ranking", "frontend-signoff"]
+    },
+    "description": { "type": "string", "maxLength": 10000 },
+    "input": { "type": "object", "additionalProperties": true },
+    "expected": { "type": "object", "additionalProperties": true },
+    "adapterModule": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "requiresModule": { "type": "boolean" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  }
+}

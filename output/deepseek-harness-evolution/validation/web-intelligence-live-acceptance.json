@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-web-intelligence-live-acceptance",
+  "testedAt": "2026-08-20T17:28:20+08:00",
+  "profile": "web-intelligence",
+  "isolation": {
+    "temporaryDshHome": true,
+    "temporaryModuleStores": true,
+    "formalSessionDataWritten": false,
+    "formalMemoryDataWritten": false,
+    "memoryAcceptanceDryRun": true,
+    "defaultWebProfileChanged": false,
+    "candidatePort": 3081,
+    "productionPort": 3080
+  },
+  "model": {
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash",
+    "initialRequestHeaderSeq": 11,
+    "resumeRequestHeaderSeq": 307
+  },
+  "session": {
+    "id": "session-c1b9ed8c-cb48-46b9-9145-16456e1cefcc",
+    "workspace": "/Users/marcus/Desktop",
+    "temporaryLogSha256": "d51fe789d8e9ab090f5e0a9cb74010763dcc6bd8290ab7642fdc9ccd97f19d66",
+    "finalSeq": 892,
+    "completedTurnEndSeqs": [300, 320, 892]
+  },
+  "acceptances": [
+    {
+      "id": "intelligence-contract-tool",
+      "status": "passed",
+      "toolCallSeq": 223,
+      "toolResultSeq": 224,
+      "tool": "intelligence_contract_validate",
+      "result": {
+        "ok": true,
+        "schema": "TaskSpec",
+        "errors": []
+      },
+      "turnEndSeq": 300
+    },
+    {
+      "id": "restart-resume",
+      "status": "passed",
+      "hostRestarted": true,
+      "historyRestored": true,
+      "userMessageSeq": 306,
+      "assistantMessageSeq": 318,
+      "turnEndSeq": 320,
+      "expectedText": "候选会话重启恢复成功。"
+    },
+    {
+      "id": "memory-dry-run",
+      "status": "passed",
+      "toolCallSeq": 572,
+      "toolResultSeq": 573,
+      "tool": "memory_record",
+      "result": {
+        "ok": true,
+        "dryRun": true,
+        "scope": "project:desktop-acceptance",
+        "kind": "episodic",
+        "memoryStatus": "candidate",
+        "conflicts": 0
+      }
+    },
+    {
+      "id": "cross-session-related",
+      "status": "passed",
+      "toolCallSeq": 574,
+      "toolResultSeq": 575,
+      "tool": "cross_session_related",
+      "result": {
+        "ok": true,
+        "items": 1,
+        "sessionScopeComplete": true,
+        "cwdFilterApplied": true,
+        "provenanceUntrusted": true,
+        "autoInjection": false
+      },
+      "turnEndSeq": 892
+    }
+  ],
+  "screenshots": [
+    "output/deepseek-harness-evolution/validation/web-intelligence-live-tool.png",
+    "output/deepseek-harness-evolution/validation/web-intelligence-restart-resume.png",
+    "output/deepseek-harness-evolution/validation/web-intelligence-memory-cross-session-live.png"
+  ],
+  "boundary": "Real model and tool acceptance is proven for intelligence, memory dry-run, cross-session retrieval and restart recovery. This does not yet prove compaction pressure behavior, destructive memory management, long-run benchmark quality or production readiness."
+}

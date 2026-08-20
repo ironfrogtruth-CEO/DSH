@@ -1,0 +1,29 @@
+{
+  "name": "dsh-profile-headless",
+  "private": true,
+  "dependencies": {
+    "@local/dsh-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-intelligence",
+    "@local/dsh-tool-policy": "link:/Users/marcus/.dsh/extensions/dsh-tool-policy",
+    "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
+    "@local/dsh-code-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-code-intelligence",
+    "@local/dsh-cross-session": "link:/Users/marcus/.dsh/extensions/dsh-cross-session",
+    "@local/dsh-frontend-qa": "link:/Users/marcus/.dsh/extensions/dsh-frontend-qa",
+    "@local/dsh-evals": "link:/Users/marcus/.dsh/extensions/dsh-evals",
+    "@local/dsh-compaction-v2": "link:/Users/marcus/.dsh/extensions/dsh-compaction-v2"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@local/dsh-tool-policy",
+        "@local/dsh-intelligence",
+        "@local/dsh-memory",
+        "@local/dsh-code-intelligence",
+        "@local/dsh-cross-session",
+        "@local/dsh-frontend-qa",
+        "@local/dsh-evals"
+      ]
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "task-resume-basic",
+  "title": "任务恢复保留 capsule 字段",
+  "taskType": "task-resume",
+  "description": "离线比较恢复 capsule 的目标、约束、文件、下一步和 revision。",
+  "input": {
+    "capsule": {
+      "schemaVersion": 1,
+      "capsuleId": "capsule:resume-basic",
+      "taskId": "task:resume-basic",
+      "projectId": "project:resume",
+      "sessionId": "session:resume",
+      "goal": "resume parser work",
+      "protectedConstraints": ["preserve UI"],
+      "planSnapshot": { "pending": ["run tests"] },
+      "activeTask": { "text": "verify parser" },
+      "decisions": [],
+      "touchedFiles": ["/workspace/src/parser.js"],
+      "testsAndEvidence": [],
+      "errorsAndAttempts": [],
+      "artifacts": [],
+      "pendingJobs": [{ "text": "run tests" }],
+      "nextAction": "run npm test",
+      "sourceEventIds": ["event:1"],
+      "createdAt": "2026-08-20T00:00:00Z",
+      "revision": 3
+    }
+  },
+  "expected": {
+    "fields": ["goal", "protectedConstraints", "touchedFiles", "pendingJobs", "nextAction", "revision"],
+    "goal": "resume parser work",
+    "protectedConstraints": ["preserve UI"],
+    "touchedFiles": ["/workspace/src/parser.js"],
+    "pendingJobs": [{ "text": "run tests" }],
+    "nextAction": "run npm test",
+    "revision": 3,
+    "enforceExact": true
+  }
+}

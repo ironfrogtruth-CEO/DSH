@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-import { compactVisionSummary, recognizeImage, shrimpTankPathAllowed, visionPolicy } from './index.js'
+import { bridgeImageBlocks, bridgeLlmOptions, compactVisionSummary, containsImageBlocks, createVisionStreamMiddleware, recognizeImage, shrimpTankPathAllowed, visionPolicy } from './index.js'
 
 const imageBase64 = 'aW1hZ2UtYnl0ZXM='
 const mimeType = 'image/png'
@@ -126,6 +126,111 @@ test('DeepSeek 即使误报图片能力也固定走识图桥', async () => {
   assert.equal(result.mode, 'bridge')
   assert.equal(resolved, false)
   assert.match(result.reason, /原图不进入会话历史/)
+})
+
+test('Host bridge converts user and nested tool-result images once, preserving surrounding text', async () => {
+  let calls = 0
+  const attachments = {
+    async readImage(ref) {
+      return { data: Buffer.from(`image-${ref.attachmentId}`), ref: { attachmentId: ref.attachmentId, mediaType: 'image/png' } }
+    },
+  }
+  const blocks = [
+    { type: 'text', text: '用户原文必须保留' },
+    { type: 'image', attachment: { attachmentId: 'upload-1' } },
+    { type: 'tool-result', toolCallId: 'shot', content: [{ type: 'image', attachment: { attachmentId: 'upload-1' } }] },
+  ]
+  const bridged = await bridgeImageBlocks(blocks, {
+    attachments,
+    cache: new Map(),
+    recognizer: async ({ imageBase64, mimeType }) => {
+      calls += 1
+      assert.ok(imageBase64)
+      assert.equal(mimeType, 'image/png')
+      return { provider: 'test-vision', model: 'test-model', content: '图中识别文字' }
+    },
+  })
+  assert.equal(calls, 1)
+  assert.equal(containsImageBlocks(bridged), false)
+  assert.equal(containsImageBlocks(blocks), true)
+  assert.match(bridged[0].text, /用户原文必须保留/)
+  assert.match(bridged[1].text, /图中识别文字/)
+  assert.match(bridged[2].content[0].text, /图中识别文字/)
+  assert.doesNotMatch(JSON.stringify(bridged), /image-upload-1|data:image|base64/)
+})
+
+test('Host LLM seam bridges DeepSeek text routes even when capability metadata lies', async () => {
+  const original = [{ role: 'user', content: [{ type: 'text', text: '先看图' }, { type: 'image', attachment: { attachmentId: 'route-1' } }] }]
+  let received
+  const result = await bridgeLlmOptions({ provider: 'deepseek-official', model: 'deepseek-v4-flash', messages: original }, {
+    agentDefaultModel: { currentSelection() { return { provider: 'deepseek-official', model: 'deepseek-v4-flash' } } },
+    llm: { async resolveModelInfo() { return { inputModalities: ['text', 'image'] } } },
+    get() { return { async readImage() { return { data: Buffer.from('route-image'), ref: { attachmentId: 'route-1', mediaType: 'image/png' } } } } },
+  }, {
+    cache: new Map(),
+    recognizer: async () => ({ provider: 'test-vision', model: 'test-model', content: '路由识图结果' }),
+  })
+  received = result.messages
+  assert.equal(containsImageBlocks(received), false)
+  assert.equal(containsImageBlocks(original[0].content), true)
+  assert.match(received[0].content[1].text, /路由识图结果/)
+})
+
+test('Vision provider failure blocks safely without mutating model history', async () => {
+  const original = [{ type: 'image', attachment: { attachmentId: 'failure-1' } }]
+  const snapshot = structuredClone(original)
+  await assert.rejects(
+    bridgeImageBlocks(original, {
+      attachments: { async readImage() { return { data: Buffer.from('failure-image'), ref: { mediaType: 'image/png' } } } },
+      cache: new Map(),
+      recognizer: async () => { throw new Error('no vision provider') },
+    }),
+    (error) => error.code === 'VISION_BRIDGE_FAILED' && /原始图片不会发送/.test(error.message),
+  )
+  assert.deepEqual(original, snapshot)
+})
+
+test('rc.8 stream middleware keeps frozen input intact, lets invariant see raw request, and dispatches transformed stream without next args', async () => {
+  const content = [{ type: 'text', text: '原文字' }, { type: 'image', attachment: { attachmentId: 'frozen-1' } }]
+  const messages = [{ role: 'user', content }]
+  const options = { provider: 'deepseek-official', model: 'deepseek-v4-flash', messages }
+  Object.freeze(content)
+  Object.freeze(messages)
+  Object.freeze(options)
+  let invariantSawImage = false
+  let adapterCalls = 0
+  let nextCalls = 0
+  const ctx = {
+    llm: {
+      adapterStream(transformed) {
+        adapterCalls += 1
+        assert.equal(containsImageBlocks(transformed.messages[0].content), false)
+        return (async function* () { yield { type: 'finish', reason: { kind: 'stop' } } }())
+      },
+    },
+    get() {
+      return { async readImage() { return { data: Buffer.from('frozen-image'), ref: { attachmentId: 'frozen-1', mediaType: 'image/png' } } } }
+    },
+    agentDefaultModel: { currentSelection() { return { provider: 'deepseek-official', model: 'deepseek-v4-flash' } } },
+    llmModelInfo: { inputModalities: ['text', 'image'] },
+  }
+  const middleware = createVisionStreamMiddleware(ctx, {
+    cache: new Map(),
+    recognizer: async () => ({ provider: 'test-vision', model: 'test-model', content: '冻结请求识图结果' }),
+  })
+  const next = (...args) => { nextCalls += 1; assert.equal(args.length, 0); return (async function* () {})() }
+  const waterfallResult = ((request, nextInvariant) => {
+    invariantSawImage = containsImageBlocks(request.messages[0].content)
+    return nextInvariant()
+  })(options, () => middleware(options, next))
+  assert.equal(typeof waterfallResult?.[Symbol.asyncIterator], 'function')
+  const chunks = []
+  for await (const chunk of waterfallResult) chunks.push(chunk)
+  assert.equal(invariantSawImage, true)
+  assert.equal(adapterCalls, 1)
+  assert.equal(nextCalls, 0)
+  assert.equal(chunks[0].type, 'finish')
+  assert.equal(containsImageBlocks(options.messages[0].content), true)
 })
 
 test('虾缸代理允许编码冒号的运行产物路径，但拒绝任意外部路径', () => {

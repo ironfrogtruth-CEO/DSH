@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "compaction-retention-basic",
+  "title": "压缩摘要保留受保护事实",
+  "taskType": "compaction-retention",
+  "description": "离线检查摘要是否保留受保护锚点、路径和数字，并满足 token budget。",
+  "input": {
+    "summary": "## Continuation\n- Goal: complete the parser migration.\n- Constraint: do not modify the existing UI.\n- File: /workspace/src/parser.js\n- Keep exact number 42.\n- Run command: npm test.",
+    "protectedAnchors": ["do not modify the existing UI"],
+    "paths": ["/workspace/src/parser.js"],
+    "numbers": ["42"],
+    "tokenBudget": 120
+  },
+  "expected": {
+    "protectedAnchors": ["do not modify the existing UI"],
+    "paths": ["/workspace/src/parser.js"],
+    "numbers": ["42"],
+    "enforceExact": true
+  }
+}

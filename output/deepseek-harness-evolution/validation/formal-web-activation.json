@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-formal-web-activation",
+  "activatedAt": "2026-08-20T18:18:40+08:00",
+  "runtimeVersion": "0.1.0-rc.8",
+  "profile": "web",
+  "port": 3080,
+  "uiFilesModified": false,
+  "activatedHostBundles": [
+    "@local/dsh-tool-policy",
+    "@local/dsh-intelligence",
+    "@local/dsh-memory",
+    "@local/dsh-code-intelligence",
+    "@local/dsh-cross-session",
+    "@local/dsh-frontend-qa",
+    "@local/dsh-evals"
+  ],
+  "compaction": {
+    "profileGlobalProvider": null,
+    "reliableDevelopmentProvider": "@local/dsh-compaction-v2",
+    "isolatedServices": ["compaction", "toolResultPruner", "dshCompactionV2"],
+    "liveAcceptance": "output/deepseek-harness-evolution/validation/compaction-v2-live-acceptance.json"
+  },
+  "toolPolicy": {
+    "mode": "observe",
+    "operationMode": "act",
+    "workspaceRoots": ["/Users/marcus/Desktop", "/Users/marcus/.dsh"]
+  },
+  "formalModelToolAcceptance": {
+    "sessionId": "session-13b96e96-cdcc-438b-ac60-27727f39ad7a",
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash",
+    "tool": "intelligence_contract_validate",
+    "toolCallSeq": 45801,
+    "toolResultSeq": 45802,
+    "turnEndSeq": 45889,
+    "turnEndReason": "completed",
+    "result": {"ok": true, "schema": "TaskSpec", "errors": []}
+  },
+  "runtimeHttpAcceptance": {
+    "commandsList": 200,
+    "sessionModels": 200,
+    "llmProviders": 200,
+    "visionPolicy": 200,
+    "heartbeatList": 200,
+    "gitWorkspaces": 200,
+    "shrimpListProxy": 200,
+    "shrimpRunsProxy": 200
+  },
+  "uiIntegrity": {
+    "manifest": "output/deepseek-harness-evolution/ui-integrity/ui-baseline.sha256.json",
+    "protectedFiles": 22,
+    "status": "passed"
+  },
+  "screenshot": "output/deepseek-harness-evolution/validation/formal-web-activation.png",
+  "boundary": "Default Web Host modules and Compaction v2 are active. One formal intelligence tool call is proven; memory/cross-session and compaction chains were proven in isolated live acceptance, while 80 direct module samples cover deterministic lifecycle behavior. Long-run soak and external benchmarks remain separate production-readiness work."
+}

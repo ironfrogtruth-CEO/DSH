@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "memory-retrieval-basic",
+  "title": "记忆召回按项目范围排序",
+  "taskType": "memory-retrieval",
+  "description": "离线词法排序，验证 Recall@k、MRR 和 project scope isolation。",
+  "input": {
+    "query": "project alpha parser",
+    "topK": 2,
+    "allowedScope": "project:alpha",
+    "forbiddenScopes": ["project:beta"],
+    "candidates": [
+      { "id": "memory-alpha-1", "scope": "project:alpha", "text": "project alpha parser decision" },
+      { "id": "memory-alpha-2", "scope": "project:alpha", "text": "project alpha parser test evidence" },
+      { "id": "memory-beta-1", "scope": "project:beta", "text": "project beta parser note" }
+    ]
+  },
+  "expected": {
+    "relevantIds": ["memory-alpha-1", "memory-alpha-2"],
+    "enforceExact": true
+  }
+}

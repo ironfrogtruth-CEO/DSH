@@ -1,0 +1,4 @@
+interface:
+  display_name: "可靠开发"
+  short_description: "让不同模型按同一套开发、测试、记忆、压缩与续办流程可靠工作"
+  default_prompt: "使用可靠开发流程完成当前编码任务，先检查仓库，再修改、测试并留下可续办检查点。"

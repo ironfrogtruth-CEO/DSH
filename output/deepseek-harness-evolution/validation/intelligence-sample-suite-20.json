@@ -1,0 +1,1562 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-intelligence-direct-sample-suite",
+  "startedAt": "2026-08-20T09:42:08.916Z",
+  "finishedAt": "2026-08-20T09:42:09.034Z",
+  "durationMs": 117.25,
+  "status": "passed",
+  "ok": true,
+  "isolation": {
+    "syntheticFixtures": true,
+    "temporaryStores": true,
+    "formalDataRead": false,
+    "formalDataWritten": false,
+    "cleaned": true
+  },
+  "summary": {
+    "total": 80,
+    "passed": 80,
+    "failed": 0,
+    "groups": 4,
+    "samplesPerGroup": 20
+  },
+  "metrics": {
+    "compaction-retention": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "passRate": 1,
+      "markerRetentionRate": 1,
+      "constraintRetentionRate": 1,
+      "pathRetentionRate": 1,
+      "nextActionRetentionRate": 1,
+      "errorRetentionRate": 1,
+      "sourceRetentionRate": 1,
+      "averageCapsuleChars": 1615
+    },
+    "task-restart-resume": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "passRate": 1,
+      "restartRecoveryRate": 1,
+      "capsuleExactnessRate": 1,
+      "appendOnlyEventRate": 1,
+      "projectIsolationRate": 1
+    },
+    "memory-lifecycle": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "passRate": 1,
+      "candidateHiddenRate": 1,
+      "promotionAuditRate": 1,
+      "dedupeRate": 1,
+      "conflictDetectionRate": 1,
+      "supersedeRate": 1,
+      "forgetPersistenceRate": 1,
+      "scopeLeakTotal": 0
+    },
+    "cross-session-ranking": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "passRate": 1,
+      "meanRecallAt2": 1,
+      "scopeLeakTotal": 0,
+      "completeScopeRate": 1,
+      "provenanceUntrustedRate": 1,
+      "noAutoInjectionRate": 1
+    }
+  },
+  "groups": [
+    {
+      "id": "compaction-retention",
+      "count": 20,
+      "durationMs": 4.98,
+      "cases": [
+        {
+          "id": "compaction-1",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-2",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-3",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-4",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-5",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-6",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-7",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-8",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-9",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1602
+          }
+        },
+        {
+          "id": "compaction-10",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-11",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-12",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-13",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-14",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-15",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-16",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-17",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-18",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-19",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        },
+        {
+          "id": "compaction-20",
+          "status": "passed",
+          "evidence": {
+            "extractionOk": true,
+            "parseOk": true,
+            "markerRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "errorRetained": true,
+            "sourceRetained": true,
+            "revisionRetained": true,
+            "capsuleChars": 1625
+          }
+        }
+      ]
+    },
+    {
+      "id": "task-restart-resume",
+      "count": 20,
+      "durationMs": 33.04,
+      "cases": [
+        {
+          "id": "task-resume-1",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-2",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-3",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-4",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-5",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-6",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-7",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-8",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-9",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-10",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-11",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-12",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-13",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-14",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-15",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-16",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-17",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-18",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-19",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        },
+        {
+          "id": "task-resume-20",
+          "status": "passed",
+          "evidence": {
+            "taskRestored": true,
+            "projectIsolated": true,
+            "revisionRestored": true,
+            "sessionRestored": true,
+            "capsuleRestored": true,
+            "goalRetained": true,
+            "constraintRetained": true,
+            "pathRetained": true,
+            "nextActionRetained": true,
+            "sourceRetained": true,
+            "appendOnlyEvents": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "memory-lifecycle",
+      "count": 20,
+      "durationMs": 42.16,
+      "cases": [
+        {
+          "id": "memory-lifecycle-1",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-2",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-3",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-4",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-5",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-6",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-7",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-8",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-9",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-10",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-11",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-12",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-13",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-14",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-15",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-16",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-17",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-18",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-19",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        },
+        {
+          "id": "memory-lifecycle-20",
+          "status": "passed",
+          "evidence": {
+            "candidateHidden": true,
+            "promotionPreviewSafe": true,
+            "firstPromotionAudited": true,
+            "firstRecallExact": true,
+            "duplicateDeduped": true,
+            "conflictDetected": true,
+            "supersedeApplied": true,
+            "secondPromotionAudited": true,
+            "latestRecallExact": true,
+            "forgetPreviewSafe": true,
+            "forgetApplied": true,
+            "forgottenExcluded": true,
+            "stateEventsAudited": true,
+            "foreignScopeLeak": 0,
+            "restartFirstSuperseded": true,
+            "restartConflictCandidate": true,
+            "restartSecondForgotten": true,
+            "restartNoActiveRecall": true,
+            "restartStateEvents": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "cross-session-ranking",
+      "count": 20,
+      "durationMs": 35.96,
+      "cases": [
+        {
+          "id": "cross-session-1",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-2",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-3",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-4",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-5",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-6",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-7",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-8",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-9",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-10",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-11",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-12",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-13",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-14",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-15",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-16",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-17",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-18",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-19",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        },
+        {
+          "id": "cross-session-20",
+          "status": "passed",
+          "evidence": {
+            "ok": true,
+            "recallAt2": 1,
+            "scopeLeakCount": 0,
+            "exactResultCount": 2,
+            "sessionQueryUsed": true,
+            "cwdFilterApplied": true,
+            "scopeComplete": true,
+            "allProvenanceUntrusted": true,
+            "noAutoInjection": true
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# dsh-intelligence bundle patch: Host-only task/context contracts.
+# The package has no client half and does not subscribe to UI or agent hooks.
+# Keep this patch opt-in at the profile level; creating this file alone does not activate it.
+- insert:
+    - id: dsh-intelligence
+      name: '@local/dsh-intelligence'

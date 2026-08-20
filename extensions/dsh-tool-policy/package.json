@@ -1,0 +1,33 @@
+{
+  "name": "@local/dsh-tool-policy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./policy": "./policy.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "policy.js",
+    "README.md",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec *.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

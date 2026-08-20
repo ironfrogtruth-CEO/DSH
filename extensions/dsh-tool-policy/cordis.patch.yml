@@ -1,0 +1,4 @@
+# dsh-tool-policy bundle patch: Host-only tool policy for headless profiles
+- insert:
+    - id: dsh-tool-policy
+      name: '@local/dsh-tool-policy'

@@ -1,0 +1,5 @@
+# dsh-evals bundle patch: optional Host-only offline evaluation tools.
+# No client half, no network, no LLM judge, and no automatic context injection.
+- insert:
+    - id: dsh-evals
+      name: '@local/dsh-evals'

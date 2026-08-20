@@ -3,10 +3,29 @@ ui-onboarding:
 agent-default-model:
   provider: deepseek-official
   model: deepseek-v4-flash
-  reasoningEffort: max
+  reasoningEffort: high
 agent-presets:
-  default: cordis
+  default: reliable-development
 permission:
   defaultPreset: danger-full-access
 ui-conversation:
   busyEnter: steer
+llm-deepseek:
+  reasoningEffort: high
+llm-pi-ai:
+  providers:
+    ollama-local:
+      api: openai-completions
+      baseURL: http://127.0.0.1:11434/v1
+      headers:
+        Authorization: Bearer ollama-local
+      models:
+        - id: cybermarcus:latest
+        - id: cybermarcus-codex:latest
+        - id: gemma4:26b-a4b-it-qat
+          contextWindow: 262144
+          maxTokens: 8192
+        - id: x/flux2-klein:4b
+        - id: embeddinggemma:latest
+ui-theme:
+  preference: light

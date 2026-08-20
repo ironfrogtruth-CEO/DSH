@@ -9,8 +9,8 @@ check() { # name, ok, msg
 
 echo "== dsh doctor =="
 check "node 运行时" "$([ -x /usr/local/bin/node ] && echo ok || echo fail)" "/usr/local/bin/node 缺失"
-check "固定安装" "$([ -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ] && echo ok || echo fail)" "install 未装,cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.6 --save-exact"
-check "版本锁定" "$(grep -q '"@deepseek-ai/dsh": "0.1.0-rc.6"' "$HOME/.dsh/install/package.json" 2>/dev/null && echo ok || echo fail)" "package.json 版本未锁死 0.1.0-rc.6"
+check "固定安装" "$([ -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ] && echo ok || echo fail)" "install 未装,cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.8 --save-exact"
+check "版本锁定" "$(grep -q '"@deepseek-ai/dsh": "0.1.0-rc.8"' "$HOME/.dsh/install/package.json" 2>/dev/null && echo ok || echo fail)" "package.json 版本未锁死 0.1.0-rc.8"
 check "入口命令" "$([ -x "$HOME/.dsh/bin/dsh" ] && echo ok || echo fail)" "bin/dsh 缺失或不可执行"
 check "preset 副本" "$([ -f "$HOME/.dsh/.agent-presets/cordis/preset.yml" ] && echo ok || echo fail)" ".agent-presets/cordis 缺失"
 check "skills" "$([ "$(ls "$HOME/.dsh/skills" 2>/dev/null | wc -l | tr -d ' ')" -ge 20 ] && echo ok || echo fail)" "skills 数量不足 20"

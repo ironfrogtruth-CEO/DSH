@@ -1,0 +1,40 @@
+{
+  "name": "@local/dsh-evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./runner": "./runner.js",
+    "./schemas": "./schemas.js",
+    "./render": "./render.js",
+    "./fixture.schema.json": "./fixture.schema.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "runner.js",
+    "schemas.js",
+    "render.js",
+    "fixture.schema.json",
+    "fixtures/*.json",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec *.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

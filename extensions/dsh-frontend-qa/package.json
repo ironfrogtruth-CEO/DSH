@@ -1,0 +1,39 @@
+{
+  "name": "@local/dsh-frontend-qa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./schemas": "./schemas.js",
+    "./artifacts": "./artifacts.js",
+    "./png-diff": "./png-diff.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "schemas.js",
+    "artifacts.js",
+    "png-diff.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec *.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "hostOnly": true,
+    "explicitInvocation": true,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

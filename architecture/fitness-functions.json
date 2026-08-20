@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "uiIntegrity": {
+    "protectedPatterns": [
+      "apps/*.swift",
+      "extensions/**/client.js",
+      "custom-ui-patches/**/*.{js,css,tsx,jsx}"
+    ],
+    "manifestMustBeExplicit": true
+  },
+  "hostArchitecture": {
+    "requiredDshVersion": "0.1.0-rc.8",
+    "extensionsRoot": "extensions",
+    "profilePath": "profiles/web/package.json",
+    "allowedHostUiBridges": [
+      {
+        "path": "extensions/shrimp-shell",
+        "reason": "既有 Host API 与客户端桥接的兼容 seam；新扩展不得复制该模式"
+      },
+      {
+        "path": "extensions/dsbalance-bundle",
+        "reason": "既有余额卡片 Web bundle；不作为新 Host 扩展模板"
+      },
+      {
+        "path": "extensions/zhipu-media",
+        "reason": "既有媒体 Web bundle；不作为新 Host 扩展模板"
+      },
+      {
+        "path": "extensions/dsh-git",
+        "reason": "提交 60f5afd 引入的既有 Git Host 工具与工作区客户端入口；属于当前 App UI 合同，不作为新 Host 扩展模板"
+      }
+    ],
+    "warnings": {
+      "dangerousPermission": {
+        "enabled": true,
+        "fail": false
+      },
+      "sessionSearch": {
+        "enabled": true,
+        "fail": false
+      },
+      "failOnWarnings": false
+    }
+  },
+  "architectureInvariants": {
+    "storage": "sqlite-first",
+    "eventSource": "append-only",
+    "coreFork": false,
+    "uiMutation": false,
+    "derivedIndexesRebuildable": true
+  }
+}

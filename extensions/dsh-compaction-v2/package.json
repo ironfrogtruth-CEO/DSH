@@ -1,0 +1,44 @@
+{
+  "name": "@local/dsh-compaction-v2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./extractor": "./extractor.js",
+    "./capsule-store": "./capsule-store.js",
+    "./engine": "./engine.js",
+    "./render": "./render.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "extractor.js",
+    "capsule-store.js",
+    "engine.js",
+    "render.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec *.test.mjs"
+  },
+  "dependencies": {
+    "@local/dsh-intelligence": "file:../dsh-intelligence",
+    "@local/dsh-memory": "file:../dsh-memory",
+    "@local/dsh-cross-session": "file:../dsh-cross-session",
+    "@deepseek-ai/dsh-compaction-basic": "^0.1.0-rc.8",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.8",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

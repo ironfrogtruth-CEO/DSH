@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "deepseek-harness-rc8-offline-rollback-rehearsal",
+  "testedAt": "2026-08-20T18:43:00+08:00",
+  "liveInstallationModifiedByRehearsal": false,
+  "snapshot": {
+    "archive": "backups/rc8-enhanced-20260820-1840/dsh-rc8-enhanced-current.tar.gz",
+    "manifest": "backups/rc8-enhanced-20260820-1840/dsh-rc8-enhanced-current.snapshot.json",
+    "archiveSize": 98204307,
+    "archiveSha256": "77e14fb6dc64e34d5d62e9b1c3fefb58c7e080ab701094be335198a7ded540ac",
+    "entries": 37605,
+    "criticalFiles": 20,
+    "baselineVersion": "0.1.0-rc.8"
+  },
+  "dataPolicy": {
+    "credentialsIncluded": false,
+    "sessionsIncluded": false,
+    "memoriesIncluded": false,
+    "attachmentsIncluded": false,
+    "businessDataIncluded": false
+  },
+  "driftDetection": {
+    "mutatedFile": "profiles/web/package.json",
+    "mutationOnlyInTemporaryExtract": true,
+    "gateFailed": true,
+    "exitCode": 1,
+    "detectedSizeMismatch": true,
+    "detectedSha256Mismatch": true
+  },
+  "cleanRestore": {
+    "archiveHashVerified": true,
+    "tarListVerified": true,
+    "forbiddenEntries": 0,
+    "criticalFilesVerified": 20,
+    "installedVersion": "0.1.0-rc.8",
+    "uiProtectedFiles": 22,
+    "uiIntegrity": "passed",
+    "hostBundleDump": "passed",
+    "fullWebLoaderHelp": "passed",
+    "reliableDevelopmentPreset": "passed",
+    "compactionV2PresetContract": "passed"
+  },
+  "scripts": [
+    "scripts/create-rollback-snapshot.mjs",
+    "scripts/verify-rollback-snapshot.mjs",
+    "scripts/rollback-snapshot.test.mjs"
+  ],
+  "boundary": "The rehearsal restored and boot-validated an isolated copy; it deliberately did not overwrite the live ~/.dsh directory. The archive is sufficient for an offline same-path rc.8 restore of runtime, profiles, extensions, presets, UI resources, skills and architecture contracts."
+}
