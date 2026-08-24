@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Read-only validation for the rc.8 upgrade compatibility contract.
+ * Read-only validation for the DSH upgrade compatibility contract.
  * It never installs, switches, rewrites a baseline, migrates data, or starts DSH.
  */
 import { existsSync, readFileSync } from 'node:fs'
@@ -41,10 +41,12 @@ function validateContract(root, contract, mode, stagingRoot) {
   const add = (id, ok, detail) => checks.push({ id, status: ok ? 'pass' : 'fail', detail })
   const baseline = String(contract?.baselineVersion || '')
   add('schema-version', contract?.schemaVersion === 1, `schemaVersion=${String(contract?.schemaVersion)}`)
-  add('baseline-version', /^0\.1\.0-rc\.\d+$/.test(baseline), `baselineVersion=${baseline || 'missing'}`)
+  const versionPattern = /^0\.1\.\d+-rc\.\d+$/
+  add('baseline-version', versionPattern.test(baseline), `baselineVersion=${baseline || 'missing'}`)
   add('no-in-place-overwrite', contract?.installStrategy?.stagingRequired === true && contract?.installStrategy?.allowInPlaceOverwrite === false, 'stagingRequired=true and allowInPlaceOverwrite=false')
   add('no-automatic-ui-rebaseline', contract?.uiContract?.allowAutomaticRebaseline === false, 'allowAutomaticRebaseline=false')
-  add('offline-rollback', contract?.installStrategy?.offlineRollbackArtifactRequired === true && contract?.rollback?.targetVersion === baseline, `rollback=${String(contract?.rollback?.targetVersion || 'missing')}`)
+  const rollbackVersion = String(contract?.rollback?.targetVersion || '')
+  add('offline-rollback', contract?.installStrategy?.offlineRollbackArtifactRequired === true && versionPattern.test(rollbackVersion), `rollback=${rollbackVersion || 'missing'}`)
   add('canonical-data-protection', contract?.dataContract?.migrationOnCopyFirst === true && contract?.dataContract?.rollbackVerificationRequired === true && contract?.rollback?.deleteOrRewriteCanonicalData === false, 'copy-first migration and canonical data rewrite forbidden')
 
   let manifest = null

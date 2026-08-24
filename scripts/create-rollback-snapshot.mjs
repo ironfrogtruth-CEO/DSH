@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Create an offline rc.8 runtime/config rollback snapshot without user data. */
+/** Create an offline DSH runtime/config rollback snapshot without user data. */
 import { createHash } from 'node:crypto'
 import { createReadStream, existsSync } from 'node:fs'
 import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
@@ -102,7 +102,7 @@ function requireRead(path) {
 export async function createRollbackSnapshot({
   root = process.cwd(),
   outputDir,
-  name = `rc8-enhanced-${new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, '').replace('T', '-')}`,
+  name = `dsh-enhanced-${new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, '').replace('T', '-')}`,
   includedPaths = DEFAULT_INCLUDED_PATHS,
   criticalPaths = DEFAULT_CRITICAL_PATHS,
 } = {}) {
@@ -121,7 +121,7 @@ export async function createRollbackSnapshot({
     if (!existsSync(resolve(normalizedRoot, path))) throw new Error(`included path missing: ${path}`)
   }
   const version = installedVersion(normalizedRoot)
-  if (version !== '0.1.0-rc.8') throw new Error(`rollback snapshot requires installed rc.8, got ${version}`)
+  if (!/^0\.1\.\d+-rc\.\d+$/.test(version)) throw new Error(`rollback snapshot requires a supported DSH release candidate, got ${version}`)
   const criticalFiles = await criticalRecords(normalizedRoot, criticalPaths)
   const tar = spawnSync('/usr/bin/tar', ['-czf', tempArchive, '-C', normalizedRoot, '--', ...includedPaths], { encoding: 'utf8', timeout: 600_000, maxBuffer: 8 * 1024 * 1024 })
   if (tar.status !== 0) {

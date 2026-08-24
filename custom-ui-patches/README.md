@@ -1,8 +1,11 @@
 # DSH 自定义 UI 补丁备份
 
 本目录保存对 DeepSeek Harness 的自定义 UI 修改。
-当前 `client.js.original` / `client.js.modified` 已在 2026-08-20 迁移到 `0.1.0-rc.8`；
-升级前的 rc.7 完整安装和补丁已收入 `backups/pre-rc8-20260820-120111/`。
+会话、任务、Skill、轨迹与 Session log 的 `client.js.original` /
+`client.js.modified` 已在 2026-08-24 迁移到 `0.1.1-rc.2`；升级前的
+rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版把入口从
+`header.actions` 改为 `header.lineage`，因此保留官方新版交互，不强行覆盖旧
+`conversation.view` 补丁。
 
 ## 修改内容
 
@@ -57,6 +60,6 @@ cp /Users/marcus/.dsh/custom-ui-patches/<包名>/client.js.original \
 
 ## 注意
 
-- 当前补丁基于 `@deepseek-ai/dsh 0.1.0-rc.8`；再次升级时必须先对新版原始 bundle 做兼容比对，不得直接覆盖。
+- 当前已应用补丁基于 `@deepseek-ai/dsh 0.1.1-rc.2`；再次升级时必须先对新版原始 bundle 做兼容比对，不得直接覆盖。
 - 所有修改在 bundle 中都有 `[local-mod]` 注释标记，便于查找。
 - rc.8 起使用官方原生图片附件能力；DeepSeek 文本模型仍由 `shrimp-shell` 识图桥接，生图仍由 `zhipu-media` 提供。

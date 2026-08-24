@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineVersion": "0.1.0-rc.8",
+  "baselineVersion": "0.1.1-rc.2",
   "candidateVersion": null,
   "installStrategy": {
     "stagingRequired": true,

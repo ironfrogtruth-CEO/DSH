@@ -21,20 +21,20 @@ try {
   mkdirSync(join(root, "install/node_modules/@deepseek-ai/dsh"), { recursive: true });
   mkdirSync(join(root, "profiles/web"), { recursive: true });
   mkdirSync(join(root, "extensions/good-host/node_modules/@deepseek-ai/dsh-tools"), { recursive: true });
-  writeFileSync(join(root, "container.manifest.yaml"), "runtime:\n  dsh: 0.1.0-rc.8\n");
-  writeJson(join(root, "install/package.json"), { dependencies: { "@deepseek-ai/dsh": "0.1.0-rc.8" } });
-  writeJson(join(root, "install/node_modules/@deepseek-ai/dsh/package.json"), { name: "@deepseek-ai/dsh", version: "0.1.0-rc.8" });
+  writeFileSync(join(root, "container.manifest.yaml"), "runtime:\n  dsh: 0.1.1-rc.2\n");
+  writeJson(join(root, "install/package.json"), { dependencies: { "@deepseek-ai/dsh": "0.1.1-rc.2" } });
+  writeJson(join(root, "install/node_modules/@deepseek-ai/dsh/package.json"), { name: "@deepseek-ai/dsh", version: "0.1.1-rc.2" });
   writeJson(join(root, "profiles/web/package.json"), {
     dependencies: { "@local/good-host": "link:../../extensions/good-host" },
     dsh: { profile: { bundles: ["@local/good-host"] } },
   });
   writeJson(join(root, "extensions/good-host/package.json"), {
     name: "@local/good-host",
-    dependencies: { "@deepseek-ai/dsh-tools": "^0.1.0-rc.8" },
+    dependencies: { "@deepseek-ai/dsh-tools": "^0.1.1-rc.2" },
   });
   writeJson(join(root, "extensions/good-host/node_modules/@deepseek-ai/dsh-tools/package.json"), {
     name: "@deepseek-ai/dsh-tools",
-    version: "0.1.0-rc.8",
+    version: "0.1.1-rc.2",
   });
   writeFileSync(join(root, "extensions/good-host/index.js"), "export const name = 'good-host'\n");
 
@@ -60,7 +60,7 @@ try {
 
   writeJson(join(root, "extensions/good-host/package.json"), {
     name: "@local/good-host",
-    dependencies: { "@deepseek-ai/dsh-tools": "^0.1.0-rc.8" },
+    dependencies: { "@deepseek-ai/dsh-tools": "^0.1.1-rc.2" },
   });
   mkdirSync(join(root, "extensions/new-host"), { recursive: true });
   writeJson(join(root, "extensions/new-host/package.json"), { name: "@local/new-host" });

@@ -8,7 +8,7 @@ LOG="$HOME/.dsh/web.log"
 STATE="$HOME/.dsh/.web-load-signature"
 mkdir -p "$HOME/.dsh"
 if [ ! -f "$DSH_BIN" ]; then
-  echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.0-rc.8 --save-exact" >>"$LOG"
+  echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.1-rc.2 --save-exact" >>"$LOG"
   exit 1
 fi
 # LLM 适配器补丁(历史图片块降级为文字占位,防线程报废);幂等,install 升级后自动重打
@@ -53,6 +53,13 @@ if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   "$HOME/.dsh/scripts/stop" >>"$LOG" 2>&1
 fi
 cd "$HOME" || exit 1
-/usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web </dev/null >>"$LOG" 2>&1 &
+PTY_RUNNER="$HOME/.dsh/scripts/run-web-pty.py"
+if [ "$(uname -s)" = "Darwin" ] && [ -f "$PTY_RUNNER" ]; then
+  # rc.8 hosts stdio MCP children and exits when detached stdin immediately
+  # reaches EOF. The private PTY stays open without creating a Terminal window.
+  /usr/bin/nohup /usr/bin/python3 "$PTY_RUNNER" /usr/local/bin/node "$DSH_BIN" web --no-open </dev/null >>"$LOG" 2>&1 &
+else
+  /usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web --no-open </dev/null >>"$LOG" 2>&1 &
+fi
 [ -n "$SIGNATURE" ] && /bin/echo "$SIGNATURE" >"$STATE"
 exit 0

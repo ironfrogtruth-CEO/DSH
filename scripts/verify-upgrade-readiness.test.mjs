@@ -16,10 +16,10 @@ function fixture() {
   mkdirSync(join(root, 'output/ui'), { recursive: true })
   mkdirSync(join(root, 'install/node_modules/@deepseek-ai/dsh'), { recursive: true })
   writeFileSync(join(root, 'output/ui/baseline.json'), '{}\n')
-  writeFileSync(join(root, 'install/node_modules/@deepseek-ai/dsh/package.json'), JSON.stringify({ version: '0.1.0-rc.8' }))
+  writeFileSync(join(root, 'install/node_modules/@deepseek-ai/dsh/package.json'), JSON.stringify({ version: '0.1.1-rc.2' }))
   const contract = {
     schemaVersion: 1,
-    baselineVersion: '0.1.0-rc.8',
+    baselineVersion: '0.1.1-rc.2',
     candidateVersion: null,
     installStrategy: { stagingRequired: true, allowInPlaceOverwrite: false, offlineRollbackArtifactRequired: true },
     uiContract: { manifest: 'output/ui/baseline.json', allowAutomaticRebaseline: false },

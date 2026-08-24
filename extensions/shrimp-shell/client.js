@@ -47,9 +47,22 @@ window.__ModuleLoader__.load({
       const actionButton = (primary = false) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 32, padding: '0 13px', border: `1px solid ${primary ? '#ed654f' : 'var(--dsw-alias-border-l2)'}`, borderRadius: 9, background: primary ? '#ed654f' : 'transparent', color: primary ? '#fff' : 'var(--dsw-alias-label-primary)', fontSize: 13, lineHeight: 1, cursor: 'pointer', whiteSpace: 'nowrap' })
       const inputStyle = { boxSizing: 'border-box', width: '100%', minHeight: 36, padding: '8px 10px', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: 8, outline: 'none', background: 'var(--dsw-alias-bg-base)', color: 'var(--dsw-alias-label-primary)', font: 'inherit', fontSize: 13 }
       const statusLabel = { completed: '已完成', succeeded: '已完成', artifacts_ready: '有新产物', ready: '可运行', skipped: '跳过', needs_user: '待确认', active: '可继续', processing: '处理中', blocked: '已阻断', upcoming: '待开始', failed: '失败', queued: '排队中', running: '运行中', published: '已发布', draft: '草稿', trialing: '试跑中', archived: '已归档' }
-      const statusColor = (status) => ({ completed: '#2c9a68', succeeded: '#2c9a68', artifacts_ready: '#3d83e6', ready: '#2c9a68', skipped: '#8c949d', needs_user: '#da8a22', active: '#da8a22', processing: '#3d83e6', blocked: '#d94b50', failed: '#d94b50', queued: '#2c9a68', running: '#2c9a68', published: '#2c9a68', trialing: '#2c9a68', draft: '#8c949d', archived: '#8c949d' }[String(status || '').toLowerCase()] || '#8c949d')
+      const statusColor = (status) => ({ running: '#2c9a68', blocked: '#d94b50', failed: '#d94b50', artifacts_ready: '#3d83e6', needs_user: '#da8a22', active: '#da8a22', processing: '#3d83e6', trialing: '#3d83e6', queued: '#8c949d', completed: '#8c949d', succeeded: '#8c949d', ready: '#8c949d', published: '#8c949d', skipped: '#8c949d', draft: '#8c949d', archived: '#8c949d' }[String(status || '').toLowerCase()] || '#8c949d')
+      const HEARTBEAT_DAY_LABELS = { 0: '日', 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六' }
+      const formatHeartbeatSchedule = (task) => {
+        const cron = task && task.cron
+        const days = [...new Set((cron && Array.isArray(cron.days) ? cron.days : []).map((value) => {
+          const day = Number(value)
+          return day === 7 ? 0 : day
+        }).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))].sort((left, right) => (left === 0 ? 7 : left) - (right === 0 ? 7 : right))
+        if (cron && cron.time && days.length > 0) return `${days.map((day) => `周${HEARTBEAT_DAY_LABELS[day]}`).join('、')} ${cron.time}`
+        return `每 ${Math.max(1, Math.round((task && task.interval || 0) / 60))} 分钟`
+      }
       const dot = (color, glow = false, pulse = false) => h('span', { 'aria-hidden': true, style: { display: 'inline-block', width: 8, height: 8, flex: '0 0 8px', borderRadius: '50%', background: color, boxShadow: glow ? `0 0 0 3px color-mix(in srgb, ${color} 17%, transparent), 0 0 10px color-mix(in srgb, ${color} 60%, transparent)` : 'none', animation: pulse ? 'shrimp-status-pulse 1.6s ease-in-out infinite' : 'none' } })
-      const statusBadge = (status, text) => h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 24, padding: '0 8px', borderRadius: 999, background: `color-mix(in srgb, ${statusColor(status)} 10%, transparent)`, color: statusColor(status), fontSize: 11, lineHeight: 1 } }, dot(statusColor(status), status === 'running'), text || statusLabel[status] || status || '未知')
+      // 状态徽章只显示文字，不带头灯。灯号统一由行内唯一的 signal lamp
+      // 负责（running=绿/blocked_unread=红/unread_artifacts=蓝/否则熄灭），
+      // 避免一只虾出现两盏灯，也避免 completed/ready/done 误点绿灯。
+      const statusBadge = (status, text) => h('span', { style: { display: 'inline-flex', alignItems: 'center', minHeight: 24, padding: '0 8px', borderRadius: 999, background: `color-mix(in srgb, ${statusColor(status)} 10%, transparent)`, color: statusColor(status), fontSize: 11, lineHeight: 1 } }, text || statusLabel[status] || status || '未知')
       const apiError = (error) => String(error && error.message ? error.message : error)
       const unwrapItems = (value) => Array.isArray(value) ? value : (value && Array.isArray(value.items) ? value.items : [])
       const artifactSeenKey = (ref, stamp) => `dsh-shrimp-artifact-seen:${String(ref || '')}:${String(stamp || '')}`
@@ -73,6 +86,21 @@ window.__ModuleLoader__.load({
       }
       const markBlockedSeen = (ref, stamp) => markSignalSeen(ref, 'blocked', stamp)
       const artifactFileName = (artifact) => String(artifact && (artifact.name || artifact.display_name || artifact.artifact_name || artifact.filename || artifact.path || artifact.file_path || artifact.id) || '').trim()
+      const ARTICLE_SHRIMP_REF = 'shrimp-c433b57dac59419d'
+      const ARTICLE_VISIBLE_EXTENSIONS = new Set(['html', 'pdf', 'png'])
+      const artifactExtension = (value) => {
+        const clean = String(value || '').split(/[?#]/, 1)[0]
+        const name = clean.split(/[\\/]/).pop() || clean
+        const match = name.match(/\.([a-z0-9]+)$/i)
+        return match ? match[1].toLowerCase() : ''
+      }
+      const isArticleScope = (scope) => {
+        const ref = String(scope && (scope.shrimpRef || scope.pipelineSlug || scope.pipeline_slug || scope.ref || scope.slug) || '').trim()
+        const domain = String(scope && (scope.shrimpDomain || scope.domain) || '').trim().toLowerCase()
+        return ref === ARTICLE_SHRIMP_REF || domain === 'article'
+      }
+      const isArticleVisibleName = (value) => ARTICLE_VISIBLE_EXTENSIONS.has(artifactExtension(value))
+      const isArticleVisibleArtifact = (artifact) => isArticleVisibleName(artifactFileName(artifact))
       const DELIVERY_ARTIFACT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'html', 'htm', 'pdf', 'md', 'zip'])
       const LIBRARY_SHRIMP_ALLOWLIST = new Set(['皮皮虾@平安', 'UU爱学习@铁皮蛙', '企业健康报告@平安', '文章@虾六答'])
       const normalizedLibraryName = (value) => String(value || '').replace(/\s+/g, '').toLocaleLowerCase()
@@ -89,7 +117,14 @@ window.__ModuleLoader__.load({
         // Keep internal manifests, prompts and QA evidence out of the user-facing delivery list.
         return !/(^|[/_.-])(qa|qc|debug|internal|prompt|schema|manifest|trace|diagnostic)([/_.-]|$)/i.test(lower)
       }
-      const filterCustomerArtifacts = (value) => unwrapItems(value).filter(isCustomerArtifact)
+      const filterCustomerArtifacts = (value, scope = null) => {
+        const items = unwrapItems(value)
+        return isArticleScope(scope) ? items.filter(isArticleVisibleArtifact) : items.filter(isCustomerArtifact)
+      }
+      const filterArticleWorkspaceFiles = (value, scope = null) => {
+        const files = Array.isArray(value) ? value : []
+        return isArticleScope(scope) ? files.filter((file) => isArticleVisibleName(file && (file.path || file.name))) : files
+      }
       const formatArtifactSize = (value) => {
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0) return '未知大小'
@@ -133,19 +168,53 @@ window.__ModuleLoader__.load({
         if (kind === 'artifact') return String((run && (run.updated_at || run.finished_at || run.completed_at)) || row && (row.artifacts_updated_at || row.updated_at || row.created_at) || `${state}:artifact`)
         return String((run && (run.updated_at || run.finished_at || run.completed_at)) || row && (row.blocked_at || row.updated_at || row.created_at) || `${state}:blocked`)
       }
+      const normalizeShrimpRef = (value) => {
+        const ref = String(value ?? '').trim()
+        return ref || null
+      }
+      const shrimpRefsEqual = (left, right) => {
+        const leftRef = normalizeShrimpRef(left)
+        const rightRef = normalizeShrimpRef(right)
+        return Boolean(leftRef && rightRef && leftRef === rightRef)
+      }
+      const shrimpRefs = (item) => [...new Set([item && item.ref, item && item.slug, item && item.id].map(normalizeShrimpRef).filter(Boolean))]
+      const runRefs = (run) => [...new Set([run && run.pipeline_slug, run && run.pipelineSlug, run && run.pipeline_ref, run && run.pipelineRef].map(normalizeShrimpRef).filter(Boolean))]
+      const runBelongsToShrimp = (run, item) => {
+        const itemRefs = shrimpRefs(item)
+        const candidateRefs = runRefs(run)
+        // Never let two missing identifiers match. A run without a pipeline ref
+        // can only be used through the embedded item.run fallback below.
+        return itemRefs.length > 0 && candidateRefs.length > 0 && candidateRefs.some((ref) => itemRefs.includes(ref))
+      }
+      const runUpdatedAt = (run) => {
+        const value = Date.parse(String(run && (run.updated_at || run.finished_at || run.completed_at || run.started_at) || ''))
+        return Number.isFinite(value) ? value : 0
+      }
+      const latestRunForShrimp = (item, runs = []) => {
+        const matched = (Array.isArray(runs) ? runs : []).filter((run) => runBelongsToShrimp(run, item)).sort((left, right) => runUpdatedAt(right) - runUpdatedAt(left) || String(right && right.id || '').localeCompare(String(left && left.id || '')))
+        return matched[0] || (item && item.run) || null
+      }
+      // Button/详情控制可把 queued 等过渡态视为 active；状态灯只认真正的 running。
+      const RUNNING_SIGNAL_STATUSES = new Set(['running'])
+      const ACTIVE_RUN_STATUSES = new Set(['running', 'queued', 'processing', 'trialing', 'awaiting_confirmation', 'awaiting_external', 'waiting_external', 'cancel_requested'])
+      const BLOCKED_RUN_STATUSES = new Set(['blocked', 'failed', 'stopped', 'cancelled', 'blocked_ai_provider', 'blocked_external_dependency'])
       const normalizeShrimp = (item, runOverride) => {
         const row = item || {}
         const run = runOverride || row.run || {}
         const identity = row.identity === 'catch_draft' ? 'catch_draft' : row.identity === 'draft' ? 'draft' : 'pipeline'
         const state = String(row.state || row.lifecycle_status || row.status || 'draft').toLowerCase()
         const rowSignals = row.signals || {}
-        const running = Boolean(rowSignals.running) || ['running', 'queued', 'processing', 'trialing'].includes(state) || ['running', 'queued', 'processing', 'trialing'].includes(String(run.status || run.state || '').toLowerCase())
-        const blocked = Boolean(rowSignals.blocked) || ['blocked', 'failed', 'stopped', 'cancelled'].includes(state) || ['blocked', 'failed', 'stopped', 'cancelled'].includes(String(run.status || run.state || '').toLowerCase())
-        const artifactReady = Boolean(rowSignals.artifacts_ready) || Boolean(run.artifacts_ready) || Number(run.artifacts_ready_count || run.artifact_count || 0) > 0
+        const runStatus = String(run.status || run.state || '').toLowerCase()
+        const hasRunStatus = Boolean(runStatus)
+        // A matching run is the authoritative state. Row lifecycle/signal data
+        // may lag one refresh behind and must not resurrect a previous run.
+        const running = RUNNING_SIGNAL_STATUSES.has(runStatus) || (!hasRunStatus && RUNNING_SIGNAL_STATUSES.has(state))
+        const blocked = BLOCKED_RUN_STATUSES.has(runStatus) || (!hasRunStatus && (Boolean(rowSignals.blocked) || BLOCKED_RUN_STATUSES.has(state)))
+        const artifactReady = Boolean(run.artifacts_ready) || Number(run.artifacts_ready_count || run.artifact_count || 0) > 0 || (!hasRunStatus && Boolean(rowSignals.artifacts_ready || state === 'artifacts_ready'))
         const ref = row.ref || row.id || row.slug
         const artifactStamp = shrimpSignalStamp(row, 'artifact', run)
         const blockedStamp = shrimpSignalStamp(row, 'blocked', run)
-        const artifactCandidate = Boolean(rowSignals.unread_artifacts || rowSignals.output_unread) || artifactReady
+        const artifactCandidate = artifactReady || (!hasRunStatus && Boolean(rowSignals.unread_artifacts || rowSignals.output_unread))
         const blockedUnread = blocked && !signalWasSeen(ref, 'blocked', blockedStamp)
         const artifactUnread = artifactCandidate && !artifactWasSeen(ref, artifactStamp)
         return {
@@ -161,8 +230,8 @@ window.__ModuleLoader__.load({
           signal_stamps: { blocked: blockedStamp, artifact: artifactStamp },
         }
       }
-      const normalizeShrimps = (value, runs = []) => unwrapItems(value).map((item) => normalizeShrimp(item, runs.find((run) => run && (run.pipeline_slug === item.ref || run.pipelineSlug === item.ref || run.pipeline_slug === item.slug || run.pipelineSlug === item.slug)) || item.run))
-      const runForShrimp = (item, runs = []) => runs.filter((run) => run && (run.pipeline_slug === item.ref || run.pipelineSlug === item.ref || run.pipeline_slug === item.slug || run.pipelineSlug === item.slug)).sort((left, right) => String(right.updated_at || right.started_at || '').localeCompare(String(left.updated_at || left.started_at || '')))[0] || item && item.run || null
+      const normalizeShrimps = (value, runs = []) => unwrapItems(value).map((item) => normalizeShrimp(item, latestRunForShrimp(item, runs)))
+      const runForShrimp = (item, runs = []) => latestRunForShrimp(item, runs)
       const requestCatch = (detail) => {
         const value = detail && typeof detail === 'object' ? { ...detail } : {}
         window.__shrimpPendingCatch = value
@@ -415,7 +484,7 @@ window.__ModuleLoader__.load({
           }
           const onSeen = (event) => {
             const ref = event && event.detail && event.detail.ref
-            const item = indicatorItems.find((candidate) => candidate && candidate.ref === ref)
+            const item = indicatorItems.find((candidate) => candidate && shrimpRefsEqual(candidate.ref, ref))
             if (item && item.signal_stamps) {
               if (item.signals && item.signals.blocked) markBlockedSeen(item.ref, item.signal_stamps.blocked)
               if (item.signals && item.signals.artifacts_ready) markArtifactSeen(item.ref, item.signal_stamps.artifact)
@@ -468,7 +537,7 @@ window.__ModuleLoader__.load({
           const signalStamps = normalized.signal_stamps || {}
           if (normalized.signals && normalized.signals.blocked) markBlockedSeen(item.ref, signalStamps.blocked)
           if (normalized.signals && normalized.signals.artifacts_ready) markArtifactSeen(item.ref, signalStamps.artifact)
-          setItems((current) => current.map((candidate) => candidate && candidate.ref === item.ref ? normalizeShrimp(candidate, runForShrimp(candidate, runs)) : candidate))
+          setItems((current) => current.map((candidate) => candidate && shrimpRefsEqual(candidate.ref, item.ref) ? normalizeShrimp(candidate, runForShrimp(candidate, runs)) : candidate))
           if ((normalized.signals && (normalized.signals.blocked || normalized.signals.artifacts_ready)) && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('shrimp:status-seen', { detail: { ref: item.ref } }))
           try {
             const identity = item.identity === 'catch_draft' ? 'catch_draft' : 'pipeline'
@@ -487,7 +556,7 @@ window.__ModuleLoader__.load({
             const run = currentRun
             if (run && run.id) {
               try { setRunSummary(await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/summary`)) } catch {}
-              const value = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); setArtifacts(filterCustomerArtifacts(value)); markArtifactSeen(item.ref, run.updated_at || signalStamps.artifact)
+              const value = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); setArtifacts(filterCustomerArtifacts(value, item)); markArtifactSeen(item.ref, run.updated_at || signalStamps.artifact)
             }
           } catch (e) { setError(apiError(e)) } finally { setBusy(false) }
         }
@@ -504,7 +573,7 @@ window.__ModuleLoader__.load({
               setRunSummary(value)
               const status = String(value && value.status || '').toLowerCase()
               if (['done', 'completed', 'succeeded', 'failed', 'blocked', 'cancelled', 'stopped'].includes(status)) {
-                try { const artifactValue = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); if (alive) setArtifacts(filterCustomerArtifacts(artifactValue)) } catch {}
+                try { const artifactValue = await tankApi(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts`); if (alive) setArtifacts(filterCustomerArtifacts(artifactValue, selected)) } catch {}
                 if (timer) clearInterval(timer)
               }
             } catch {}
@@ -516,7 +585,7 @@ window.__ModuleLoader__.load({
         React.useEffect(() => {
           const consume = (detailValue) => {
             const ref = detailValue && detailValue.ref
-            const item = items.find((candidate) => candidate.ref === ref && (detailValue.identity ? candidate.identity === detailValue.identity : true))
+            const item = items.find((candidate) => shrimpRefsEqual(candidate.ref, ref) && (detailValue.identity ? candidate.identity === detailValue.identity : true))
             if (item) { window.__shrimpPendingLibrary = null; openItem(item) }
           }
           const pending = window.__shrimpPendingLibrary
@@ -531,14 +600,15 @@ window.__ModuleLoader__.load({
           try { await tankApi(`/api/v1/pipelines/${encodeURIComponent(item.ref)}/runs`, { method: 'POST', headers: { 'Idempotency-Key': `dsh-library:${item.ref}:${Date.now()}` }, body: JSON.stringify({ goal: item.display_name || item.ref }) }); await load() } catch (e) { setError(`运行未启动：${apiError(e)}`) } finally { setBusy(false) }
         }
         const toggleHeartbeat = async (item, enabled) => {
-          const previous = heartbeats.find((task) => task.pipelineSlug === item.ref)
+          const previous = heartbeats.find((task) => shrimpRefsEqual(task.pipelineSlug, item.ref))
           setBusy(true); setError('')
           try { await hbApi('/api/shrimp/heartbeat/register', { method: 'POST', body: JSON.stringify({ id: previous && previous.id, name: item.display_name || item.ref, pipelineSlug: item.ref, interval: previous && previous.interval || 3600, enabled, payload: { goal: item.display_name || item.ref }, sessionId: previous && previous.sessionId || '' }) }); const value = await hbApi('/api/shrimp/heartbeat/list'); setHeartbeats(value.tasks || []) } catch (e) { setError(`心跳设置失败：${apiError(e)}`) } finally { setBusy(false) }
         }
         const isDraft = selected && (selected.identity === 'catch_draft' || selected.identity === 'draft')
         if (selected) {
-          const selectedHeartbeat = selected.ref ? heartbeats.find((task) => task.pipelineSlug === selected.ref) : null
-          const activeRun = selected.ref ? runs.find((run) => (run.pipeline_slug === selected.ref || run.pipelineSlug === selected.ref) && ['running', 'queued', 'awaiting_confirmation'].includes(String(run.status || '').toLowerCase())) : null
+          const selectedHeartbeat = selected.ref ? heartbeats.find((task) => shrimpRefsEqual(task.pipelineSlug, selected.ref)) : null
+          const selectedRun = selected.ref ? runForShrimp(selected, runs) : null
+          const activeRun = selectedRun && ACTIVE_RUN_STATUSES.has(String(selectedRun.status || selectedRun.state || '').toLowerCase()) ? selectedRun : null
           const latestRun = selected.ref ? runForShrimp(selected, runs) : null
           const abandonSelectedDraft = async () => {
             if (!isDraft || !selected.ref || !window.confirm(`确定放弃「${selected.display_name || selected.title || selected.ref}」？这会删除这只虾的设置和已产生的文件。`)) return
@@ -576,7 +646,7 @@ window.__ModuleLoader__.load({
               h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } }, h('strong', { style: { fontSize: 12 } }, '最近产物'), h('span', { style: { ...viewMuted, fontSize: 10 } }, `${artifacts.length} 个文件`)),
               artifacts.length ? h('div', { className: 'shrimp-artifact-list' }, artifacts.map((artifact) => h('button', {
                 type: 'button', key: artifact.id || artifact.artifact_id, className: 'shrimp-artifact-card',
-                onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun && latestRun.id, artifactId: artifact.id || artifact.artifact_id, artifact } })),
+                onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun && latestRun.id, artifactId: artifact.id || artifact.artifact_id, artifact, shrimpRef: selected.ref, shrimpDomain: selected.domain } })),
               }, h('span', { className: 'shrimp-artifact-type' }, artifactTypeLabel(artifact)), h('span', { className: 'shrimp-artifact-main' }, h('span', { className: 'shrimp-artifact-name', title: artifactFileName(artifact) }, artifactFileName(artifact) || '未命名产物'), h('span', { className: 'shrimp-artifact-sub' }, `${artifactTypeLabel(artifact)} · ${formatArtifactSize(artifact.size_bytes ?? artifact.size)}`)), h('time', { className: 'shrimp-artifact-time' }, formatArtifactTime(artifact.created_at || artifact.updated_at || artifact.mtime))))) : h('div', { style: { ...viewMuted, marginTop: 7 } }, '最近一次运行还没有文件产物'))
             const knowledgeBody = h('section', { style: { padding: '10px 11px', borderRadius: 11, background: 'var(--dsw-alias-bg-layer-2, rgba(128,128,128,.06))' } },
               h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } }, h('strong', { style: { fontSize: 12 } }, '知识库'), h('span', { style: { ...viewMuted, fontSize: 10 } }, `已绑定 ${knowledgeBindings.length} 个 · 已选 ${selectedKnowledgeIds.length} 个`)),
@@ -588,8 +658,8 @@ window.__ModuleLoader__.load({
             const controls = h('div', { style: { display: 'grid', gap: 12, marginTop: 14 } },
               h('div', { style: viewMuted }, summary.description || summary.display_name || '这是已发布的生产工作流。运行、产物与阻断状态都留在大神内。'),
               knowledgeBody,
-              h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('button', { type: 'button', disabled: busy || !(selected.capabilities && selected.capabilities.can_run), style: actionButton(true), onClick: () => runItem(selected) }, activeRun ? '运行中…' : '运行这只虾'), latestRun ? h('button', { type: 'button', style: actionButton(false), onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun.id } })) }, '打开最近一次产物') : null),
-              h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, h('span', { style: viewMuted }, '心跳'), selectedHeartbeat && selectedHeartbeat.enabled !== false ? statusBadge('running', `已开启 · 每 ${Math.max(1, Math.round((selectedHeartbeat.interval || 0) / 60))} 分钟`) : h('span', { style: viewMuted }, '未开启'), h('button', { type: 'button', disabled: busy, style: actionButton(false), onClick: () => toggleHeartbeat(selected, !(selectedHeartbeat && selectedHeartbeat.enabled !== false)) }, selectedHeartbeat && selectedHeartbeat.enabled !== false ? '关闭心跳' : '开启心跳')),
+              h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('button', { type: 'button', disabled: busy || !(selected.capabilities && selected.capabilities.can_run), style: actionButton(true), onClick: () => runItem(selected) }, activeRun ? '运行中…' : '运行这只虾'), latestRun ? h('button', { type: 'button', style: actionButton(false), onClick: () => window.dispatchEvent(new CustomEvent('shrimp:open-artifact', { detail: { runId: latestRun.id, shrimpRef: selected.ref, shrimpDomain: selected.domain } })) }, '打开最近一次产物') : null),
+              h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, h('span', { style: viewMuted }, '心跳'), selectedHeartbeat && selectedHeartbeat.enabled !== false ? statusBadge('running', `已开启 · ${formatHeartbeatSchedule(selectedHeartbeat)}`) : h('span', { style: viewMuted }, '未开启'), h('button', { type: 'button', disabled: busy, style: actionButton(false), onClick: () => toggleHeartbeat(selected, !(selectedHeartbeat && selectedHeartbeat.enabled !== false)) }, selectedHeartbeat && selectedHeartbeat.enabled !== false ? '关闭心跳' : '开启心跳')),
               artifactsBody)
             body = h('div', null, head, nodeRail, controls)
           }
@@ -598,11 +668,15 @@ window.__ModuleLoader__.load({
         const ordered = [...items].sort((a, b) => Number(['trialing', 'running', 'queued'].includes(String(b.state || '').toLowerCase())) - Number(['trialing', 'running', 'queued'].includes(String(a.state || '').toLowerCase())) || String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
         const rows = ordered.map((item) => {
           const running = Boolean(item.signals && item.signals.running)
-          const blocked = Boolean(item.signals && item.signals.blocked)
-          const output = Boolean(item.signals && item.signals.unread_artifacts)
+          // 红灯只用于“未读阻断”（查看详情后熄灭），不用持久 blocked；
+          // 蓝灯只用于“未读产物”（查看产物后熄灭）。
+          const blockedUnread = Boolean(item.signals && item.signals.blocked_unread)
+          const outputUnread = Boolean(item.signals && item.signals.unread_artifacts)
+          const signalOn = running || blockedUnread || outputUnread
+          const signalColor = running ? '#2c9a68' : blockedUnread ? '#d94b50' : outputUnread ? '#3d83e6' : 'transparent'
           const draftItem = item.identity === 'catch_draft'
-          const itemStatus = running ? 'running' : blocked ? 'failed' : output ? 'completed' : item.state || 'draft'
-          return h('div', { key: item.ref, style: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, padding: '11px 8px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } }, [dot(running ? '#2c9a68' : blocked ? '#d94b50' : output ? '#3d83e6' : '#8c949d', running || blocked || output, running), h('div', { style: { minWidth: 0, flex: 1 } }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, h('button', { type: 'button', style: { border: 0, padding: 0, background: 'transparent', color: 'var(--dsw-alias-label-primary)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }, onClick: () => openItem(item) }, item.display_name || item.ref || '未命名虾'), statusBadge(itemStatus)), h('div', { style: { ...viewMuted, fontSize: 11 } }, draftItem ? '草稿' : `${item.domain || '工作流'} · ${item.ref || ''}`, item.updated_at ? ` · ${new Date(item.updated_at).toLocaleString()}` : '')), h('div', { style: { display: 'flex', gap: 7 } }, draftItem ? h('button', { type: 'button', style: actionButton(false), onClick: () => requestCatch({ draftId: item.ref }) }, '继续抓虾') : h('button', { type: 'button', disabled: busy || !(item.capabilities && item.capabilities.can_run), style: actionButton(true), onClick: () => runItem(item) }, running ? '运行中…' : '运行'), h('button', { type: 'button', style: actionButton(false), onClick: () => openItem(item) }, '详情'))])
+          const itemStatus = running ? 'running' : blockedUnread ? 'failed' : outputUnread ? 'artifacts_ready' : item.state || 'draft'
+          return h('div', { key: item.ref, style: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, padding: '11px 8px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } }, [dot(signalColor, signalOn, running), h('div', { style: { minWidth: 0, flex: 1 } }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, h('button', { type: 'button', style: { border: 0, padding: 0, background: 'transparent', color: 'var(--dsw-alias-label-primary)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }, onClick: () => openItem(item) }, item.display_name || item.ref || '未命名虾'), h('span', { style: { color: 'var(--dsw-alias-label-tertiary)', fontSize: 12, lineHeight: 1, whiteSpace: 'nowrap' } }, statusLabel[itemStatus] || itemStatus || '未知')), h('div', { style: { ...viewMuted, fontSize: 11 } }, draftItem ? '草稿' : `${item.domain || '工作流'} · ${item.ref || ''}`, item.updated_at ? ` · ${new Date(item.updated_at).toLocaleString()}` : '')), h('div', { style: { display: 'flex', gap: 7 } }, draftItem ? h('button', { type: 'button', style: actionButton(false), onClick: () => requestCatch({ draftId: item.ref }) }, '继续抓虾') : h('button', { type: 'button', disabled: busy || !(item.capabilities && item.capabilities.can_run), style: actionButton(true), onClick: () => runItem(item) }, running ? '运行中…' : '运行'), h('button', { type: 'button', style: actionButton(false), onClick: () => openItem(item) }, '详情'))])
         })
         return h('div', { style: viewContainer, 'data-shrimp-view': 'library' }, [h('div', { key: 'title', style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 } }, h('div', null, h('h1', { style: viewTitle }, '我的虾'), h('p', { style: { ...viewMuted, margin: '6px 0 0' } }, '已抓到的虾、草稿和运行记录都在这里；运行中的虾会置顶。')), h('button', { type: 'button', disabled: busy, style: actionButton(false), onClick: load }, busy ? '刷新中…' : '刷新')), error ? h('div', { key: 'error', role: 'alert', style: { ...card, color: '#d94b50' } }, error) : null, h('div', { key: 'rows', style: { ...card, display: 'grid', gap: 8 } }, rows.length ? rows : h('div', { style: viewMuted }, offline ? '虾缸暂时离线；恢复后会自动重试。' : '还没有虾或草稿，去“抓虾”创建第一只。'))])
       }
@@ -1158,7 +1232,7 @@ window.__ModuleLoader__.load({
         })
       }
 
-      const openTree = (container, dir, sessionId, previewHost, onReady) => {
+      const openTree = (container, dir, sessionId, previewHost, onReady, options = {}) => {
         setNote(container, '正在读取目录…')
         const route = '/api/shrimp/tree?session=' + encodeURIComponent(sessionId) + '&dir=' + encodeURIComponent(dir || '')
         api(route).then((data) => {
@@ -1168,12 +1242,13 @@ window.__ModuleLoader__.load({
             onReady && onReady(false)
             return
           }
-          if (!data.entries || data.entries.length === 0) {
+          const entries = (data.entries || []).filter((entry) => !options.articleOnly || entry.type === 'directory' || isArticleVisibleName(entry.path || entry.name))
+          if (entries.length === 0) {
             setNote(container, '这个目录里还没有文件')
             onReady && onReady(false)
             return
           }
-          for (const entry of data.entries) {
+          for (const entry of entries) {
             const row = document.createElement('div')
             row.className = 'shrimp-tree-item'
             row.dataset.type = entry.type
@@ -1205,7 +1280,7 @@ window.__ModuleLoader__.load({
                 children.style.display = open ? 'none' : 'block'
                 caret.classList.toggle('is-open', !open)
                 if (!open && children.childElementCount === 0) {
-                  openTree(children, entry.path, sessionId, previewHost)
+                  openTree(children, entry.path, sessionId, previewHost, undefined, options)
                 }
               })
               container.appendChild(children)
@@ -1291,6 +1366,7 @@ window.__ModuleLoader__.load({
 
       const openPanel = (sessionId, focusArtifact = null) => {
         closePanel()
+        const articleOnly = isArticleScope(focusArtifact)
         panelBackdrop = document.createElement('div')
         panelBackdrop.className = 'shrimp-panel-backdrop'
         panelBackdrop.setAttribute('aria-hidden', 'true')
@@ -1366,7 +1442,7 @@ window.__ModuleLoader__.load({
             // 会话产物深链优先于默认 output 目录，并在树中直接预览目标文件。
             const focusPath = focusArtifact && focusArtifact.filePath
             revealTreePath(workspace.content, workspaceData.cwd, focusPath || workspaceData.outputPath, sessionId, preview, Boolean(focusPath))
-          })
+          }, { articleOnly })
 
           const artifacts = createSection('本轮产物', 'artifacts', '从新到旧排序')
           body.appendChild(artifacts.section)
@@ -1375,7 +1451,7 @@ window.__ModuleLoader__.load({
           // 在现有“项目与产物”面板中加一行并高亮，不把路径写到聊天或 UI。
           if (focusArtifact && focusArtifact.runId) {
             tankApi(`/api/v1/runs/${encodeURIComponent(focusArtifact.runId)}/artifacts`).then((value) => {
-              const remoteArtifacts = unwrapItems(value)
+              const remoteArtifacts = filterCustomerArtifacts(value, focusArtifact)
               for (const artifact of remoteArtifacts) {
                 const artifactId = String(artifact.id || artifact.artifact_id || '')
                 const row = document.createElement('div')
@@ -1414,7 +1490,7 @@ window.__ModuleLoader__.load({
               setNote(artifacts.content, '产物扫描失败：' + data.error, 'error')
               return
             }
-            const files = (data.files || []).filter((file) => !/(?:\.db-(?:wal|shm)|\.bootstrap\.lock|\/\.DS_Store)$/i.test(file.path || ''))
+            const files = filterArticleWorkspaceFiles((data.files || []).filter((file) => !/(?:\.db-(?:wal|shm)|\.bootstrap\.lock|\/\.DS_Store)$/i.test(file.path || '')), focusArtifact)
             if (files.length === 0 && !artifacts.content.querySelector('[data-shrimp-run-id]')) {
               setNote(artifacts.content, '这个会话还没有可预览的新增或修改文件')
               return

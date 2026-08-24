@@ -9,7 +9,7 @@
     "manifestMustBeExplicit": true
   },
   "hostArchitecture": {
-    "requiredDshVersion": "0.1.0-rc.8",
+    "requiredDshVersion": "0.1.1-rc.2",
     "extensionsRoot": "extensions",
     "profilePath": "profiles/web/package.json",
     "allowedHostUiBridges": [

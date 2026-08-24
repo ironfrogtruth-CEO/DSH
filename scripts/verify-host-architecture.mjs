@@ -12,7 +12,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 
 const require = createRequire(import.meta.url);
 const REAL_HOME = resolve(homedir(), ".dsh");
-const DEFAULT_VERSION = "0.1.0-rc.8";
+const DEFAULT_VERSION = "0.1.1-rc.2";
 const DEFAULT_CONFIG = {
   requiredDshVersion: DEFAULT_VERSION,
   extensionsRoot: "extensions",

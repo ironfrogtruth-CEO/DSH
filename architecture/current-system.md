@@ -6,7 +6,7 @@
 
 | 层 | 当前职责 | 约束 |
 | --- | --- | --- |
-| 固定运行时 | `install/node_modules/@deepseek-ai/dsh`，版本合同为 `0.1.0-rc.8` | `container.manifest.yaml`、`install/package.json`、安装包版本必须一致 |
+| 固定运行时 | `install/node_modules/@deepseek-ai/dsh`，版本合同为 `0.1.1-rc.2` | `container.manifest.yaml`、`install/package.json`、安装包版本必须一致 |
 | Profile | `profiles/web/package.json` 及其 bundle 路径 | bundle 只从声明的 link、profile 依赖或固定 install 目录解析 |
 | Host 扩展 | `extensions/*/index.js` 及工具实现 | 依赖的 `@deepseek-ai/dsh-*` 必须与 rc.8 对齐；新 Host 扩展不携带客户端/UI/CSS |
 | UI 边界 | `apps/*.swift`、`extensions/**/client.js`、`custom-ui-patches` 中的前端资源 | 只记录和校验哈希，能力建设不得直接改动这些文件 |
@@ -42,4 +42,4 @@
 
 ## 上游升级边界
 
-当前正式回退基线是 `0.1.0-rc.8`。候选 Harness 必须安装到隔离目录，不能覆盖当前 `install/` 试错。UI manifest、浏览器交互、Host 扩展、图片桥、压缩、记忆、跨会话、任务图和数据恢复是同一组升级 Gate；全部通过后才允许切换正式入口。任何未批准的 UI 并行修改都必须单独审计，不能由升级流程自动写成新基线。
+当前正式运行基线是 `0.1.1-rc.2`，离线回退目标为 `0.1.0-rc.8`。后续候选 Harness 必须安装到隔离目录，不能覆盖当前 `install/` 试错。UI manifest、浏览器交互、Host 扩展、图片桥、压缩、记忆、跨会话、任务图和数据恢复是同一组升级 Gate；全部通过后才允许切换正式入口。任何未批准的 UI 并行修改都必须单独审计，不能由升级流程自动写成新基线。

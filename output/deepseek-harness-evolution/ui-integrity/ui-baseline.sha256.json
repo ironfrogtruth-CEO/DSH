@@ -1,10 +1,6 @@
 {
   "schemaVersion": 1,
   "root": ".",
-  "capturedAt": "2026-08-20T17:16:52+08:00",
-  "gitCommit": "60f5afd",
-  "reason": "Protect the current committed App UI after feat: restore heartbeat and add Git workspace; predecessor preserved separately.",
-  "predecessor": "ui-baseline-2026-08-20-1536-pre-heartbeat-git.sha256.json",
   "protectedPatterns": [
     "apps/*.swift",
     "extensions/**/client.js",
@@ -17,11 +13,11 @@
     },
     {
       "path": "custom-ui-patches/dsh-client-ui-conversation/client.js.modified",
-      "sha256": "9dced64920ac6a98a728c39e4d5fbffe074ae7e3ffe4fc5c05a2a13623dc6387"
+      "sha256": "4ccd86c2b534597bfa7fe1012af7f71495834ccad96aa0a4840fa1dc2104bcc2"
     },
     {
       "path": "custom-ui-patches/dsh-client-ui-conversation/client.js.original",
-      "sha256": "dc48b35b74c71ddfe321d5a8e2604bbbbbc7e5136876740616ef4292b4e61b52"
+      "sha256": "fe448ef7e0b1f3e7713dadfc7eff56b9f80d103a2111dfe69c1735ffd0196d61"
     },
     {
       "path": "custom-ui-patches/dsh-client-ui-jobs/client.js.modified",
@@ -93,7 +89,7 @@
     },
     {
       "path": "extensions/shrimp-shell/client.js",
-      "sha256": "8d6505398188f4d5dd83a4d9fc51b97b988e76c924e26d5f58257c611ce645d4"
+      "sha256": "93c2f88af6fffeed89de12a8e6afee1012f14589c49ffe7ad8f629412fe994d6"
     },
     {
       "path": "extensions/zhipu-media/client.js",
