@@ -50,6 +50,176 @@ const VISION_PROMPT = [
 const VISION_RESULT_CACHE = new Map()
 const VISION_RESULT_CACHE_LIMIT = 128
 
+// 心跳后台调度合同：cron 在 Host 内计算，不依赖浏览器页面；runner 只允许
+// 调用下面登记过的固定脚本，绝不从任务数据中读取任意 command/path/args。
+export const HEARTBEAT_TIMEZONE = 'Asia/Shanghai'
+export const HEARTBEAT_CRON_MISSED_WINDOW_MS = 2 * 60 * 1000
+const HEARTBEAT_RUNNER_SPECS = Object.freeze({
+  'gzh-multi-article': Object.freeze({
+    command: '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3',
+    args: Object.freeze(['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py']),
+    cwd: '/Users/marcus/Desktop/虾缸',
+    timeoutMs: 6 * 60 * 60 * 1000,
+  }),
+})
+export const HEARTBEAT_RUNNERS = HEARTBEAT_RUNNER_SPECS
+
+function heartbeatTimeZoneParts(epochMs, timezone = HEARTBEAT_TIMEZONE) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(epochMs))
+  const values = Object.fromEntries(parts.filter((item) => item.type !== 'literal').map((item) => [item.type, Number(item.value)]))
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  }
+}
+
+function heartbeatLocalDateToEpoch({ year, month, day, hour, minute, second = 0 }, timezone = HEARTBEAT_TIMEZONE) {
+  const wallClock = Date.UTC(year, month - 1, day, hour, minute, second, 0)
+  let epoch = wallClock
+  // Resolve the timezone offset around the candidate. Two passes are enough
+  // for the fixed Asia/Shanghai contract and also handle ordinary DST zones.
+  for (let i = 0; i < 3; i += 1) {
+    const actual = heartbeatTimeZoneParts(epoch, timezone)
+    const offset = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute, actual.second, 0) - epoch
+    epoch = wallClock - offset
+  }
+  return epoch
+}
+
+function heartbeatEpochMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric)) return numeric
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return 0
+}
+
+export function normalizeHeartbeatCron(cron) {
+  if (!cron || typeof cron !== 'object') return null
+  const match = /^(?:[01]\d|2[0-3]):[0-5]\d$/.exec(String(cron.time || '').trim())
+  const days = [...new Set((Array.isArray(cron.days) ? cron.days : []).map((day) => Number(day)).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))]
+  const timezone = String(cron.timezone || HEARTBEAT_TIMEZONE).trim() || HEARTBEAT_TIMEZONE
+  if (!match || days.length === 0) return null
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format()
+  } catch {
+    return null
+  }
+  return { time: String(cron.time).trim(), days, timezone }
+}
+
+export function nextHeartbeatCronAt(nowMs = Date.now(), cron) {
+  const normalized = normalizeHeartbeatCron(cron)
+  if (!normalized) return null
+  const current = heartbeatEpochMs(nowMs)
+  const local = heartbeatTimeZoneParts(current, normalized.timezone)
+  const localDate = Date.UTC(local.year, local.month - 1, local.day, 0, 0, 0, 0)
+  const [hour, minute] = normalized.time.split(':').map(Number)
+  for (let dayOffset = 0; dayOffset <= 8; dayOffset += 1) {
+    const candidateDate = new Date(localDate + dayOffset * 24 * 60 * 60 * 1000)
+    const candidate = heartbeatLocalDateToEpoch({
+      year: candidateDate.getUTCFullYear(),
+      month: candidateDate.getUTCMonth() + 1,
+      day: candidateDate.getUTCDate(),
+      hour,
+      minute,
+      second: 0,
+    }, normalized.timezone)
+    if (normalized.days.includes(candidateDate.getUTCDay()) && candidate > current) return candidate
+  }
+  return null
+}
+
+export function planHeartbeatTask(task, nowMs = Date.now(), { missedWindowMs = HEARTBEAT_CRON_MISSED_WINDOW_MS } = {}) {
+  const current = heartbeatEpochMs(nowMs)
+  const hasCron = task && task.cron && typeof task.cron === 'object'
+  if (hasCron) {
+    const cron = normalizeHeartbeatCron(task.cron)
+    if (!cron) return { action: 'invalid', reason: 'cron 无效：需要合法 time、days 和 timezone' }
+    const scheduledAt = heartbeatEpochMs(task.nextRunAt)
+    if (!scheduledAt) return { action: 'schedule', nextRunAt: nextHeartbeatCronAt(current, cron), cron }
+    if (scheduledAt > current) return { action: 'wait', nextRunAt: scheduledAt, cron }
+    const nextRunAt = nextHeartbeatCronAt(current, cron)
+    const missed = current - scheduledAt > missedWindowMs
+    return {
+      action: missed ? 'miss' : 'run',
+      scheduledAt,
+      nextRunAt,
+      cron,
+      missedByMs: Math.max(0, current - scheduledAt),
+    }
+  }
+  const intervalMs = Math.max(60, Number(task && task.interval) || 0) * 1000
+  if (!intervalMs) return { action: 'disabled' }
+  const scheduledAt = heartbeatEpochMs(task && task.nextRunAt)
+  if (!scheduledAt) return { action: 'schedule', nextRunAt: current + intervalMs }
+  if (scheduledAt > current) return { action: 'wait', nextRunAt: scheduledAt }
+  return { action: 'run', scheduledAt, nextRunAt: current + intervalMs, missedByMs: Math.max(0, current - scheduledAt) }
+}
+
+export function heartbeatRunnerSpec(runner) {
+  const key = String(runner || '').trim()
+  const spec = HEARTBEAT_RUNNER_SPECS[key]
+  return spec ? { runner: key, command: spec.command, args: [...spec.args], cwd: spec.cwd, timeoutMs: spec.timeoutMs } : null
+}
+
+export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
+  const spec = heartbeatRunnerSpec(task && task.runner)
+  if (!spec) return Promise.reject(new Error(`不允许的心跳 runner：${String(task && task.runner || '')}`))
+  return new Promise((resolve, reject) => {
+    try {
+      execFileImpl(
+        spec.command,
+        spec.args,
+        {
+          cwd: spec.cwd,
+          env: { ...process.env, PYTHONUNBUFFERED: '1' },
+          timeout: spec.timeoutMs,
+          maxBuffer: 8 * 1024 * 1024,
+          windowsHide: true,
+        },
+        (error, stdout, stderr) => {
+          const result = {
+            runner: spec.runner,
+            stdout: String(stdout || '').trim(),
+            stderr: String(stderr || '').trim(),
+          }
+          if (error) {
+            error.runner = spec.runner
+            error.stdout = result.stdout.slice(-4000)
+            error.stderr = result.stderr.slice(-4000)
+            reject(error)
+            return
+          }
+          resolve(result)
+        },
+      )
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
+export function heartbeatRunnerErrorDetail(error) {
+  return String(error && (error.stderr || error.stdout || error.message) || error).slice(-4000)
+}
+
 const sendJson = (res, code, body) => {
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -1166,8 +1336,8 @@ export function apply(ctx) {
     await writeFile(HEARTBEATS_FILE, JSON.stringify(data, null, 2), 'utf8')
   }
 
-  // 虾心跳由 DSH host 自己调度，浏览器关闭后仍会继续工作。只调度明确
-  // 绑定 pipelineSlug 的记录；普通旧心跳继续沿用原来的会话任务逻辑。
+  // 虾心跳由 DSH host 自己调度，浏览器关闭后仍会继续工作。绑定 runner 的
+  // 任务优先执行固定白名单脚本；没有 runner 的旧任务才走 pipelineSlug API。
   const shrimpHeartbeatLocks = new Set()
   let shrimpHeartbeatTicking = false
   const heartbeatRunId = (result) => {
@@ -1182,6 +1352,25 @@ export function apply(ctx) {
     }
     return ''
   }
+  const heartbeatHistoryPush = (data, id, entry) => {
+    const history = data.history || (data.history = {})
+    const list = history[id] || []
+    list.push(entry)
+    history[id] = list.slice(-30)
+  }
+  const heartbeatRunnerSummary = (result) => {
+    const stdout = String(result && result.stdout || '').trim()
+    for (const line of stdout.split(/\r?\n/).reverse()) {
+      if (!line.trim()) continue
+      try {
+        const payload = JSON.parse(line)
+        if (payload && typeof payload === 'object') {
+          return String(payload.publish_summary || payload.summary || payload.publish_status || '').trim() || '脚本已完成'
+        }
+      } catch { /* 脚本可能输出普通日志，继续找最后一行 JSON */ }
+    }
+    return stdout.slice(-500) || '脚本已完成'
+  }
   async function tickShrimpHeartbeats() {
     if (shrimpHeartbeatTicking) return
     shrimpHeartbeatTicking = true
@@ -1192,49 +1381,133 @@ export function apply(ctx) {
       const due = []
       let changed = false
       for (const task of data.tasks) {
+        const runner = String(task.runner || '').trim()
         const slug = String(task.pipelineSlug || '').trim()
-        const interval = Math.max(60, Number(task.interval) || 0)
-        if (!slug || task.enabled === false || interval <= 0 || shrimpHeartbeatLocks.has(task.id)) continue
-        let next = Number(task.nextRunAt || 0)
-        if (!next) {
-          task.nextRunAt = now + interval * 1000
+        if ((!runner && !slug) || task.enabled === false || shrimpHeartbeatLocks.has(task.id)) continue
+        if (runner && !heartbeatRunnerSpec(runner)) {
+          const reason = `不允许的心跳 runner：${runner}`
+          if (task.lastError !== reason || task.status !== 'failed') {
+            task.status = 'failed'
+            task.lastError = reason
+            task.lastResultAt = new Date(now).toISOString()
+            heartbeatHistoryPush(data, task.id, { time: new Date(now).toISOString(), content: `触发失败：${reason}`, sessionId: task.sessionId || null, runId: null, runner, status: 'failed' })
+            changed = true
+          }
+          continue
+        }
+        // Host 重启后，上一轮 runner 不会自动续跑；记录中断并等待下一次
+        // 合法 cron 窗口，避免同一窗口重复烧 token 或重复创建草稿。
+        const lastRunAt = heartbeatEpochMs(task.lastRunAt)
+        if (task.status === 'running' && lastRunAt && now - lastRunAt > 15 * 60 * 1000) {
+          const reason = '上一次心跳执行在 Host 重启/退出时中断，已跳过本轮重试。'
+          if (task.lastError !== reason) {
+            task.status = 'failed'
+            task.lastError = reason
+            task.lastResultAt = new Date(now).toISOString()
+            heartbeatHistoryPush(data, task.id, { time: new Date(now).toISOString(), content: `触发失败：${reason}`, sessionId: task.sessionId || null, runId: null, runner: runner || null, status: 'interrupted' })
+            changed = true
+          }
+        }
+        const plan = planHeartbeatTask(task, now)
+        if (plan.action === 'invalid') {
+          const reason = plan.reason || 'cron 无效'
+          if (task.lastError !== reason || task.status !== 'failed') {
+            task.status = 'failed'
+            task.lastError = reason
+            task.lastResultAt = new Date(now).toISOString()
+            heartbeatHistoryPush(data, task.id, { time: new Date(now).toISOString(), content: `触发失败：${reason}`, sessionId: task.sessionId || null, runId: null, runner: runner || null, status: 'failed' })
+            changed = true
+          }
+          continue
+        }
+        if (plan.action === 'disabled' || plan.action === 'wait') continue
+        if (plan.action === 'schedule') {
+          task.nextRunAt = plan.nextRunAt || null
           task.status = task.status === 'failed' ? task.status : 'scheduled'
+          task.updatedAt = new Date(now).toISOString()
           changed = true
           continue
         }
-        if (next > now) continue
-        const idempotencyKey = `dsh-heartbeat:${task.id}:${now}:${randomUUID()}`
-        // 先持久化下一次时间和幂等键，再发请求。进程重启或请求超时都不会
-        // 在同一窗口反复触发；虾缸自身也会用该键去重。
-        task.nextRunAt = now + interval * 1000
+        if (plan.action === 'miss') {
+          task.nextRunAt = plan.nextRunAt || null
+          task.status = 'scheduled'
+          task.lastError = `错过计划窗口：${new Date(plan.scheduledAt).toISOString()}`
+          task.lastResultAt = new Date(now).toISOString()
+          heartbeatHistoryPush(data, task.id, {
+            time: new Date(now).toISOString(),
+            content: `${task.lastError}，已安排下一次 ${plan.nextRunAt ? new Date(plan.nextRunAt).toISOString() : '未找到'}`,
+            sessionId: task.sessionId || null,
+            runId: null,
+            runner: runner || null,
+            status: 'missed',
+            scheduledAt: new Date(plan.scheduledAt).toISOString(),
+            nextRunAt: plan.nextRunAt ? new Date(plan.nextRunAt).toISOString() : null,
+          })
+          task.updatedAt = new Date(now).toISOString()
+          changed = true
+          continue
+        }
+        if (plan.action !== 'run') continue
+        // 以计划窗口而不是 tick 时间生成幂等键。进程重启或 15s tick
+        // 抖动都不会为同一个 cron 窗口创建第二次执行。
+        const idempotencyKey = `dsh-heartbeat:${task.id}:${plan.scheduledAt}`
+        task.nextRunAt = plan.nextRunAt || null
         task.idempotencyKey = idempotencyKey
+        task.lastScheduledAt = new Date(plan.scheduledAt).toISOString()
         task.status = 'running'
         task.lastRunAt = new Date(now).toISOString()
-        due.push({ id: task.id, slug, payload: (task.payload && typeof task.payload === 'object') ? task.payload : { goal: task.name }, idempotencyKey })
+        task.lastError = null
+        task.updatedAt = new Date(now).toISOString()
+        due.push({
+          id: task.id,
+          slug,
+          runner,
+          payload: (task.payload && typeof task.payload === 'object') ? task.payload : { goal: task.name },
+          idempotencyKey,
+          scheduledAt: plan.scheduledAt,
+          executionId: `heartbeat:${task.id}:${plan.scheduledAt}`,
+        })
         shrimpHeartbeatLocks.add(task.id)
         changed = true
       }
       if (changed) await writeHeartbeats(data)
       await Promise.all(due.map(async (item) => {
         try {
-          const result = await tankFetchWithRecovery({
-            path: `/api/v1/pipelines/${encodeURIComponent(item.slug)}/runs`,
-            method: 'POST',
-            body: item.payload,
-            headers: { 'idempotency-key': item.idempotencyKey },
-            timeoutMs: SHRIMP_TANK_TIMEOUT_MS,
-          })
+          let result
+          let runnerResult = null
+          if (item.runner) {
+            runnerResult = await executeHeartbeatRunner({ runner: item.runner })
+            result = { ok: true, runner: item.runner, runnerResult }
+          } else {
+            result = await tankFetchWithRecovery({
+              path: `/api/v1/pipelines/${encodeURIComponent(item.slug)}/runs`,
+              method: 'POST',
+              body: item.payload,
+              headers: { 'idempotency-key': item.idempotencyKey },
+              timeoutMs: SHRIMP_TANK_TIMEOUT_MS,
+            })
+          }
           const latest = await readHeartbeats()
           const task = (latest.tasks || []).find((row) => row.id === item.id)
           if (task) {
-            task.status = result.ok ? 'queued' : 'failed'
-            task.lastRunId = heartbeatRunId(result) || task.lastRunId || null
+            task.status = item.runner ? 'done' : result.ok ? 'queued' : 'failed'
+            task.lastRunId = item.runner ? item.executionId : heartbeatRunId(result) || task.lastRunId || null
+            task.runnerExecutionId = item.runner ? item.executionId : task.runnerExecutionId || null
             task.lastError = result.ok ? null : `虾缸返回 ${result.status}`
             task.lastResultAt = new Date().toISOString()
-            const history = latest.history || (latest.history = {})
-            const list = history[item.id] || []
-            list.push({ time: new Date().toISOString(), content: result.ok ? `已触发 ${item.slug}${task.lastRunId ? `（${task.lastRunId}）` : ''}` : `触发失败：${task.lastError}`, sessionId: task.sessionId || null, runId: task.lastRunId || null, status: task.status })
-            history[item.id] = list.slice(-30)
+            const content = item.runner
+              ? `已完成 runner ${item.runner}（${heartbeatRunnerSummary(runnerResult)}）`
+              : result.ok ? `已触发 ${item.slug}${task.lastRunId ? `（${task.lastRunId}）` : ''}` : `触发失败：${task.lastError}`
+            heartbeatHistoryPush(latest, item.id, {
+              time: new Date().toISOString(),
+              content,
+              sessionId: task.sessionId || null,
+              runId: task.lastRunId || null,
+              runner: item.runner || null,
+              status: task.status,
+              idempotencyKey: item.idempotencyKey,
+              scheduledAt: new Date(item.scheduledAt).toISOString(),
+            })
             await writeHeartbeats(latest)
           }
         } catch (error) {
@@ -1242,12 +1515,21 @@ export function apply(ctx) {
           const task = (latest.tasks || []).find((row) => row.id === item.id)
           if (task) {
             task.status = 'failed'
-            task.lastError = '虾缸当前不可用'
+            const detail = item.runner
+              ? heartbeatRunnerErrorDetail(error)
+              : '虾缸当前不可用'
+            task.lastError = detail
             task.lastResultAt = new Date().toISOString()
-            const history = latest.history || (latest.history = {})
-            const list = history[item.id] || []
-            list.push({ time: new Date().toISOString(), content: `触发失败：${task.lastError}`, sessionId: task.sessionId || null, runId: null, status: task.status })
-            history[item.id] = list.slice(-30)
+            heartbeatHistoryPush(latest, item.id, {
+              time: new Date().toISOString(),
+              content: `触发失败：${task.lastError}`,
+              sessionId: task.sessionId || null,
+              runId: null,
+              runner: item.runner || null,
+              status: task.status,
+              idempotencyKey: item.idempotencyKey,
+              scheduledAt: new Date(item.scheduledAt).toISOString(),
+            })
             await writeHeartbeats(latest)
           }
         } finally {
@@ -1449,6 +1731,7 @@ export function apply(ctx) {
             Object.assign(merged.get(key), {
               interval: t.interval || merged.get(key).interval,
               pipelineSlug: t.pipelineSlug || merged.get(key).pipelineSlug || '',
+              runner: t.runner || merged.get(key).runner || '',
               payload: t.payload || merged.get(key).payload || {},
               enabled: t.enabled !== false,
               nextRunAt: t.nextRunAt || merged.get(key).nextRunAt || null,
@@ -1460,7 +1743,7 @@ export function apply(ctx) {
           }
           else merged.set(key, {
             id: t.id, name: t.name, interval: t.interval || 0, sessionId: t.sessionId || '', workspaceId: t.workspaceId || '',
-            pipelineSlug: t.pipelineSlug || '', payload: t.payload || {}, enabled: t.enabled !== false,
+            pipelineSlug: t.pipelineSlug || '', runner: t.runner || '', payload: t.payload || {}, enabled: t.enabled !== false,
             nextRunAt: t.nextRunAt || null, lastRunId: t.lastRunId || null, status: t.status || 'scheduled', lastError: t.lastError || null,
             cron: t.cron || null, createdAt: t.createdAt,
           })
@@ -1518,8 +1801,12 @@ export function apply(ctx) {
         const body = await readJsonBody(req, 64 * 1024)
         const data = await readHeartbeats()
         const id = typeof body.id === 'string' && body.id ? body.id : `hb-${randomUUID()}`
-        const name = typeof body.name === 'string' && body.name ? body.name : id
         const prev = data.tasks.find((t) => t.id === id)
+        const name = typeof body.name === 'string' && body.name ? body.name : (prev && prev.name) || id
+        const runner = body.runner === undefined
+          ? String((prev && prev.runner) || '').trim()
+          : String(body.runner || '').trim()
+        if (runner && !heartbeatRunnerSpec(runner)) throw new Error(`不允许的心跳 runner：${runner}`)
         // [local-mod] 若与扫描到的会话周期任务同 id,继承其 sessionId/workspaceId,
         // 使 list 合并时原地更新该行,而不是另建一条重复任务(需服务重启后生效)
         let sessionId = typeof body.sessionId === 'string' && body.sessionId
@@ -1533,6 +1820,14 @@ export function apply(ctx) {
             workspaceId = scanned.workspaceId || ''
           }
         }
+        const cronInput = body.cron === undefined ? ((prev && prev.cron) || null) : body.cron
+        const cron = cronInput ? normalizeHeartbeatCron(cronInput) : null
+        if (cronInput && !cron) throw new Error('cron 无效：需要合法 time、days 和 timezone')
+        const nextRunAt = body.nextRunAt !== undefined
+          ? body.nextRunAt
+          : body.cron !== undefined
+            ? null
+            : (prev && prev.nextRunAt) || null
         data.tasks = data.tasks.filter((t) => t.id !== id)
         data.tasks.push({
           id,
@@ -1544,16 +1839,17 @@ export function apply(ctx) {
           pipelineSlug: typeof body.pipelineSlug === 'string' && body.pipelineSlug
             ? body.pipelineSlug.trim()
             : (prev && prev.pipelineSlug) || '',
+          runner,
           payload: body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
             ? body.payload
             : (prev && prev.payload) || {},
           enabled: body.enabled === undefined ? (prev && prev.enabled !== false) : body.enabled !== false,
-          nextRunAt: body.nextRunAt || (prev && prev.nextRunAt) || null,
+          nextRunAt,
           lastRunId: (prev && prev.lastRunId) || null,
           status: (prev && prev.status) || 'scheduled',
           lastError: null,
           // [local-mod] cron 定时计划(周几+时刻)持久化
-          cron: body.cron && typeof body.cron === 'object' ? body.cron : (prev && prev.cron) || null,
+          cron,
           createdAt: prev && prev.createdAt ? prev.createdAt : new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -1585,6 +1881,7 @@ export function apply(ctx) {
             if (scanned && scanned.sessionId) sid = scanned.sessionId
           }
         }
+        data.history = data.history || {}
         const list = data.history[id] || []
         list.push({
           time: new Date().toISOString(),
