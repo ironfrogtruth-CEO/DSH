@@ -5,7 +5,9 @@ import {
   HEARTBEAT_TIMEZONE,
   executeHeartbeatRunner,
   heartbeatRunnerErrorDetail,
+  heartbeatRunnerPayloadEnv,
   heartbeatRunnerSpec,
+  heartbeatTaskIsOneShot,
   nextHeartbeatCronAt,
   normalizeHeartbeatCron,
   planHeartbeatTask,
@@ -68,6 +70,28 @@ test('runner is an immutable allowlist and cannot accept an arbitrary command', 
   assert.deepEqual(calls[0].args, spec.args)
   assert.equal(calls[0].options.cwd, spec.cwd)
   assert.equal(calls[0].options.shell, undefined)
+  assert.equal(calls[0].options.env.DSH_HEARTBEAT_PAYLOAD_JSON, '{}')
+})
+
+test('runner passes only bounded JSON payload and supports one-shot tasks', async () => {
+  const payload = {
+    one_shot: true,
+    batch_id: 'temporary-test',
+    topics: [{ topic: 'one' }, { topic: 'two' }, { topic: 'three' }],
+  }
+  assert.equal(heartbeatTaskIsOneShot({ payload }), true)
+  assert.equal(heartbeatTaskIsOneShot({ payload: { one_shot: false } }), false)
+  assert.deepEqual(JSON.parse(heartbeatRunnerPayloadEnv(payload)), payload)
+  assert.throws(() => heartbeatRunnerPayloadEnv({ value: 'x'.repeat(70 * 1024) }), /64KB/)
+
+  const calls = []
+  const fakeExecFile = (command, args, options, callback) => {
+    calls.push({ command, args, options })
+    callback(null, '{}', '')
+  }
+  await executeHeartbeatRunner({ runner: 'gzh-multi-article', payload }, { execFileImpl: fakeExecFile })
+  assert.deepEqual(JSON.parse(calls[0].options.env.DSH_HEARTBEAT_PAYLOAD_JSON), payload)
+  assert.deepEqual(calls[0].args, ['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py'])
 })
 
 test('runner failure surfaces structured stdout before generic command error', async () => {

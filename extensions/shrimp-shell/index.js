@@ -179,6 +179,19 @@ export function heartbeatRunnerSpec(runner) {
   return spec ? { runner: key, command: spec.command, args: [...spec.args], cwd: spec.cwd, timeoutMs: spec.timeoutMs } : null
 }
 
+export function heartbeatRunnerPayloadEnv(payload) {
+  const value = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
+  const serialized = JSON.stringify(value)
+  if (Buffer.byteLength(serialized, 'utf8') > 64 * 1024) {
+    throw new Error('心跳 runner payload 超过 64KB')
+  }
+  return serialized
+}
+
+export function heartbeatTaskIsOneShot(task) {
+  return Boolean(task && task.payload && typeof task.payload === 'object' && task.payload.one_shot === true)
+}
+
 export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
   const spec = heartbeatRunnerSpec(task && task.runner)
   if (!spec) return Promise.reject(new Error(`不允许的心跳 runner：${String(task && task.runner || '')}`))
@@ -189,7 +202,11 @@ export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
         spec.args,
         {
           cwd: spec.cwd,
-          env: { ...process.env, PYTHONUNBUFFERED: '1' },
+          env: {
+            ...process.env,
+            PYTHONUNBUFFERED: '1',
+            DSH_HEARTBEAT_PAYLOAD_JSON: heartbeatRunnerPayloadEnv(task && task.payload),
+          },
           timeout: spec.timeoutMs,
           maxBuffer: 8 * 1024 * 1024,
           windowsHide: true,
@@ -1466,6 +1483,7 @@ export function apply(ctx) {
           idempotencyKey,
           scheduledAt: plan.scheduledAt,
           executionId: `heartbeat:${task.id}:${plan.scheduledAt}`,
+          oneShot: heartbeatTaskIsOneShot(task),
         })
         shrimpHeartbeatLocks.add(task.id)
         changed = true
@@ -1476,7 +1494,7 @@ export function apply(ctx) {
           let result
           let runnerResult = null
           if (item.runner) {
-            runnerResult = await executeHeartbeatRunner({ runner: item.runner })
+            runnerResult = await executeHeartbeatRunner({ runner: item.runner, payload: item.payload })
             result = { ok: true, runner: item.runner, runnerResult }
           } else {
             result = await tankFetchWithRecovery({
@@ -1495,6 +1513,11 @@ export function apply(ctx) {
             task.runnerExecutionId = item.runner ? item.executionId : task.runnerExecutionId || null
             task.lastError = result.ok ? null : `虾缸返回 ${result.status}`
             task.lastResultAt = new Date().toISOString()
+            if (item.oneShot) {
+              task.enabled = false
+              task.nextRunAt = null
+              task.oneShotCompletedAt = new Date().toISOString()
+            }
             const content = item.runner
               ? `已完成 runner ${item.runner}（${heartbeatRunnerSummary(runnerResult)}）`
               : result.ok ? `已触发 ${item.slug}${task.lastRunId ? `（${task.lastRunId}）` : ''}` : `触发失败：${task.lastError}`
@@ -1520,6 +1543,11 @@ export function apply(ctx) {
               : '虾缸当前不可用'
             task.lastError = detail
             task.lastResultAt = new Date().toISOString()
+            if (item.oneShot) {
+              task.enabled = false
+              task.nextRunAt = null
+              task.oneShotCompletedAt = new Date().toISOString()
+            }
             heartbeatHistoryPush(latest, item.id, {
               time: new Date().toISOString(),
               content: `触发失败：${task.lastError}`,
