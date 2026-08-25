@@ -22,12 +22,19 @@
       "session-switch",
       "composer-text-send",
       "composer-image-route",
+      "composer-image-glm-first-fallback",
       "settings-open",
-      "existing-tool-card-render"
+      "existing-tool-card-render",
+      "subagent-parallel-start",
+      "subagent-parent-child-follow-up",
+      "subagent-status-stream-and-open",
+      "header-utilities-responsive",
+      "context-injection-hidden-think-visible"
     ]
   },
   "capabilityContract": {
     "requiredProfiles": [
+      "profiles/web",
       "profiles/headless",
       "profiles/web-intelligence"
     ],
@@ -41,7 +48,12 @@
       "extensions/dsh-evals",
       "extensions/dsh-tool-policy",
       "extensions/dsh-goal-first-state-machine",
-      "extensions/shrimp-shell"
+      "extensions/dsh-local-route-policy",
+      "extensions/dsh-git",
+      "extensions/shrimp-shell",
+      "custom-ui-patches/dsh-client-ui-conversation",
+      "custom-ui-patches/dsh-client-ui-agent-preset",
+      "custom-ui-patches/dsh-client-ui-workspace"
     ],
     "requiredBehaviors": [
       "append-only-session-events",
@@ -53,6 +65,17 @@
       "taskgraph-evidence-gates",
       "goal-first-session-state-machine",
       "goal-first-output-contract-gate",
+      "three-provinces-six-ministries-governance",
+      "v4-pro-planner-v4-flash-continuable-executor",
+      "continuable-parent-child-message-channel",
+      "marvel-dynamic-subagent-naming",
+      "durable-subagent-status-stream",
+      "ungrouped-sidebar-projection-hidden-data-preserved",
+      "context-injection-hidden-think-tool-visible",
+      "single-send-durable-image",
+      "zhipu-glm-first-local-gemma-fallback",
+      "heartbeat-serialized-persistence",
+      "daily-local-git-commit-no-push",
       "code-index-candidate-labels",
       "ui-read-only-qa"
     ]
@@ -109,7 +132,7 @@
     "rollbackVerificationRequired": true
   },
   "rollback": {
-    "targetVersion": "0.1.0-rc.8",
+    "targetVersion": "0.1.1-rc.2",
     "preserveFailedCandidateForDiagnosis": true,
     "deleteOrRewriteCanonicalData": false
   }

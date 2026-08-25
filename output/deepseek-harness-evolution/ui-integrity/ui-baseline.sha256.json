@@ -9,11 +9,19 @@
   "files": [
     {
       "path": "apps/大神.swift",
-      "sha256": "342311fc9b87708d0225319aa86d8587e01cf4b203aabf25a9e45686e13f3ce4"
+      "sha256": "62da398519e2c1f4b8312205ac385edb04ff8140568143bacab8e3144bd756bb"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified",
+      "sha256": "99ab65075555d0bf8087eab475bcdfeb5cc1d2949f58a5e2d87f2a273e051822"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-agent-preset/client.js.original",
+      "sha256": "64515029974a7b4f240f756c5598dfead86d9cc1138390103eb843aa9771ffe0"
     },
     {
       "path": "custom-ui-patches/dsh-client-ui-conversation/client.js.modified",
-      "sha256": "4ccd86c2b534597bfa7fe1012af7f71495834ccad96aa0a4840fa1dc2104bcc2"
+      "sha256": "6892ec305b27f1a6782eeb99ebf66eb6333311cca7da7faf4438e0c65d41bc22"
     },
     {
       "path": "custom-ui-patches/dsh-client-ui-conversation/client.js.original",
@@ -52,6 +60,310 @@
       "sha256": "3f73ae35d357083556609e45d5b350dbf06303d4370c86116af0954235c5e7b6"
     },
     {
+      "path": "custom-ui-patches/dsh-client-ui-workspace/client.js.modified",
+      "sha256": "db0f72d425a13ad68981582ed0f6ff250622cc0fb874aa882048e3b8041830f7"
+    },
+    {
+      "path": "custom-ui-patches/dsh-client-ui-workspace/client.js.original",
+      "sha256": "2f1da4664ef85c05989031c0b377532127796d36a1216feae2e581d8f87d2003"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/idesign-index-ipw.js",
+      "sha256": "e2a083ba9b77501d14e546c62b24f79cbe1b3f582c27a376507a697fcdef6eba"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/idesign-index.js",
+      "sha256": "e2a083ba9b77501d14e546c62b24f79cbe1b3f582c27a376507a697fcdef6eba"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/ippt-index-ipw.js",
+      "sha256": "6cde41feff5dfee332599de4d291c1697cd88530d378aa86060730c1c2ab2d1d"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/ippt-index.js",
+      "sha256": "6cde41feff5dfee332599de4d291c1697cd88530d378aa86060730c1c2ab2d1d"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.app-calm-mobile/design-tokens.css",
+      "sha256": "99debd5b67203e594c37205b2f6be2be1c627dd76c02e45cac344969c71708a1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.app-creator-studio/design-tokens.css",
+      "sha256": "34675c394cde2b30911828196d3c8479c41efffa83ccaecd4f28dd9be841ecc1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.app-finance-dashboard/design-tokens.css",
+      "sha256": "890454f596aaf8f297a3e4513ab92f2d1f882c70067cbd95257db837ef7031b4"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.article-magazine/design-tokens.css",
+      "sha256": "c895ad904ee5f18a3d5042081d3f72ca13483bcbc74093aa6c0a48d737a44d03"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.article-sketchnote-editorial/design-tokens.css",
+      "sha256": "31eaadf5c0052dbd58c37225091160f7e860bbf35fbd13d43337b7c159538e37"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.blog-post/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.card-twitter/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.data-report/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.digital-eguide/design-tokens.css",
+      "sha256": "31eaadf5c0052dbd58c37225091160f7e860bbf35fbd13d43337b7c159538e37"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.experiment-readout/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.finance-report/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.frame-liquid-bg-hero/design-tokens.css",
+      "sha256": "fc4aa43ad0ff19cba91e9489202df301b6f2253e181b1e337f1829579c8994d1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.info-funnel/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.invoice/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.magazine-poster/design-tokens.css",
+      "sha256": "c895ad904ee5f18a3d5042081d3f72ca13483bcbc74093aa6c0a48d737a44d03"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.mockup-device-3d/design-tokens.css",
+      "sha256": "dcd567685660fcdef46869b11c5bce330086be2cb630e61ff1bd11d1d673ed88"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.poster-hero/design-tokens.css",
+      "sha256": "1f20760a9a86b217c36eba9a0c1140062409908349c343741fc2ded10ab9a674"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.prototype-web/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.social-carousel/design-tokens.css",
+      "sha256": "1f20760a9a86b217c36eba9a0c1140062409908349c343741fc2ded10ab9a674"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.social-reddit-card/design-tokens.css",
+      "sha256": "1f20760a9a86b217c36eba9a0c1140062409908349c343741fc2ded10ab9a674"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.social-spotify-card/design-tokens.css",
+      "sha256": "200774f324984492b5e6013f49a06600ddd4108c034b2f31db48789855e1cab1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.sprite-animation/design-tokens.css",
+      "sha256": "4387e0dd2f1aac0f1727e4620805d409664f2a907b73f261ab4b7265a1b53cc6"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.web-proto-soft/design-tokens.css",
+      "sha256": "dcd567685660fcdef46869b11c5bce330086be2cb630e61ff1bd11d1d673ed88"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.html-anything.wireframe-sketch/design-tokens.css",
+      "sha256": "9741f86c88f938b3dcd671c2cedcc1a59f055733e0687c45c7c52f99c167b2fc"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.site-afterglow-festival/design-tokens.css",
+      "sha256": "1cdbd3e6aa43df29af646db2fdbaff7e9fd173d70dcbde53476cbf2582a38ca5"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.site-atelier-architecture/design-tokens.css",
+      "sha256": "6303fab86f66c18a35f714d950ea02224f9af7ccd0c59e4200dbc627d669e808"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.site-orbit-data/design-tokens.css",
+      "sha256": "e6a4595f00123f7f9d608cd6216476a1efd645e8971ff4484314b8735c1cd142"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.site-signal-workspace/design-tokens.css",
+      "sha256": "f1de8a672b69ca468227fb8cab860d22125b619f2c0dadb90f879b7da2e06d97"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign/ipollowork.wechat-article/design-tokens.css",
+      "sha256": "807cb482f20761ad907f7fe1b1429b92099f48235ae1dfd994d29074853c2458"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-ippt/ipollowork.html-anything.deck-blueprint/design-tokens.css",
+      "sha256": "6da3f31a975c92ee33dae1bc9e8e755d59d13e92c78aec0565eca6cb6dcdbfb4"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-ippt/ipollowork.html-anything.deck-hermes-cyber/design-tokens.css",
+      "sha256": "250429deaae353c5d62a53e4190ad5cc4d0adfed8907a09a2faa84f795f65b94"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-ippt/ipollowork.html-anything.deck-presenter-mode/design-tokens.css",
+      "sha256": "200774f324984492b5e6013f49a06600ddd4108c034b2f31db48789855e1cab1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-ippt/ipollowork.html-anything.deck-xhs-pastel/design-tokens.css",
+      "sha256": "e66ca7b4e1492db2568a7d2e2851d02a5f7834d60689a714140a354ceed5ac58"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-ippt/ipollowork.pptx-brand-narrative/design-tokens.css",
+      "sha256": "a27dce3c654779be1202b112574008823ee35a4b20db6c86c12b50e537ea0a7d"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/idesign-index.js",
+      "sha256": "709b9144296d234b18482af112bdb9629d8b5c2f13098e3b82164124bc9b3b43"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/ippt-index.js",
+      "sha256": "999d3b98c9c250d7731e1dc400e845d4f43a1f5554417b5e33e8ff6ef64094c4"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.app-calm-mobile/design-tokens.css",
+      "sha256": "99debd5b67203e594c37205b2f6be2be1c627dd76c02e45cac344969c71708a1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.app-creator-studio/design-tokens.css",
+      "sha256": "34675c394cde2b30911828196d3c8479c41efffa83ccaecd4f28dd9be841ecc1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.app-finance-dashboard/design-tokens.css",
+      "sha256": "890454f596aaf8f297a3e4513ab92f2d1f882c70067cbd95257db837ef7031b4"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.article-magazine/design-tokens.css",
+      "sha256": "c895ad904ee5f18a3d5042081d3f72ca13483bcbc74093aa6c0a48d737a44d03"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.article-sketchnote-editorial/design-tokens.css",
+      "sha256": "31eaadf5c0052dbd58c37225091160f7e860bbf35fbd13d43337b7c159538e37"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.blog-post/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.card-twitter/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.data-report/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.digital-eguide/design-tokens.css",
+      "sha256": "31eaadf5c0052dbd58c37225091160f7e860bbf35fbd13d43337b7c159538e37"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.experiment-readout/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.finance-report/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.frame-liquid-bg-hero/design-tokens.css",
+      "sha256": "fc4aa43ad0ff19cba91e9489202df301b6f2253e181b1e337f1829579c8994d1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.info-funnel/design-tokens.css",
+      "sha256": "cb0177236ee34e39a04f990790552be18daf884125ac483d56ae2ce7440e7102"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.invoice/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.magazine-poster/design-tokens.css",
+      "sha256": "c895ad904ee5f18a3d5042081d3f72ca13483bcbc74093aa6c0a48d737a44d03"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.mockup-device-3d/design-tokens.css",
+      "sha256": "dcd567685660fcdef46869b11c5bce330086be2cb630e61ff1bd11d1d673ed88"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.poster-hero/design-tokens.css",
+      "sha256": "1f20760a9a86b217c36eba9a0c1140062409908349c343741fc2ded10ab9a674"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.prototype-web/design-tokens.css",
+      "sha256": "fd77f70cfa11a88e9d6668d94f41c0a85e975ca55e278ecff7234c70cd90220a"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.social-carousel/design-tokens.css",
+      "sha256": "1f20760a9a86b217c36eba9a0c1140062409908349c343741fc2ded10ab9a674"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.social-reddit-card/design-tokens.css",
+      "sha256": "1f20760a9a86b217c36eba9a0c1140062409908349c343741fc2ded10ab9a674"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.social-spotify-card/design-tokens.css",
+      "sha256": "200774f324984492b5e6013f49a06600ddd4108c034b2f31db48789855e1cab1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.sprite-animation/design-tokens.css",
+      "sha256": "4387e0dd2f1aac0f1727e4620805d409664f2a907b73f261ab4b7265a1b53cc6"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.web-proto-soft/design-tokens.css",
+      "sha256": "dcd567685660fcdef46869b11c5bce330086be2cb630e61ff1bd11d1d673ed88"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.html-anything.wireframe-sketch/design-tokens.css",
+      "sha256": "9741f86c88f938b3dcd671c2cedcc1a59f055733e0687c45c7c52f99c167b2fc"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.site-afterglow-festival/design-tokens.css",
+      "sha256": "1cdbd3e6aa43df29af646db2fdbaff7e9fd173d70dcbde53476cbf2582a38ca5"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.site-atelier-architecture/design-tokens.css",
+      "sha256": "6303fab86f66c18a35f714d950ea02224f9af7ccd0c59e4200dbc627d669e808"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.site-orbit-data/design-tokens.css",
+      "sha256": "e6a4595f00123f7f9d608cd6216476a1efd645e8971ff4484314b8735c1cd142"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.site-signal-workspace/design-tokens.css",
+      "sha256": "f1de8a672b69ca468227fb8cab860d22125b619f2c0dadb90f879b7da2e06d97"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-idesign/ipollowork.wechat-article/design-tokens.css",
+      "sha256": "807cb482f20761ad907f7fe1b1429b92099f48235ae1dfd994d29074853c2458"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-ippt/ipollowork.html-anything.deck-blueprint/design-tokens.css",
+      "sha256": "6da3f31a975c92ee33dae1bc9e8e755d59d13e92c78aec0565eca6cb6dcdbfb4"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-ippt/ipollowork.html-anything.deck-hermes-cyber/design-tokens.css",
+      "sha256": "250429deaae353c5d62a53e4190ad5cc4d0adfed8907a09a2faa84f795f65b94"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-ippt/ipollowork.html-anything.deck-presenter-mode/design-tokens.css",
+      "sha256": "200774f324984492b5e6013f49a06600ddd4108c034b2f31db48789855e1cab1"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-ippt/ipollowork.html-anything.deck-xhs-pastel/design-tokens.css",
+      "sha256": "e66ca7b4e1492db2568a7d2e2851d02a5f7834d60689a714140a354ceed5ac58"
+    },
+    {
+      "path": "custom-ui-patches/dsh-idesign-ippt-studio/original/templates/deepseek-ippt/ipollowork.pptx-brand-narrative/design-tokens.css",
+      "sha256": "a27dce3c654779be1202b112574008823ee35a4b20db6c86c12b50e537ea0a7d"
+    },
+    {
       "path": "custom-ui-patches/dsh-session-log-export/client.js.modified",
       "sha256": "1a150b9741b432eedf7e94f542c568899401150ab4dfbec4d6507bf649220924"
     },
@@ -61,7 +373,7 @@
     },
     {
       "path": "custom-ui-patches/shrimp-shell/client.js.modified",
-      "sha256": "04ea30566015ded0813c91add46d1de67e6c194b98f49ee50912ec0421300764"
+      "sha256": "77145770b5c8b912be58e47ecbe184227340b36e7e445d9d42a6740d67e1a5bf"
     },
     {
       "path": "custom-ui-patches/shrimp-shell/client.js.original",
@@ -69,7 +381,7 @@
     },
     {
       "path": "custom-ui-patches/shrimp-shell/index.js.modified",
-      "sha256": "7539bbe58bf19df5bf78101eab0a74e2ccf896e40228fd27ccb0309b44e72b42"
+      "sha256": "d4954e0c5ee2f8646b02c57fc5b1383e25a41b8abd3630397e25234ae62d4fcd"
     },
     {
       "path": "custom-ui-patches/shrimp-shell/index.js.original",
@@ -85,11 +397,11 @@
     },
     {
       "path": "extensions/dsh-git/client.js",
-      "sha256": "d94b11f3adea8195bf7b4a38a090ba6511218d5bf2d287f0496a8fe1c3445915"
+      "sha256": "bbb6a80258b80944add528ed70a9ee0137ccc2df9489a4b4aea1d22287af595d"
     },
     {
       "path": "extensions/shrimp-shell/client.js",
-      "sha256": "93c2f88af6fffeed89de12a8e6afee1012f14589c49ffe7ad8f629412fe994d6"
+      "sha256": "77145770b5c8b912be58e47ecbe184227340b36e7e445d9d42a6740d67e1a5bf"
     },
     {
       "path": "extensions/zhipu-media/client.js",

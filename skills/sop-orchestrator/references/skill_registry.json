@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1.0",
-  "registry_policy": "Registry-backed skill selection. goal-first-control is the default entrypoint for complex work and may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
+  "registry_policy": "Registry-backed skill selection. goal-first-control is the default entrypoint for complex work; three-provinces-six-ministries is its governance overlay for truth, action, rendering, and node-level Gates. Both must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
   "selection_policy_ref": "skill_selection_policy.md",
   "skills": [
     {
@@ -23,13 +23,32 @@
       "description": "以终为始 / goal-first-control：Use as the default entrypoint for complex work. Start from the required outcome and success criteria, work backward through validation, artifacts, structure, and truth sources, then route to the right skills, tools, models, QA gates, and rollback points. Do not force the full pipeline onto simple one-step requests."
     },
     {
+      "skill_id": "three-provinces-six-ministries",
+      "name": "three-provinces-six-ministries",
+      "path": "/Users/marcus/.dsh/skills/three-provinces-six-ministries",
+      "portable_path": "skills/three-provinces-six-ministries",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 1,
+      "roles": [
+        "action_gate",
+        "governance_overlay",
+        "pipeline_state",
+        "render_gate",
+        "six_ministries",
+        "three_provinces",
+        "truth_gate"
+      ],
+      "description": "三省六部治理层：把 goal-first-control 的七节点映射为内容、行动、渲染三省与澄清、搜寻、规划、执行、检查、产出六部，约束真源、动作、质量和交付；只作为复杂任务的治理叠加，不替代既有 SOP 状态机。"
+    },
+    {
       "skill_id": "master-control",
       "name": "master-control",
       "path": "/Users/marcus/.dsh/skills/master-control",
       "portable_path": "skills/master-control",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
-      "selection_priority": 1,
+      "selection_priority": 2,
       "roles": [
         "legacy_entrypoint",
         "orchestration",

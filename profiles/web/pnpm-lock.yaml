@@ -32,15 +32,18 @@ importers:
       '@local/dsh-frontend-qa':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-frontend-qa
         version: link:../../extensions/dsh-frontend-qa
-      '@local/dsh-goal-first-state-machine':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine
-        version: link:../../extensions/dsh-goal-first-state-machine
       '@local/dsh-git':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-git
         version: link:../../extensions/dsh-git
+      '@local/dsh-goal-first-state-machine':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine
+        version: link:../../extensions/dsh-goal-first-state-machine
       '@local/dsh-intelligence':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-intelligence
         version: link:../../extensions/dsh-intelligence
+      '@local/dsh-local-route-policy':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-local-route-policy
+        version: link:../../extensions/dsh-local-route-policy
       '@local/dsh-memory':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-memory
         version: link:../../extensions/dsh-memory
@@ -56,6 +59,12 @@ importers:
       '@local/zhipu-media':
         specifier: link:/Users/marcus/.dsh/extensions/zhipu-media
         version: link:../../extensions/zhipu-media
+      deepseek-idesign:
+        specifier: ^0.2.2
+        version: 0.2.2
+      deepseek-ippt:
+        specifier: ^0.1.2
+        version: 0.1.2
 
 packages:
 
@@ -74,6 +83,54 @@ packages:
 
   /@dsh-market/schema@0.1.1:
     resolution: {integrity: sha512-6z7NWXW15RCiKqyVM7DGAYdHU6Ecr7nG3YEdxXVNsw/+J2/7iJIHEZzDBbTiDUOUAuJCEQsRbtHYwjaZWXexxA==}
+    dev: false
+
+  /deepseek-idesign@0.2.2:
+    resolution: {integrity: sha512-eCLe9uw1dCcsXx7ap6F8GdVYbK3Ebd4qS2gXSYA1OQHdtpMRI1cHiAbJ2UV5Sah9eZXOnrZKlpNLxAsOOkXbsg==}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      '@deepseek-ai/dsh-client-runtime': '>=0.0.1-rc.1 <0.2.0-0'
+      '@deepseek-ai/dsh-client-ui-conversation': '>=0.0.1-rc.1 <0.2.0-0'
+      '@deepseek-ai/dsh-host-webserver': '>=0.0.1-rc.1 <0.2.0-0'
+      '@deepseek-ai/dsh-workspace': '>=0.0.1-rc.1 <0.2.0-0'
+      react: ^18.2.0
+    peerDependenciesMeta:
+      '@deepseek-ai/cordis':
+        optional: true
+      '@deepseek-ai/dsh-client-runtime':
+        optional: true
+      '@deepseek-ai/dsh-client-ui-conversation':
+        optional: true
+      '@deepseek-ai/dsh-host-webserver':
+        optional: true
+      '@deepseek-ai/dsh-workspace':
+        optional: true
+      react:
+        optional: true
+    dev: false
+
+  /deepseek-ippt@0.1.2:
+    resolution: {integrity: sha512-TQ92UR6aJbzDMGsIlNWTOxrlOaGA/I4/lJJJa6TWLvtdtWBDxcC30DHe53iU0Ii16V7kgDibWBHVQcTM+now0Q==}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      '@deepseek-ai/dsh-client-runtime': '>=0.0.1-rc.1 <0.2.0-0'
+      '@deepseek-ai/dsh-client-ui-conversation': '>=0.0.1-rc.1 <0.2.0-0'
+      '@deepseek-ai/dsh-host-webserver': '>=0.0.1-rc.1 <0.2.0-0'
+      '@deepseek-ai/dsh-workspace': '>=0.0.1-rc.1 <0.2.0-0'
+      react: ^18.2.0
+    peerDependenciesMeta:
+      '@deepseek-ai/cordis':
+        optional: true
+      '@deepseek-ai/dsh-client-runtime':
+        optional: true
+      '@deepseek-ai/dsh-client-ui-conversation':
+        optional: true
+      '@deepseek-ai/dsh-host-webserver':
+        optional: true
+      '@deepseek-ai/dsh-workspace':
+        optional: true
+      react:
+        optional: true
     dev: false
 
   /fuse.js@7.5.0:

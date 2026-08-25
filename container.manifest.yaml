@@ -19,16 +19,19 @@ profile:
 
 agent:
   presets:
-    - cordis                        # 自有副本在 ~/.dsh/.agent-presets/cordis
-  default: cordis
+    - reliable-development          # CyberMarcus; 自有副本在 ~/.dsh/.agent-presets/reliable-development
+  default: reliable-development
   model:
     provider: deepseek-official
-    model: deepseek-v4-flash
-    reasoningEffort: max
+    model: deepseek-v4-pro
+    reasoningEffort: high
   permission: danger-full-access
+  # CyberMarcus does not mount low-level live Cordis inspect/mount providers;
+  # those are Host singletons. Configuration uses bash/fs plus doctor/profile/
+  # architecture checks, with execute_flash for bounded specialist work.
 
 capabilities:
-  skills:                            # ~/.dsh/skills (44, 2026-08-15 从 Codex/Claude 继承 24 个)
+  skills:                            # ~/.dsh/skills (runtime-discovered inventory; registry is authoritative)
     - copywriting-craft-writer
     - enterprise-health-business-analysis
     - enterprise-health-data-analysis
@@ -47,6 +50,7 @@ capabilities:
     - gh-address-comments
     - gh-fix-ci
     - goal-first-control
+    - three-provinces-six-ministries
     - html-report-editor
     - jianshibao
     - jupyter-notebook
@@ -85,10 +89,11 @@ capabilities:
 
 dependencies:                        # 容器依赖的外部资源(不打包)
   ollama:
-    note: 21G 本地模型
+    note: 本地模型（用户可选模型与后台专用模型）
     models:
       - cybermarcus:latest
-      - cybermarcus-codex:latest
+      - qwen3.6:27b
+      # 后台静默模型：由视觉、生图、检索适配器按能力调用，不进入 LLM picker。
       - gemma4:26b-a4b-it-qat
       - x/flux2-klein:4b
       - embeddinggemma:latest

@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 固定运行时 | `install/node_modules/@deepseek-ai/dsh`，版本合同为 `0.1.1-rc.2` | `container.manifest.yaml`、`install/package.json`、安装包版本必须一致 |
 | Profile | `profiles/web/package.json` 及其 bundle 路径 | bundle 只从声明的 link、profile 依赖或固定 install 目录解析 |
-| Host 扩展 | `extensions/*/index.js` 及工具实现 | 依赖的 `@deepseek-ai/dsh-*` 必须与 rc.8 对齐；新 Host 扩展不携带客户端/UI/CSS |
+| Host 扩展 | `extensions/*/index.js` 及工具实现 | 依赖的 `@deepseek-ai/dsh-*` 必须与 rc.2 对齐；新增 Host/UI seam 必须登记可重放补丁、验证与升级 Gate |
 | UI 边界 | `apps/*.swift`、`extensions/**/client.js`、`custom-ui-patches` 中的前端资源 | 只记录和校验哈希，能力建设不得直接改动这些文件 |
 | 数据与记忆 | sessions、storages、memories、goal-first-state 等运行数据 | 原始事件追加写入；派生索引可以重建，不能反向覆盖真源 |
 
@@ -38,8 +38,16 @@
 
 ## 当前正式 Host 智能能力
 
-默认 `profiles/web` 已启用 `dsh-tool-policy`（observe）、`dsh-intelligence`、`dsh-memory`、`dsh-code-intelligence`、`dsh-cross-session`、`dsh-frontend-qa`、`dsh-evals` 与 `dsh-goal-first-state-machine`。可靠开发 preset 在隔离的 Agent realm 中使用 `dsh-compaction-v2`，并同时隔离 `compaction`、`toolResultPruner` 与 `dshCompactionV2`。除 `dsh-goal-first-state-machine` 会在 Host 的 `agent/pre-step` 注入有界目标状态、在导出工具前执行 QA Gate，并对明确的单句结果合同做窄输出收敛外，其余智能模块仍只通过显式工具管理或检索，不自动改变模型上下文。
+默认用户 preset 是 `reliable-development`（显示名 CyberMarcus），默认父模型是 DeepSeek V4 Pro High。它合并可靠开发与可靠本地开发的必要模型面能力：persistent bash、精确编辑、time context、V4 Flash/Pro 与 Ollama 本地压缩策略、subagent/fork/subagent_flash/execute_flash/workflow 委派。父代理默认负责澄清、架构、规划、集成与最终验收；在线可继续子智能体通过 `subagent_flash` 使用 V4 Flash High，在线一次性执行可用 `execute_flash`，本地父会话则用 generic subagent 继承已选择的 Ollama 路由。可继续子智能体始终保持后台 lifecycle，以 `list_agents`、`send_message` 和 settlement/report notice 维持父子双向通道。子智能体按任务语义从完整漫威角色池动态命名，同一父任务内不重复；名称不替代权限、文件归属或验收合同。低层 live Cordis inspect/mount provider 保持 Host 单例，不在 CyberMarcus 暴露 `cordis_*` 工具；配置编辑使用 bash/fs 与 doctor/profile/architecture 检查，必要时使用 `execute_flash`。默认 `profiles/web` 已启用 `dsh-tool-policy`（observe）、`dsh-intelligence`、`dsh-memory`、`dsh-code-intelligence`、`dsh-cross-session`、`dsh-frontend-qa`、`dsh-evals` 与 `dsh-goal-first-state-machine`。除 `dsh-goal-first-state-machine` 会在 Host 的 `agent/pre-step` 注入有界目标状态、在导出工具前执行 QA Gate，并对明确的单句结果合同做窄输出收敛外，其余智能模块仍只通过显式工具管理或检索，不自动改变模型上下文。`three-provinces-six-ministries` 是 `goal-first-control` 的治理叠加层：复用七节点状态，在 `governance` 投影中记录当前省、部和 Gate；简单任务只做真源、行动、终态三项隐式检查。
+
+新建会话、默认设置和 preset 管理界面只展示 CyberMarcus。Host 仍保留系统 preset 与 `reliable-local` 兼容入口，因为已有非空历史会话把 preset ID 写入了追加式会话日志；删除这些入口会使旧会话无法按原工具和提示合同恢复。兼容入口不再用于新建会话，只有在旧会话完成独立导出或迁移后才可归档。
+
+父会话顶部保留正式子代理入口，信息流底部通过 durable child projection 显示每个子智能体的漫威名、任务与即时状态；点击状态条进入对应 child。左侧 grouped sidebar 不显示“未分组”入口，但 Host/API、搜索与 flat 视图仍保留数据恢复能力。上下文注入事件继续持久化并提供给模型，普通聊天流不渲染该记录；Think 与 Tool call 即时状态保留。
+
+本地 LLM 选择器由 `settings.yaml` 的 `llm-pi-ai.providers.ollama-local` 提供方负责，提供方内部 ID 保持 `ollama-local`，界面显示名为“本地模型”。用户可主动选择的模型只有 `cybermarcus:latest`（显示名“CyberMarcus 本地开发”）和 `qwen3.6:27b`（显示名“Qwen3.6 27B”），两者均声明 32768 上下文、4096 最大输出，以及 text/image 输入。`cybermarcus-codex:latest` 不再作为选择器或 Cyber 压缩策略入口。
+
+Gemma4 (`gemma4:26b-a4b-it-qat`) 只作为虾缸视觉离线回退保留，FLUX (`x/flux2-klein:4b`) 作为本地生图模型保留，EmbeddingGemma (`embeddinggemma:latest`) 作为后台向量检索模型保留；三者由后台适配器按能力静默调用，不进入对话模型选择器，也不承担普通对话压缩策略。所有用户图片无论当前对话模型是否声明 vision，都先经智谱免费 GLM 视觉链识别；只有智谱不可用、限流或无网时才回退 Gemma。原图与用户文字一次提交并保留在 durable 会话，Host 仅把发给最终对话模型的临时请求投影为带 untrusted-data 边界的精简识图结果。TTS/STT 同样不是 LLM 模型：通过固定 `/Users/marcus/.dsh/bin/dsh-local-ai` 的 `tts`/`stt` 子命令，经 bash 或注册工具路由调用。对本地模型隐藏专业工具 schema 只为控制上下文大小，顶层 CyberMarcus 仍可通过后台适配器、`execute_flash` 或具名 Marvel 子智能体调度完整能力。
 
 ## 上游升级边界
 
-当前正式运行基线是 `0.1.1-rc.2`，离线回退目标为 `0.1.0-rc.8`。后续候选 Harness 必须安装到隔离目录，不能覆盖当前 `install/` 试错。UI manifest、浏览器交互、Host 扩展、图片桥、压缩、记忆、跨会话、任务图和数据恢复是同一组升级 Gate；全部通过后才允许切换正式入口。任何未批准的 UI 并行修改都必须单独审计，不能由升级流程自动写成新基线。
+当前正式运行与离线回退基线都是 `0.1.1-rc.2` 加本仓库可重放补丁。后续候选 Harness 必须安装到隔离目录，不能覆盖当前 `install/` 试错。升级顺序固定为：隔离安装 → 与新版 bundle 做兼容比对 → 重放可维护补丁 → Host/功能回归 → 真实浏览器交互与响应式截图 → 数据恢复演练 → 切换入口。UI manifest、浏览器交互、Host 扩展、图片桥、父子智能体通道与状态流、压缩、记忆、跨会话、任务图和数据恢复是同一组升级 Gate；全部通过后才允许切换正式入口。升级流程不得自动把未知差异写成新基线。

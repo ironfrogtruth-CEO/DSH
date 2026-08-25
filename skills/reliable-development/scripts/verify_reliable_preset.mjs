@@ -1,25 +1,79 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 
 const configuredHome = process.env.DSH_HOME || join(homedir(), '.dsh')
 const root = resolve(process.argv[2] || join(configuredHome, '.agent-presets', 'reliable-development'))
 const dshHome = process.argv[2] ? dirname(dirname(root)) : resolve(configuredHome)
 const composition = await readFile(join(root, 'agent.cordis.yml'), 'utf8')
 const metadata = await readFile(join(root, 'preset.yml'), 'utf8')
+const skillRoot = join(dshHome, 'skills', 'reliable-development')
+const skill = await readFile(join(skillRoot, 'SKILL.md'), 'utf8')
+const recovery = await readFile(join(skillRoot, 'references', 'evidence-first-recovery.md'), 'utf8')
+const checkpoint = await readFile(join(skillRoot, 'references', 'checkpoint-schema.md'), 'utf8')
 const goalRoot = join(dshHome, 'skills', 'goal-first-control')
 const goalSkill = await readFile(join(goalRoot, 'SKILL.md'), 'utf8')
 const goalUi = await readFile(join(goalRoot, 'agents', 'openai.yaml'), 'utf8')
 const enterpriseOrchestrator = await readFile(join(dshHome, 'skills', 'enterprise-health-orchestrator', 'SKILL.md'), 'utf8')
+const modelCalibration = await readFile(join(skillRoot, 'references', 'model-calibration.md'), 'utf8')
+const subagentOrchestration = await readFile(join(skillRoot, 'references', 'subagent-orchestration.md'), 'utf8')
+const webProfile = JSON.parse(await readFile(join(dshHome, 'profiles', 'web', 'package.json'), 'utf8'))
+const webBundles = new Set(webProfile.dsh?.profile?.bundles || [])
+const yaml = createRequire(join(dshHome, 'install', 'package.json'))('yaml')
+const parsedComposition = yaml.parse(composition.replaceAll('!!js ', ''))
+const settings = yaml.parse(await readFile(join(dshHome, 'settings.yaml'), 'utf8'))
+const containerManifest = yaml.parse(await readFile(join(dshHome, 'container.manifest.yaml'), 'utf8'))
+const ollamaProfile = settings?.['llm-pi-ai']?.providers?.['ollama-local']
+const pickerModels = Array.isArray(ollamaProfile?.models) ? ollamaProfile.models : []
+
+function expressionDisabled(value) {
+  if (value === true) return true
+  if (typeof value !== 'string') return false
+  if (value.includes('process.platform ===') && value.includes('win32')) return process.platform === 'win32'
+  if (value.includes('process.platform !==') && value.includes('win32')) return process.platform !== 'win32'
+  return false
+}
+
+function activeRows(rows, inheritedDisabled = false, path = []) {
+  const result = []
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row || typeof row !== 'object') continue
+    const disabled = inheritedDisabled || expressionDisabled(row.disabled)
+    if (!disabled && typeof row.name === 'string') result.push({ id: row.id, name: row.name, path })
+    if (Array.isArray(row.config)) result.push(...activeRows(row.config, disabled, [...path, row.id || '<group>']))
+  }
+  return result
+}
+
+const activeCompositionRows = activeRows(parsedComposition)
+const activeOrdinaryBash = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-bash')
+const activePersistentBash = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-bash-persistent')
+const activePwsh = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-pwsh')
+if (process.platform === 'win32') {
+  assert.equal(activePersistentBash.length, 0, 'Windows must disable persistent-shell')
+  assert.equal(activeOrdinaryBash.length, 0, 'Windows must not activate ordinary bash')
+  assert.equal(activePwsh.length, 1, 'Windows must retain exactly one pwsh provider')
+} else {
+  assert.equal(activePersistentBash.length, 1, 'Mac/Linux must activate exactly one persistent bash provider')
+  assert.equal(activeOrdinaryBash.length, 0, 'Mac/Linux must not activate ordinary tool-bash')
+  assert.equal(activePwsh.length, 0, 'Mac/Linux must not activate pwsh')
+}
 
 for (const required of [
-  '@deepseek-ai/dsh-tool-bash',
   '@deepseek-ai/dsh-tool-fs',
   '@deepseek-ai/dsh-tool-fs-search',
+  '@deepseek-ai/dsh-terminal',
+  '@deepseek-ai/dsh-terminal-bash',
+  '@deepseek-ai/dsh-tool-bash-persistent',
+  '@deepseek-ai/dsh-fs-local',
+  '@deepseek-ai/dsh-tool-str-replace-editor',
   '@deepseek-ai/dsh-skill-filesystem',
   '@deepseek-ai/dsh-tool-skill',
+  '@deepseek-ai/dsh-time-context',
   '@local/dsh-compaction-v2',
   '@deepseek-ai/dsh-compaction-tool-result-pruner',
   '@deepseek-ai/dsh-tool-subagent',
@@ -28,22 +82,121 @@ for (const required of [
 
 assert.match(composition, /model:\s*deepseek-v4-flash[\s\S]*retainTokens:\s*120000/)
 assert.match(composition, /model:\s*deepseek-v4-pro[\s\S]*retainTokens:\s*120000/)
-assert.match(composition, /model:\s*gemma4:26b-a4b-it-qat[\s\S]*retainTokens:\s*32768/)
+assert.match(composition, /provider:\s*ollama-local[\s\S]*model:\s*cybermarcus:latest[\s\S]*retainTokens:\s*32768/)
+assert.match(composition, /provider:\s*ollama-local[\s\S]*model:\s*qwen3\.6:27b[\s\S]*retainTokens:\s*32768/)
+assert.doesNotMatch(composition, /model:\s*(?:cybermarcus-codex:latest|gemma4:26b-a4b-it-qat)/)
 assert.match(composition, /isolate:[\s\S]*compaction:\s*true[\s\S]*toolResultPruner:\s*true[\s\S]*dshCompactionV2:\s*true/)
+assert.match(composition, /\{\{provider\}\}\/\{\{model\}\}/)
+assert.match(composition, /provider.*ollama-local|provider.*deepseek-official/i)
+assert.match(composition, /persistent_bash|persistent bash/)
+assert.match(composition, /str_replace_editor/)
+assert.equal(ollamaProfile?.displayName, '本地模型')
+assert.deepEqual(
+  pickerModels.map((model) => ({
+    id: model.id,
+    name: model.name,
+    contextWindow: model.contextWindow,
+    maxTokens: model.maxTokens,
+    input: model.input,
+  })),
+  [
+    {
+      id: 'cybermarcus:latest',
+      name: 'CyberMarcus 本地开发',
+      contextWindow: 32768,
+      maxTokens: 4096,
+      input: ['text', 'image'],
+    },
+    {
+      id: 'qwen3.6:27b',
+      name: 'Qwen3.6 27B',
+      contextWindow: 32768,
+      maxTokens: 4096,
+      input: ['text', 'image'],
+    },
+  ],
+  'ollama-local picker must contain exactly the two user-selectable local models',
+)
+assert.equal(settings?.['agent-default-model']?.provider, 'deepseek-official')
+assert.equal(settings?.['agent-default-model']?.model, 'deepseek-v4-pro')
+assert.equal(settings?.['agent-default-model']?.reasoningEffort, 'high')
+const pickerIds = new Set(pickerModels.map((model) => model.id))
+for (const hiddenModel of ['gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddinggemma:latest']) {
+  assert.equal(pickerIds.has(hiddenModel), false, `${hiddenModel} must remain backend-only`)
+}
+assert.equal(pickerModels.some((model) => /tts|stt|voice|speech|语音/i.test(`${model.id} ${model.name || ''}`)), false, 'TTS/STT must not enter the LLM picker')
+assert.deepEqual(
+  containerManifest?.dependencies?.ollama?.models,
+  ['cybermarcus:latest', 'qwen3.6:27b', 'gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddinggemma:latest'],
+  'container must retain user models plus hidden backend models, without Codex',
+)
+assert.doesNotMatch(composition, /@deepseek-ai\/dsh-tool-cordis/)
+assert.match(composition, /cordis.*Host singleton|Host singleton.*Cordis/i)
+assert.match(composition, /doctor.*profile.*architecture/i)
+assert.doesNotMatch(composition, /complete:\s*true/)
+assert.doesNotMatch(composition, /includeRuntimeContext:\s*false/)
 assert.match(composition, /memory_recall/)
 assert.match(composition, /memory_checkpoint/)
 assert.match(composition, /toolName:\s*execute_flash/)
+assert.match(composition, /toolName:\s*subagent_flash/)
 assert.match(composition, /model:\s*deepseek-v4-flash/)
 assert.match(composition, /maxDepth:\s*1/)
 assert.match(composition, /deny:[\s\S]*execute_flash[\s\S]*workflow/)
+for (const bundle of [
+  '@local/dsh-browser',
+  '@local/dsh-dsbalance',
+  '@local/dsh-git',
+  '@local/dsh-memory',
+  '@local/dsh-screen',
+  '@local/dsh-shrimp-shell',
+  '@local/zhipu-media',
+  '@local/dsh-tool-policy',
+  '@local/dsh-intelligence',
+  '@local/dsh-code-intelligence',
+  '@local/dsh-cross-session',
+  '@local/dsh-frontend-qa',
+  '@local/dsh-goal-first-state-machine',
+  '@local/dsh-evals',
+  '@local/dsh-compaction-v2',
+  'deepseek-idesign',
+  'deepseek-ippt',
+]) assert.ok(webBundles.has(bundle), `web profile missing Host bundle ${bundle}`)
 assert.match(composition, /Before every delegation, tell the user/)
 assert.match(composition, /Start the final report with that exact name/)
+for (const hero of ['蜘蛛侠·前端-01', '黑豹·后端-01', '黑寡妇·QA-01', '奇异博士·研究-01', '鹰眼·审计-01', '雷神·执行-01']) {
+  assert.match(composition, new RegExp(hero))
+}
+assert.match(composition, /exclusive owned files|exclusive file|exclusive.*files|独占.*文件|exclusive.*module/i)
+assert.match(composition, /examples are not a whitelist|not a whitelist/i)
+assert.match(composition, /钢铁侠.*美国队长.*惊奇队长.*火箭浣熊/s)
+assert.match(composition, /description.*begin.*exact full call sign|exact full call sign.*description/is)
+assert.match(composition, /list_agents.*send_message.*report/s)
+assert.match(composition, /Never set `run_in_background: false`|Never set `run_in_background`.*false/s)
+assert.match(subagentOrchestration, /subagent_flash/)
+assert.match(subagentOrchestration, /dynamic, not limited to a fixed shortlist/i)
+assert.match(subagentOrchestration, /Parent → child:[\s\S]*Child → parent:/)
 assert.match(composition, /Load goal-first-control before planning/)
 assert.match(composition, /real problem, audience\/action, deliverables, truth sources, constraints, success criteria/)
 assert.match(composition, /classifies the task as `sop_required`, load sop-orchestrator/)
 assert.match(composition, /load native-chinese-expression/)
 assert.match(composition, /## Explicit Output Contract Gate/)
 assert.match(composition, /return exactly one sentence with no heading, preface, explanation, alternatives, bullets, or trailing note/)
+assert.match(composition, /## Failure Recovery Gate/)
+assert.match(composition, /change_since_last_attempt/)
+assert.match(composition, /monotonic terminal states/)
+assert.match(composition, /A real production run is final integration evidence/)
+assert.match(skill, /references\/evidence-first-recovery\.md/)
+assert.match(skill, /stable failure fingerprint/)
+assert.match(recovery, /QA_PROTOCOL_FAILED/)
+assert.match(recovery, /QUALITY_GATE_FAILED/)
+assert.match(recovery, /failure_fingerprint/)
+assert.match(recovery, /lease heartbeat plus fencing\/claim generation/)
+assert.match(checkpoint, /Failure class and fingerprint/)
+assert.match(checkpoint, /Change since last attempt and expected observation/)
+assert.match(checkpoint, /parent_run_id/)
+assert.match(checkpoint, /claim_generation/)
+assert.match(checkpoint, /Goal contract and success criteria/)
+assert.match(checkpoint, /Current pipeline node and confirmed upstream/)
 assert.match(goalSkill, /simple_direct/)
 assert.match(goalSkill, /sop_required/)
 assert.match(goalSkill, /goal_contract/)
@@ -54,16 +207,37 @@ assert.doesNotMatch(goalSkill, /Use for A00 orchestration only/)
 assert.match(goalUi, /display_name:\s*"以终为始"/)
 assert.match(goalUi, /\$goal-first-control/)
 assert.match(enterpriseOrchestrator, /A00.*A01.*A11/)
-assert.match(metadata, /name:\s*可靠开发模式/)
-console.log('reliable-development preset: OK')
+assert.match(metadata, /name:\s*CyberMarcus/)
+assert.match(modelCalibration, /cybermarcus:latest/)
+assert.match(modelCalibration, /qwen3\.6:27b/)
+assert.doesNotMatch(modelCalibration, /cybermarcus-codex:latest/)
+assert.match(modelCalibration, /gemma4.*backend visual fallback|backend visual fallback.*gemma4/i)
+assert.match(modelCalibration, /x\/flux2-klein.*backend image route|backend image route.*x\/flux2-klein/i)
+assert.match(modelCalibration, /embeddinggemma.*backend retrieval|backend retrieval.*embeddinggemma/i)
+assert.match(modelCalibration, /dsh-local-ai.*tts.*stt|tts.*stt.*dsh-local-ai/i)
+assert.match(subagentOrchestration, /蜘蛛侠·前端-01/)
+assert.match(subagentOrchestration, /exclusive file\/module|exclusive.*ownership|独占.*文件/i)
 
-const localRoot = join(dshHome, '.agent-presets', 'reliable-local')
-const localComposition = await readFile(join(localRoot, 'agent.cordis.yml'), 'utf8')
-const localMetadata = await readFile(join(localRoot, 'preset.yml'), 'utf8')
-for (const required of ['@deepseek-ai/dsh-tool-bash-persistent', '@deepseek-ai/dsh-tool-str-replace-editor', '@deepseek-ai/dsh-compaction-basic']) {
-  assert.ok(localComposition.includes(required), `local preset missing ${required}`)
+async function runMountCheck(baseUrl) {
+  const sessionId = `preset-mount-check-${Date.now()}-${randomUUID()}`
+  const cwd = join(tmpdir(), 'dsh-cybermarcus-mount-check')
+  async function rpc(method, payload) {
+    const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/${method}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'client-request', rpcId: `verify-${randomUUID()}`, method, payload }),
+    })
+    assert.equal(response.ok, true, `${method} transport failed: HTTP ${response.status}`)
+    const body = await response.json()
+    assert.equal(body.result?.ok, true, `${method} failed: ${JSON.stringify(body.result?.error || body)}`)
+    return body.result.value
+  }
+  const created = await rpc('session.create', { sessionId, cwd, agentPreset: 'reliable-development' })
+  assert.equal(created.sessionId, sessionId)
+  assert.equal(created.agentPreset, 'reliable-development')
+  await rpc('workspace.archiveSession', { sessionId })
+  console.log(`reliable-development preset: real mount OK (${sessionId}; no model request)`)
 }
-assert.match(localComposition, /includeRuntimeContext:\s*false/)
-assert.match(localComposition, /retainTokens:\s*32768/)
-assert.match(localMetadata, /name:\s*可靠本地开发模式/)
-console.log('reliable-local preset: OK')
+
+if (process.env.DSH_MOUNT_TEST_URL) await runMountCheck(process.env.DSH_MOUNT_TEST_URL)
+console.log('reliable-development preset: OK')

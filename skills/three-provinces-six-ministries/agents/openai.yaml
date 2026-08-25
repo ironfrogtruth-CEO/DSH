@@ -1,0 +1,6 @@
+interface:
+  display_name: "三省六部"
+  short_description: "把以终为始落实为三省职责、六部执行与交付闸门"
+  default_prompt: "Use $three-provinces-six-ministries with $goal-first-control to map this complex task to truth, action, rendering responsibilities and node-level gates."
+policy:
+  allow_implicit_invocation: true

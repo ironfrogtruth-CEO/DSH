@@ -39,6 +39,7 @@ export const DEFAULT_FOCUSED_GROUPS = [
   { id: 'host-architecture-focused-test', category: 'integrity', testPath: 'scripts/verify-host-architecture.test.mjs' },
   { id: 'upgrade-readiness-focused-test', category: 'integrity', testPath: 'scripts/verify-upgrade-readiness.test.mjs' },
   { id: 'rollback-snapshot-focused-test', category: 'integrity', testPath: 'scripts/rollback-snapshot.test.mjs' },
+  { id: 'desktop-app-no-browser', category: 'host', testPath: 'scripts/ensure-web.test.mjs' },
   { id: 'web-intelligence-profile-focused-test', category: 'profile', testPath: 'profiles/web-intelligence/verify-profile.test.mjs' },
   { id: 'shrimp-shell-vision', category: 'host', testPath: 'extensions/shrimp-shell/vision.test.mjs' },
   {

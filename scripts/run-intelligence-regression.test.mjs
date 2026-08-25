@@ -16,6 +16,7 @@ test('headless group evidence records full no-model Loader validation without ov
 test('upgrade-readiness contract and vision bridge stay in the focused regression set', () => {
   assert.ok(DEFAULT_FOCUSED_GROUPS.some((group) => group.id === 'upgrade-readiness-focused-test'))
   assert.ok(DEFAULT_FOCUSED_GROUPS.some((group) => group.id === 'rollback-snapshot-focused-test'))
+  assert.ok(DEFAULT_FOCUSED_GROUPS.some((group) => group.id === 'desktop-app-no-browser'))
   assert.ok(DEFAULT_FOCUSED_GROUPS.some((group) => group.id === 'web-intelligence-profile-focused-test'))
   assert.ok(DEFAULT_FOCUSED_GROUPS.some((group) => group.id === 'direct-sample-suite-20'))
   assert.ok(DEFAULT_FOCUSED_GROUPS.some((group) => group.id === 'reliable-development-preset'))

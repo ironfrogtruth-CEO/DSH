@@ -5474,6 +5474,19 @@ window.__ModuleLoader__.load({
 			"turnStatus": "Md3f7G_turnStatus",
 			"turnStatusClock": "Md3f7G_turnStatusClock"
 		};
+		// [local-mod] Durable child-lifecycle rail. It lives in the chat flow so
+		// parent sessions expose the same compact, clickable status pills as the
+		// Codex process stream. The data is supplied by useSessions below; this
+		// style block intentionally uses existing DSW tokens only.
+		const subagentStatusCss = ".dsh-subagent-status-rail{flex-direction:column;gap:6px;display:flex}.dsh-subagent-status-pill{box-sizing:border-box;max-width:100%;min-height:30px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover-solid);border:1px solid var(--dsw-alias-border-l2);border-radius:16px;align-items:center;align-self:flex-start;gap:8px;padding:4px 10px 4px 7px;font-size:13px;line-height:20px;display:inline-flex;cursor:pointer}.dsh-subagent-status-pill:hover,.dsh-subagent-status-pill:focus-visible{background:var(--dsw-alias-interactive-bg-active);outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}.dsh-subagent-status-icon{width:20px;height:20px;flex:none;justify-content:center;align-items:center;display:inline-flex;font-size:14px}.dsh-subagent-status-label{min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.dsh-subagent-status-state{color:var(--dsw-alias-label-tertiary);white-space:nowrap;font-size:12px}.dsh-subagent-status-pill[data-state=running] .dsh-subagent-status-state{color:var(--dsw-alias-state-success-primary)}.dsh-subagent-status-pill[data-state=waiting] .dsh-subagent-status-state{color:var(--dsw-alias-state-warning-primary)}.dsh-subagent-status-pill[data-state=failed],.dsh-subagent-status-pill[data-state=interrupted]{border-color:var(--dsw-alias-state-error-primary)}.dsh-subagent-status-pill[data-state=failed] .dsh-subagent-status-state,.dsh-subagent-status-pill[data-state=interrupted] .dsh-subagent-status-state{color:var(--dsw-alias-state-error-primary)}";
+		const subagentStatusCssTag = "@deepseek-ai/dsh-client-ui-conversation/SubagentStatusRail.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(subagentStatusCssTag) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+			tag.dataset.pluginCss = subagentStatusCssTag;
+			tag.textContent = subagentStatusCss;
+			document.head.appendChild(tag);
+		}
 		//#endregion
 		//#region lib/types/client/chat/ChatNodeSeat.js
 		/** Subscribe and dispatch one stable Context key without observing sibling Nodes. */
@@ -5614,11 +5627,145 @@ window.__ModuleLoader__.load({
 				})]
 			});
 		}
+		//#region [local-mod] durable parent-session subagent status rail
+		/** Extract the actual persona/Marvel prefix emitted in the child title or descriptor. */
+		function subagentPersonaOf(summary, entry) {
+			const identity = summary?.projectionValues?.subagent;
+			const sources = [identity?.persona, identity?.name, summary?.title, entry?.label, summary?.displayTitle].filter((value) => typeof value === "string" && value !== "");
+			for (const source of sources) {
+				const marked = /(?:你是子智能体|子智能体(?:名称)?|Agent name\s*[:：])\s*([^\s,，。:：]+)/iu.exec(source)?.[1] ?? /([\p{L}\p{N}_-]+·[\p{L}\p{N}_-]+)/u.exec(source)?.[1];
+				if (marked !== void 0) return marked.replace(/[-_]+$/u, "");
+			}
+			return void 0;
+		}
+		/** Resolve the durable child identity and keep persona + task visible together. */
+		function subagentStatusLabel(summary, entry) {
+			const identity = summary?.projectionValues?.subagent;
+			const task = identity?.label ?? entry?.label ?? summary?.displayTitle ?? summary?.title ?? summary?.id ?? entry?.id ?? "子代理";
+			const persona = subagentPersonaOf(summary, entry);
+			if (persona === void 0 || task.includes(persona)) return task;
+			// New CyberMarcus children use labels such as `研究-01 检查 settings.yaml`.
+			// Replace the title's trailing role stem with that exact run number so the
+			// pill reads `奇异博士·研究-01 检查 settings.yaml`, not a truncated title.
+			const role = /^([\p{L}\p{N}_-]+-\d+)(?:\s+|$)/u.exec(task)?.[1];
+			if (role !== void 0 && persona.includes("·")) {
+				const [hero, personaRole] = persona.split("·");
+				const roleStem = personaRole?.replace(/-\d+$/u, "").replace(/-+$/u, "");
+				if (hero !== void 0 && roleStem !== void 0 && role.startsWith(`${roleStem}-`)) return `${hero}·${role}${task.slice(role.length)}`;
+			}
+			return `${persona} ${task}`;
+		}
+		/** Keep the icon varied without coupling UI to a fixed Marvel roster. */
+		function subagentStatusIcon(id, label, persona) {
+			// A neutral mark makes it impossible to mistake a fallback icon for a
+			// missing/guessed Marvel name; hero glyphs are decoration only after the
+			// durable persona has been found.
+			if (persona === void 0) return "◈";
+			const icons = ["🕷️", "🛡️", "⚡", "🦾", "🧙", "🏹", "🐜", "🔨", "👁️", "🕶️", "🦸", "🦹"];
+			let hash = 0;
+			for (const char of `${id}:${label}`) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+			return icons[hash % icons.length];
+		}
+		/** Normalize current and forward-compatible lifecycle projection values. */
+		function subagentStatusOf(summary, entry) {
+			const projected = summary?.projectionValues?.subagentStatus ?? summary?.projectionValues?.subagentLifecycle;
+			const candidate = typeof projected === "string" ? projected : projected?.status ?? projected?.state ?? projected?.outcome?.status;
+			switch (candidate) {
+				case "failed":
+				case "error": return "failed";
+				case "interrupted":
+				case "cancelled": return "interrupted";
+				case "waiting":
+				case "pending": return "waiting";
+				case "running": return "running";
+				case "completed":
+				case "done": return "completed";
+			}
+			if (summary?.pendingInteraction !== void 0 || entry?.activity === "waiting") return "waiting";
+			if (summary?.running === true || entry?.activity === "running") return "running";
+			// rc.2's durable catalog has no terminal-reason field. Inactive children
+			// are therefore complete unless a future lifecycle projection says otherwise.
+			return "completed";
+		}
+		const SUBAGENT_STATUS_TEXT = {
+			running: "已开始工作",
+			waiting: "等待中",
+			completed: "已完成",
+			failed: "失败",
+			interrupted: "已中断"
+		};
+		/** One compact, clickable pill backed by one child summary. */
+		function SubagentStatusPill({ parentSessionId, summary, entry, openSubagent }) {
+			const id = summary?.id ?? entry?.id;
+			if (id === void 0) return null;
+			const label = subagentStatusLabel(summary, entry);
+			const persona = subagentPersonaOf(summary, entry);
+			const state = subagentStatusOf(summary, entry);
+			const identity = summary?.projectionValues?.subagent;
+			const mode = identity?.mode ?? entry?.mode ?? "continuable";
+			return (0, react_jsx_runtime.jsx)("button", {
+				type: "button",
+				className: "dsh-subagent-status-pill",
+				"data-subagent-status": "",
+				"data-child-session-id": id,
+				"data-state": state,
+				"aria-label": `${label} ${SUBAGENT_STATUS_TEXT[state]}`,
+				onClick: () => openSubagent({
+					parentSessionId,
+					childSessionId: id,
+					mode
+				}),
+				children: [(0, react_jsx_runtime.jsx)("span", {
+					className: "dsh-subagent-status-icon",
+					"aria-hidden": true,
+					children: subagentStatusIcon(id, label, persona)
+				}), (0, react_jsx_runtime.jsx)("span", {
+					className: "dsh-subagent-status-label",
+					children: label
+				}), (0, react_jsx_runtime.jsx)("span", {
+					className: "dsh-subagent-status-state",
+					children: SUBAGENT_STATUS_TEXT[state]
+				})]
+			});
+		}
+		/**
+		* Project direct children from the live session list and catalog. The list
+		* gives durable identity/projection values; the catalog fills the short
+		* window before a child summary has arrived. No parent-generated text is
+		* used to simulate a child lifecycle.
+		*/
+		function SubagentStatusRail({ sessionId, useSessions, openSubagent }) {
+			const summaries = useSessions((s) => s.byId);
+			const catalog = useSessions((s) => s.subagentsByParent[sessionId]);
+			const children = (0, react.useMemo)(() => {
+				const direct = new Map();
+				for (const summary of Object.values(summaries)) if (summary.origin === "subagent" && summary.parentId === sessionId) direct.set(summary.id, { summary });
+				for (const entry of catalog?.entries ?? []) if (entry.kind === "child" && !direct.has(entry.id)) direct.set(entry.id, { entry });
+				return [...direct.values()];
+			}, [catalog, sessionId, summaries]);
+			if (children.length === 0) return null;
+			return (0, react_jsx_runtime.jsx)("div", {
+				className: "dsh-subagent-status-rail",
+				"data-subagent-status-rail": "",
+				role: "list",
+				"aria-label": "子代理即时状态",
+				children: children.map(({ summary, entry }) => (0, react_jsx_runtime.jsx)("div", {
+					role: "listitem",
+					children: (0, react_jsx_runtime.jsx)(SubagentStatusPill, {
+						parentSessionId: sessionId,
+						summary,
+						entry,
+						openSubagent
+					})
+				}, summary?.id ?? entry?.id))
+			});
+		}
+		//#endregion
 		/**
 		* The chat view slot entry: pure component over the composed props; each
 		* ordered business Node crosses the keyed renderer seat.
 		*/
-		function ChatView({ useSession, useSessions, useStore, renderSlot, sessionId, openFile, loadOlder, loadImage, inspectCall, chatScroll, forkAt, fileMentions, t }) {
+		function ChatView({ useSession, useSessions, useStore, renderSlot, sessionId, openFile, loadOlder, loadImage, inspectCall, chatScroll, forkAt, fileMentions, openSubagent, t }) {
 			const order = useSession((s) => s.chat.order);
 			const nodeStore = useSession((s) => s.chat.nodes);
 			const timeline = useSession((s) => s.chat.timeline);
@@ -5861,6 +6008,11 @@ window.__ModuleLoader__.load({
 								renderSlot,
 								t
 							}, nodeKey)),
+							(0, react_jsx_runtime.jsx)(SubagentStatusRail, {
+								sessionId,
+								useSessions,
+								openSubagent
+							}),
 							running && (0, react_jsx_runtime.jsx)(TurnStatus, {
 								startTime: runningTurnStart,
 								t
@@ -8659,7 +8811,7 @@ window.__ModuleLoader__.load({
 			},
 			update: (context) => context.state,
 			buildViewNode: (context) => {
-				if (context.state === void 0) return null;
+				if (context.state === void 0 || context.state.kind === "context") return null;
 				return chatNode(context, context.state.kind, context.state.seq, context.state);
 			}
 		};
@@ -10243,6 +10395,12 @@ window.__ModuleLoader__.load({
 							}).then((childId) => {
 								sessions.open(childId);
 							}).catch(() => {});
+						},
+						// [local-mod] Status pills use the durable direct-parent address;
+						// a retained address wins when the child is temporarily off-list.
+						openSubagent: (address) => {
+							const retained = sessions.subagentAddress(address.childSessionId);
+							sessions.openSubagent(retained ?? address);
 						}
 					};
 				}

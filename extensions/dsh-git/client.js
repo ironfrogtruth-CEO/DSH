@@ -117,13 +117,15 @@ window.__ModuleLoader__.load({
       }
 
       const files = snapshot && Array.isArray(snapshot.files) ? snapshot.files : []
-      const dirtyCount = files.length
+      const dirtyCount = snapshot && Number.isInteger(snapshot.statusCount) ? snapshot.statusCount : files.length
+      const statusTruncated = Boolean(snapshot && snapshot.statusTruncated)
+      const statusLabel = `${dirtyCount} 个未提交项${statusTruncated ? '（仅显示前 200 项）' : ''}`
       const trigger = h('button', {
         type: 'button',
         className: 'dsh-git-trigger',
         'aria-label': 'Git',
         'aria-expanded': open,
-        title: dirtyCount ? `${snapshot.branch || ''} · ${dirtyCount} 个改动` : 'Git 工作台',
+        title: dirtyCount ? `${snapshot.branch || ''} · ${statusLabel}` : 'Git 工作台',
         onClick: () => {
           const next = !open
           if (next) window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'git' } }))
@@ -156,17 +158,17 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsh-git-repo' },
             h('label', null, '仓库', h('select', { value: path, onChange: (event) => { setPath(event.target.value); setDiff(''); setDiffTitle('选择文件查看差异') } }, repositories.map((repo) => h('option', { key: repo.path, value: repo.path }, `${repo.name} · ${repo.path}`)))),
             h('div', { className: 'dsh-git-actions' },
-              h('button', { type: 'button', disabled: busy || !files.length, onClick: () => { if (window.confirm(`暂存「${path}」的全部改动？`)) runAction('stage') } }, '暂存全部'),
+              h('button', { type: 'button', disabled: busy || !dirtyCount, onClick: () => { if (window.confirm(`暂存「${path}」的全部未提交项？`)) runAction('stage') } }, '暂存全部'),
               h('button', { type: 'button', disabled: busy || !(snapshot && snapshot.hasStaged), onClick: () => { if (window.confirm('取消全部已暂存改动？文件内容不会被删除。')) runAction('unstage') } }, '全部取消暂存'))),
           error ? h('div', { className: 'dsh-git-message', 'data-tone': 'error' }, error) : null,
           notice ? h('div', { className: 'dsh-git-message', 'data-tone': 'success' }, notice) : null,
           h('div', { className: 'dsh-git-grid' },
-            h('div', { className: 'dsh-git-files' }, h('div', { className: 'dsh-git-section-title' }, `改动文件 · ${files.length}`), fileRows),
+            h('div', { className: 'dsh-git-files' }, h('div', { className: 'dsh-git-section-title' }, `未提交项 · ${dirtyCount}${statusTruncated ? '（显示前 200 项）' : ''}`), fileRows),
             h('div', { className: 'dsh-git-diff' }, h('div', { className: 'dsh-git-section-title' }, diffTitle), h('pre', null, diff || '点击左侧文件查看差异'))),
           h('div', { className: 'dsh-git-commit' },
             h('input', { value: message, placeholder: '提交说明', 'aria-label': '提交说明', onChange: (event) => setMessage(event.target.value) }),
             h('button', { type: 'button', className: 'dsh-git-primary', disabled: busy || !message.trim() || !(snapshot && snapshot.hasStaged), onClick: () => { if (window.confirm(`提交到 ${snapshot.branch}？\n\n${message.trim()}`)) runAction('commit', { message: message.trim() }) } }, '提交'),
-            h('button', { type: 'button', className: 'dsh-git-primary', disabled: busy || !message.trim() || !files.length, onClick: () => { if (window.confirm(`一键提交并推送？\n\n仓库：${path}\n分支：${snapshot.branch}\n改动：${files.length} 个文件\n\n这会暂存全部改动、本地提交并更新 GitHub。`)) runAction('commit_push', { message: message.trim(), confirm: true, branch: snapshot.branch }) } }, '提交并推送'),
+            h('button', { type: 'button', className: 'dsh-git-primary', disabled: busy || !message.trim() || !dirtyCount, onClick: () => { if (window.confirm(`一键提交并推送？\n\n仓库：${path}\n分支：${snapshot.branch}\n未提交项：${dirtyCount}\n\n这会暂存全部未提交项、本地提交并更新 GitHub。`)) runAction('commit_push', { message: message.trim(), confirm: true, branch: snapshot.branch }) } }, '提交并推送'),
             h('button', { type: 'button', disabled: busy || !snapshot, onClick: () => { if (window.confirm(`确认把 ${snapshot.branch} 推送到远端？这会修改远程仓库。`)) runAction('push', { confirm: true, branch: snapshot.branch }) } }, '推送')),
           recent.length ? h('details', { className: 'dsh-git-history' }, h('summary', null, '最近提交'), recent.map((item) => h('div', { key: `${item.hash}:${item.date}` }, h('code', null, item.hash), h('span', null, item.message), h('time', null, item.date)))) : null,
         ))
@@ -176,10 +178,10 @@ window.__ModuleLoader__.load({
       const style = document.createElement('style')
       style.id = 'dsh-git-ui-styles'
       style.textContent = `
-        .dsh-git-root{position:relative;flex:none;font:13px/1.4 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-        .dsh-git-trigger{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 13px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-base,transparent);color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}
+        .dsh-git-root{box-sizing:border-box;position:relative;display:flex;align-items:center;flex:0 0 auto;width:auto;min-width:0;max-width:none;height:36px;min-height:36px;max-height:36px;font:13px/1.4 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+        .dsh-git-trigger{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;min-width:0;max-width:none;height:36px;min-height:36px;max-height:36px;padding:0 13px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-base,transparent);color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;line-height:1}
         .dsh-git-trigger:hover,.dsh-git-trigger[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.1));border-color:color-mix(in srgb,#8a72d8 42%,transparent)}
-        .dsh-git-trigger svg{width:16px;height:16px;color:#8a72d8}.dsh-git-count{min-width:16px;padding:0 5px;border-radius:999px;background:#8a72d81c;color:#765fc4;font-size:10px;line-height:18px;text-align:center}
+        .dsh-git-trigger svg{display:block;width:16px;height:16px;flex:0 0 16px;max-width:16px;max-height:16px;color:#8a72d8}.dsh-git-trigger>*,.dsh-git-count{box-sizing:border-box;flex:0 0 auto;min-width:0;white-space:nowrap;line-height:1}.dsh-git-count{min-width:16px;padding:0 5px;border-radius:999px;background:#8a72d81c;color:#765fc4;font-size:10px;line-height:18px;text-align:center}
         .dsh-git-panel{position:fixed;z-index:10020;top:62px;right:126px;box-sizing:border-box;width:min(680px,calc(100vw - 28px));max-height:min(76vh,700px);overflow:auto;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:15px;background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary);box-shadow:0 20px 60px rgba(20,24,31,.24),0 3px 12px rgba(20,24,31,.1)}
         .dsh-git-head{display:flex;align-items:center;gap:8px;min-height:34px;padding:0 2px 10px;border-bottom:1px solid var(--dsw-alias-border-l1)}.dsh-git-branch{padding:2px 7px;border-radius:999px;background:var(--dsw-alias-interactive-bg-hover);font:11px/18px ui-monospace,SFMono-Regular,Menlo,monospace}.dsh-git-head-btn{margin-left:auto}.dsh-git-head button,.dsh-git-actions button,.dsh-git-commit button{min-height:28px;padding:0 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:transparent;color:inherit;cursor:pointer}.dsh-git-head button:disabled,.dsh-git-actions button:disabled,.dsh-git-commit button:disabled{opacity:.45;cursor:not-allowed}.dsh-git-close{width:28px;padding:0!important;border:0!important;font-size:18px}
         .dsh-git-repo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin-top:10px}.dsh-git-repo label{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;color:var(--dsw-alias-label-secondary);font-size:11px}.dsh-git-repo select,.dsh-git-commit input{box-sizing:border-box;width:100%;height:30px;padding:0 9px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.dsh-git-actions{display:flex;gap:6px}

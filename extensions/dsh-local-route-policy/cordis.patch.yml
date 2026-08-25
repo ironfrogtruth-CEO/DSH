@@ -1,0 +1,5 @@
+# Local-model prompt policy: keep the full catalog for official/worker routes,
+# and shrink only the final Ollama assembly after all upstream listeners finish.
+- insert:
+    - id: dsh-local-route-policy
+      name: '@local/dsh-local-route-policy'

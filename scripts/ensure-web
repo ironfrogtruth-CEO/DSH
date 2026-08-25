@@ -15,6 +15,11 @@ fi
 /usr/local/bin/node "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" >>"$LOG" 2>&1 || true
 # edit 工具自动观察补丁(先读后写策略自动满足,消除 FS_NOT_OBSERVED);幂等
 /usr/local/bin/node "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" >>"$LOG" 2>&1 || true
+# generic subagent route inheritance补丁(严格 rc.2 Gate,幂等)
+if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" >>"$LOG" 2>&1; then
+  echo "$(date '+%F %T') ensure-web: subagent route patch failed; refusing to start Host" >>"$LOG"
+  exit 1
+fi
 
 # 本地 shrimp-shell 是独立 ESM 包，必须拥有自己的声明依赖。依赖目录被
 # 清理或首次迁移时补装一次；已存在时不访问网络、不重复安装。
@@ -29,6 +34,26 @@ fi
 # 端口已监听不等于代码已加载。插件或适配器内容变化时自动重启一次，
 # 避免 App 启动后继续使用旧 Node 进程（本次截图污染复发的直接原因）。
 SIGNATURE=$(/usr/bin/shasum -a 256 \
+  "$HOME/.dsh/settings.yaml" \
+  "$HOME/.dsh/.agent-presets/reliable-development/preset.yml" \
+  "$HOME/.dsh/profiles/web/package.json" \
+  "$HOME/.dsh/container.manifest.yaml" \
+  "$HOME/.dsh/extensions/dsh-goal-first-state-machine/index.js" \
+  "$HOME/.dsh/extensions/dsh-goal-first-state-machine/machine.js" \
+  "$HOME/.dsh/extensions/dsh-local-route-policy/index.js" \
+  "$HOME/.dsh/extensions/dsh-local-route-policy/package.json" \
+  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-workspace/client.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js" \
+  "$HOME/.dsh/scripts/ensure-web" \
+  "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" \
+  "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" \
+  "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" \
+  "$HOME/.dsh/scripts/daily-git-commit.mjs" \
   "$HOME/.dsh/extensions/dsh-browser/index.js" \
   "$HOME/.dsh/extensions/dsh-memory/index.js" \
   "$HOME/.dsh/extensions/dsh-git/index.js" \
@@ -39,6 +64,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/shrimp-shell/index.js" \
   "$HOME/.dsh/extensions/shrimp-shell/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-agent-preset/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js" \

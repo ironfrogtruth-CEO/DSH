@@ -27,6 +27,8 @@ Record the answers as a compact `goal_contract`: `problem`, `audience_action`, `
 - `simple_direct`: one quick step, no durable artifact, low truth/render/side-effect risk. Answer or act directly without displaying a ceremonial pipeline.
 - `sop_required`: multiple steps or artifacts, source-truth risk, rendering/export, external side effects, user confirmation, long execution, or rollback needs. Load `sop-orchestrator` and use its node contracts.
 
+For `sop_required`, load `three-provinces-six-ministries` as the governance overlay after this route is fixed. It does not create a second pipeline: it assigns each existing node to the responsible province, ministry, and Gate, while this controller remains the source of the goal contract, route, and rollback map. For `simple_direct`, keep the route invisible and perform only the overlay's implicit truth, action, and terminal checks.
+
 For `sop_required`, work backward from acceptance to execution:
 
 `完成证据 <- 验证 <- 最终产物 <- 生成 <- 结构 <- 真源 <- 路由`
@@ -41,11 +43,14 @@ Show the current state without turning progress reporting into a long status rep
 
 Allowed states: `✅完成`, `🔄进行中`, `⏸待确认`, `⛔阻断`, `↩回滚`, `⚪未开始`.
 
+When the task is `sop_required`, report the current province/ministry and Gate beside the current node. Use the existing mapping: `route=行动省/澄清部`, `parse=内容省/搜寻部`, `structure=行动省/规划部`, `generate=行动省/执行部`, `validate=内容省+渲染省/检查部`, `export=渲染省/产出部`, `review=行动省+渲染省/检查部+产出部`. The Host goal-first state machine is authoritative for the current mapping and Gate; prose must not invent a parallel state.
+
 ## Select the execution route
 
 Choose skills, tools, and models by the goal, artifact type, truth-source needs, runtime constraints, and validation method. Prefer a specific domain or artifact skill over a broad controller. Do not route to a domain skill merely because it was recently used.
 
 - For complex orchestration, load `sop-orchestrator`; read its registries only when the task needs them.
+- For the three-province/six-ministry governance overlay, load `three-provinces-six-ministries`; keep its province, ministry, and Gate labels attached to the existing seven-node state.
 - For software implementation and debugging, load `reliable-development` after this controller has fixed the goal and acceptance contract.
 - For Ping An enterprise-health A00-A11 production, load `enterprise-health-orchestrator`; it owns that domain state machine. This controller does not replace its business contracts.
 - For Chinese replies and artifacts, load `native-chinese-expression` after facts and domain boundaries are fixed and before final wording.

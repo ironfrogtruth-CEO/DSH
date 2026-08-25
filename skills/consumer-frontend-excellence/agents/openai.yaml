@@ -1,0 +1,4 @@
+interface:
+  display_name: "C端前端卓越"
+  short_description: "从用户体验、视觉系统到生产实现和截图验收的完整前端流程"
+  default_prompt: "使用C端前端卓越流程审计并实现当前界面，保持设计一致，完成响应式、状态与视觉QA。"

@@ -1,6 +1,62 @@
 import { createHash, randomUUID } from 'node:crypto'
 
 export const SOP_NODES = Object.freeze(['route', 'parse', 'structure', 'generate', 'validate', 'export', 'review'])
+
+// Governance is an overlay on the existing seven-node state machine. Keep the
+// node ids stable: persisted schemaVersion=1 snapshots may not have a
+// governance field and must still render and resume safely.
+export const NODE_GOVERNANCE = Object.freeze({
+  route: Object.freeze({
+    provinces: Object.freeze(['行动省']),
+    ministries: Object.freeze(['澄清部']),
+    gate: '目标合同、受众动作、交付物、约束、验收和回退点完整',
+  }),
+  parse: Object.freeze({
+    provinces: Object.freeze(['内容省']),
+    ministries: Object.freeze(['搜寻部']),
+    gate: '真源、派生、调试和污染风险分开，关键输入可追溯',
+  }),
+  structure: Object.freeze({
+    provinces: Object.freeze(['行动省']),
+    ministries: Object.freeze(['规划部']),
+    gate: '结构能落到输入、输出、技能、工具、模型、QA 和回退',
+  }),
+  generate: Object.freeze({
+    provinces: Object.freeze(['行动省']),
+    ministries: Object.freeze(['执行部']),
+    gate: '只按已确认结构生成，保护上游和用户改动',
+  }),
+  validate: Object.freeze({
+    provinces: Object.freeze(['内容省', '渲染省']),
+    ministries: Object.freeze(['检查部']),
+    gate: '事实、结构、格式、渲染和用户约束均有证据；失败阻断',
+  }),
+  export: Object.freeze({
+    provinces: Object.freeze(['渲染省']),
+    ministries: Object.freeze(['产出部']),
+    gate: '仅导出已通过 QA 的产物，记录路径、版本和交付清单',
+  }),
+  review: Object.freeze({
+    provinces: Object.freeze(['行动省', '渲染省']),
+    ministries: Object.freeze(['检查部', '产出部']),
+    gate: '逐项回读完成标准，分开报告实现、测试、实时验收和生产就绪',
+  }),
+})
+
+export function governanceForNode(node) {
+  const governance = NODE_GOVERNANCE[node]
+  if (!governance) return null
+  return {
+    provinces: [...governance.provinces],
+    ministries: [...governance.ministries],
+    gate: governance.gate,
+  }
+}
+
+function governanceForState(classification, node) {
+  return classification === 'sop_required' ? governanceForNode(node) : null
+}
+
 const SIMPLE_WORDING = /(?:只给一句|只用一句话|仅用一句话|只(?:给|写|输出|回复)(?:出)?(?:改写后的)?(?:一|1)句|翻译成|改写(?:这|下列|以下)?(?:句子)?)/i
 const COMPLEX_WORDING = /(?:复杂|多步骤|可回滚|状态机|工作流|流水线|方案|规划|架构|实施|验收|回归|部署|升级|迁移|重构|开发|实现|修复|调试|排查|审计|报告|PPT|HTML|PDF|插件|代码|仓库|项目|文件)/i
 const RISK_WORDING = /(?:真源|证据|来源|QA|质量|渲染|导出|发布|提交|权限|确认|回滚|恢复|失败|风险|约束)/i
@@ -73,6 +129,7 @@ function nodeMap(classification) {
 
 export function createInitialState({ sessionId, text, sourceEventSeq = 0, turn = 1 }) {
   const route = classifyTask(text)
+  const currentNode = route.classification === 'simple_direct' ? 'direct' : 'route'
   return {
     schemaVersion: 1,
     sessionId,
@@ -83,8 +140,9 @@ export function createInitialState({ sessionId, text, sourceEventSeq = 0, turn =
     phase: 'active',
     goalContract: null,
     outputContract: extractOutputContract(text),
-    currentNode: route.classification === 'simple_direct' ? 'direct' : 'route',
+    currentNode,
     nodes: nodeMap(route.classification),
+    governance: governanceForState(route.classification, currentNode),
     qa: { status: 'not_run', checks: [], evidence: [] },
     rollbackTarget: null,
     failure: null,
@@ -127,6 +185,9 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
   if (!state || state.classification !== 'sop_required') throw new Error('state transition is available only for sop_required tasks')
   const action = String(input?.action || '')
   const next = structuredClone(state)
+  // Historical schemaVersion=1 snapshots predate governance. Rehydrate the
+  // derived overlay in memory while leaving their append-only records intact.
+  next.governance = governanceForState(state.classification, state.currentNode)
   next.updatedAt = Date.now()
   next.sourceEventSeq = Math.max(Number(sourceEventSeq || 0), state.sourceEventSeq)
   next.lastModelTransitionTurn = turn
@@ -138,6 +199,7 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
     next.nodes.route = 'completed'
     next.nodes.parse = 'in_progress'
     next.currentNode = 'parse'
+    next.governance = governanceForState(next.classification, next.currentNode)
     return next
   }
 
@@ -170,6 +232,7 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
       next.phase = 'complete'
       next.currentNode = 'review'
     }
+    next.governance = governanceForState(next.classification, next.currentNode)
     return next
   }
 
@@ -203,6 +266,7 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
     next.currentNode = target
     next.rollbackTarget = null
     next.failure = null
+    next.governance = governanceForState(next.classification, next.currentNode)
     return next
   }
 
@@ -211,8 +275,13 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
 
 export function renderStateContext(state, currentTurn = null) {
   const contract = JSON.stringify(state.outputContract)
-  if (state.classification === 'simple_direct') return `<goal_first_host_state version="1">route=simple_direct; output_contract=${contract}; answer directly and satisfy every populated output constraint.</goal_first_host_state>`
-  if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; qa=${state.qa.status}; output_contract=${contract}. A legal Host state transition has already been recorded in this turn. Do not advance another node unless the user explicitly asked this turn to execute multiple nodes; otherwise finish the response now and report the recorded current node.</goal_first_host_state>`
+  if (state.classification === 'simple_direct') return `<goal_first_host_state version="1">route=simple_direct; implicit_checks=truth,action,terminal; output_contract=${contract}; answer directly and satisfy every populated output constraint.</goal_first_host_state>`
+  const governance = state.governance || governanceForState(state.classification, state.currentNode)
+  const provinces = governance?.provinces?.join('+') || '未映射'
+  const ministries = governance?.ministries?.join('+') || '未映射'
+  const gate = governance?.gate || '当前节点 Gate 未定义'
+  const overlay = `province=${provinces}; ministry=${ministries}; gate=${gate}`
+  if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; ${overlay}; qa=${state.qa.status}; output_contract=${contract}. A legal Host state transition has already been recorded in this turn. Do not advance another node unless the user explicitly asked this turn to execute multiple nodes; otherwise finish the response now and report the recorded current node.</goal_first_host_state>`
   const routeSchema = state.currentNode === 'route' ? ' For record_goal, goalContract must contain non-empty problem:string, audienceAction:string, deliverables:string[], constraints:string[], successCriteria:string[], minimumDeliverable:string, validation:string[], rollbackPoints:string[]; truthSources is string[] and may be empty only when explicitly marked pending.' : ''
-  return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; qa=${state.qa.status}; output_contract=${contract}. This Host state is authoritative. Call goal_first_state_transition with expectedRevision=${state.revision} before the turn ends.${routeSchema} Nodes must advance in order and export is forbidden until QA passes.</goal_first_host_state>`
+  return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; ${overlay}; qa=${state.qa.status}; output_contract=${contract}. This Host state is authoritative. Call goal_first_state_transition with expectedRevision=${state.revision} before the turn ends.${routeSchema} Nodes must advance in order and export is forbidden until QA passes.</goal_first_host_state>`
 }

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { apply } from './index.js'
-import { classifyTask, createInitialState, extractOutputContract, renderStateContext, transitionState } from './machine.js'
+import { classifyTask, createInitialState, extractOutputContract, governanceForNode, renderStateContext, transitionState } from './machine.js'
 import { GoalFirstStateStore } from './state-store.js'
 import { enforceOneSentenceStream, rewriteOneSentenceChunks } from './stream-contract.js'
 
@@ -31,6 +31,10 @@ async function temporaryStore() {
 test('classifier keeps one-sentence rewrite simple and routes risky plugin work to SOP', () => {
   assert.equal(classifyTask('把这句话改得自然一些，只给出改写后的句子。').classification, 'simple_direct')
   assert.equal(extractOutputContract('把这句话改得自然一些，只给出改写后的句子。').exactSentences, 1)
+  const simple = createInitialState({ sessionId: 'simple', text: '把这句话改得自然一些，只给出改写后的句子。' })
+  assert.equal(simple.governance, null)
+  assert.match(renderStateContext(simple), /implicit_checks=truth,action,terminal/)
+  assert.doesNotMatch(renderStateContext(simple), /province=|ministry=|gate=/)
   assert.equal(classifyTask('请升级这个插件，分阶段验收并提供回滚方案。').classification, 'sop_required')
   assert.deepEqual(extractOutputContract('只给一句，不要解释，用中文，20字以内。'), {
     exactSentences: 1,
@@ -58,9 +62,12 @@ test('append-only store isolates sessions, replays after restart, ignores torn t
 
 test('state transition is sequential and validate gate controls export', () => {
   let state = createInitialState({ sessionId: 's', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  assert.deepEqual(state.governance, governanceForNode('route'))
+  assert.match(renderStateContext(state), /province=行动省; ministry=澄清部; gate=/)
   assert.match(renderStateContext(state, 1), /deliverables:string\[\]/)
   state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
   assert.equal(state.currentNode, 'parse')
+  assert.deepEqual(state.governance, governanceForNode('parse'))
   assert.match(renderStateContext(state, 1), /already been recorded in this turn/)
   assert.doesNotMatch(renderStateContext(state, 1), /Call goal_first_state_transition/)
   assert.throws(() => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['x'] }, { turn: 1, sourceEventSeq: 3 }), /cannot complete node structure/)
@@ -70,8 +77,18 @@ test('state transition is sequential and validate gate controls export', () => {
   assert.equal(failed.rollbackTarget, 'generate')
   state = transitionState(state, { action: 'complete_node', node: 'validate', evidence: ['tests passed'], qaStatus: 'passed', qaChecks: ['unit'] }, { turn: 1, sourceEventSeq: 5 })
   assert.equal(state.currentNode, 'export')
+  assert.deepEqual(state.governance, governanceForNode('export'))
   state = transitionState(state, { action: 'complete_node', node: 'export', evidence: ['artifact hash'] }, { turn: 1, sourceEventSeq: 6 })
   assert.equal(state.currentNode, 'review')
+  assert.deepEqual(state.governance, governanceForNode('review'))
+})
+
+test('schemaVersion=1 snapshots without governance remain readable and rehydrate on transition', () => {
+  const state = createInitialState({ sessionId: 'legacy', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  delete state.governance
+  assert.match(renderStateContext(state), /province=行动省; ministry=澄清部; gate=/)
+  const resumed = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  assert.deepEqual(resumed.governance, governanceForNode('parse'))
 })
 
 test('stream contract rewrites three alternatives to one consistent sentence and removes replay metadata', async () => {
@@ -135,7 +152,10 @@ test('Host hooks inject state, deny export before QA, steer once, then block', a
     const preStep = runtime.listeners.get('agent/pre-step')[0]
     const decision = await preStep({ agent, messages: [human], turn: 1, step: 1, signal: new AbortController().signal }, async () => ({ kind: 'enter', messages: [human] }))
     assert.equal(decision.messages.at(-1).source.plugin, 'dsh-goal-first-state-machine')
-    assert.equal((await new GoalFirstStateStore(fixture.root).load(agent.id)).classification, 'sop_required')
+    const initial = await new GoalFirstStateStore(fixture.root).load(agent.id)
+    assert.equal(initial.classification, 'sop_required')
+    assert.deepEqual(initial.governance, governanceForNode('route'))
+    assert.match(decision.messages.at(-1).content[0].text, /province=行动省; ministry=澄清部; gate=/)
 
     const preExecute = runtime.listeners.get('tools/pre-execute')[0]
     const denied = await preExecute({ agent, name: 'pdf_export', arguments: {} }, async () => ({ kind: 'allow' }))

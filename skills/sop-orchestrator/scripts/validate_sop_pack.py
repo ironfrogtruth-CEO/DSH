@@ -6,6 +6,7 @@ from pathlib import Path
 
 EXPECTED_SKILLS = [
     "goal-first-control",
+    "three-provinces-six-ministries",
     "master-control",
     "sop-orchestrator",
     "sop-route",
@@ -57,6 +58,28 @@ def check_frontmatter(skills_root):
             fail(f"frontmatter name mismatch: {skill_md}")
         if "description:" not in fm:
             fail(f"missing description: {skill_md}")
+
+
+def check_governance_skill(skills_root):
+    skill_md = skills_root / "three-provinces-six-ministries" / "SKILL.md"
+    text = skill_md.read_text(encoding="utf-8")
+    required = [
+        "内容省",
+        "行动省",
+        "渲染省",
+        "澄清部",
+        "搜寻部",
+        "规划部",
+        "执行部",
+        "检查部",
+        "产出部",
+        "simple_direct",
+        "sop_required",
+        "不建第二套状态机",
+    ]
+    missing = [item for item in required if item not in text]
+    if missing:
+        fail(f"three-provinces-six-ministries missing governance contract terms: {missing}")
 
 
 def check_node_registry(ref_dir):
@@ -138,6 +161,11 @@ def check_cross_refs(ref_dir, node_registry):
         if skill not in skill_ids:
             fail(f"skill not registered: {skill}")
 
+    governance = next((item for item in skill_registry.get("skills", []) if item.get("skill_id") == "three-provinces-six-ministries"), None)
+    required_roles = {"governance_overlay", "three_provinces", "six_ministries", "truth_gate", "action_gate", "render_gate"}
+    if governance is None or not required_roles.issubset(set(governance.get("roles", []))):
+        fail("three-provinces-six-ministries registry roles are incomplete")
+
     local_skill_ids = {
         path.parent.name
         for path in skills_root.glob("*/SKILL.md")
@@ -197,6 +225,7 @@ def main():
     skills_root = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path.home() / ".codex" / "skills"
     ref_dir = skills_root / "sop-orchestrator" / "references"
     check_frontmatter(skills_root)
+    check_governance_skill(skills_root)
     for name in REGISTRIES:
         if not (ref_dir / name).exists():
             fail(f"missing registry: {name}")

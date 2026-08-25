@@ -20,3 +20,46 @@ node_modules/
 
 # 私有凭证 — 永不入库
 private/
+
+# DSH 运行数据、缓存与生成物 — 永不纳入版本管理
+/output/
+/attachments/
+/cross-session/
+/intelligence/
+/memories/
+/vision-media/
+/vision-results/
+/zhipu-images/
+/gzh-publisher-profile*
+/xhs-publisher-profile*
+/.playwright-cli/
+/.web-load-signature
+/heartbeats*.json
+
+# 密钥、环境变量与 SSH 私密材料 — 永不入库
+/.env
+/.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+/.ssh/
+**/.ssh/
+**/id_rsa
+**/id_rsa.*
+**/id_ed25519
+**/id_ed25519.*
+**/*private*key*
+**/*private-key*
+
+# 备份副本、平台临时目录与测试缓存 — 不应进入每日配置快照
+*.bak*
+/apps/*-arm64-new
+/plugins/dsh-market/plugins-cache.json
+/scripts/__pycache__/
+**/__pycache__/
+**/.pytest_cache/
+pytest/cache/
+*.py[cod]

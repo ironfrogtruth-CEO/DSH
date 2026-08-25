@@ -12,6 +12,7 @@ REGISTRY = ROOT / "sop-orchestrator" / "references" / "skill_registry.json"
 
 ROLE_RULES = [
     ("goal-first-control", ["default_entrypoint", "goal_first", "orchestration", "skill_routing", "pipeline_state"]),
+    ("three-provinces-six-ministries", ["governance_overlay", "three_provinces", "six_ministries", "truth_gate", "action_gate", "render_gate", "pipeline_state"]),
     ("master-control", ["legacy_entrypoint", "orchestration", "skill_routing", "pipeline_state"]),
     ("sop-", ["sop_node", "pipeline_contract"]),
     ("html-report-editor", ["primary_html_editor", "editable_deck", "html_report", "pdf_export"]),
@@ -97,8 +98,10 @@ def infer_roles(skill_id, description):
 def selection_priority(skill_id):
     if skill_id == "goal-first-control":
         return 0
-    if skill_id == "master-control":
+    if skill_id == "three-provinces-six-ministries":
         return 1
+    if skill_id == "master-control":
+        return 2
     if skill_id == "sop-orchestrator":
         return 5
     if skill_id.startswith("sop-"):
@@ -154,7 +157,7 @@ def main():
     skills = sorted(skills, key=lambda item: (item["selection_priority"], item["skill_id"]))
     data = {
         "schema_version": "1.1.0",
-        "registry_policy": "Registry-backed skill selection. goal-first-control is the default entrypoint for complex work and may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
+        "registry_policy": "Registry-backed skill selection. goal-first-control is the default entrypoint for complex work; three-provinces-six-ministries is its governance overlay for truth, action, rendering, and node-level Gates. Both must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
         "selection_policy_ref": "skill_selection_policy.md",
         "skills": skills,
     }

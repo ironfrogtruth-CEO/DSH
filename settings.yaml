@@ -2,7 +2,7 @@ ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
   provider: deepseek-official
-  model: deepseek-v4-flash
+  model: deepseek-v4-pro
   reasoningEffort: high
 agent-presets:
   default: reliable-development
@@ -15,17 +15,25 @@ llm-deepseek:
 llm-pi-ai:
   providers:
     ollama-local:
+      displayName: 本地模型
       api: openai-completions
       baseURL: http://127.0.0.1:11434/v1
       headers:
         Authorization: Bearer ollama-local
       models:
         - id: cybermarcus:latest
-        - id: cybermarcus-codex:latest
-        - id: gemma4:26b-a4b-it-qat
-          contextWindow: 262144
-          maxTokens: 8192
-        - id: x/flux2-klein:4b
-        - id: embeddinggemma:latest
+          name: CyberMarcus 本地开发
+          contextWindow: 32768
+          maxTokens: 4096
+          input:
+            - text
+            - image
+        - id: qwen3.6:27b
+          name: Qwen3.6 27B
+          contextWindow: 32768
+          maxTokens: 4096
+          input:
+            - text
+            - image
 ui-theme:
-  preference: light
+  preference: dark

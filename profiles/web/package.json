@@ -10,14 +10,17 @@
     "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
     "@local/dsh-evals": "link:/Users/marcus/.dsh/extensions/dsh-evals",
     "@local/dsh-frontend-qa": "link:/Users/marcus/.dsh/extensions/dsh-frontend-qa",
-    "@local/dsh-goal-first-state-machine": "link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine",
     "@local/dsh-git": "link:/Users/marcus/.dsh/extensions/dsh-git",
+    "@local/dsh-goal-first-state-machine": "link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine",
     "@local/dsh-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-intelligence",
+    "@local/dsh-local-route-policy": "link:/Users/marcus/.dsh/extensions/dsh-local-route-policy",
     "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
     "@local/dsh-screen": "link:/Users/marcus/.dsh/extensions/dsh-screen",
     "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell",
     "@local/dsh-tool-policy": "link:/Users/marcus/.dsh/extensions/dsh-tool-policy",
-    "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media"
+    "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media",
+    "deepseek-idesign": "^0.2.2",
+    "deepseek-ippt": "^0.1.2"
   },
   "dsh": {
     "profile": {
@@ -29,7 +32,6 @@
         "@local/dsh-git",
         "@local/dsh-memory",
         "@local/dsh-screen",
-        "@local/dsh-shrimp-shell",
         "@local/zhipu-media",
         "@dsh-market/plugin",
         "@local/dsh-tool-policy",
@@ -38,7 +40,11 @@
         "@local/dsh-cross-session",
         "@local/dsh-frontend-qa",
         "@local/dsh-goal-first-state-machine",
-        "@local/dsh-evals"
+        "@local/dsh-evals",
+        "@local/dsh-compaction-v2",
+        "deepseek-idesign",
+        "deepseek-ippt",
+        "@local/dsh-shrimp-shell"
       ]
     }
   }

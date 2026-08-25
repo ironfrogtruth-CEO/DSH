@@ -1,2 +1,2 @@
-name: 可靠开发模式
-description: 面向 DeepSeek V4 与本机模型的高难度开发预设，以证据、测试、长期记忆和结构化续办驱动交付。
+name: CyberMarcus
+description: 统一可靠开发预设：按当前 provider/model 自动调整执行粒度，同时保留证据、测试、长期记忆、心跳、插件和安全委派能力。

@@ -16,6 +16,12 @@ const ALLOWED_REPO_ROOTS = [resolve(DSH_HOME, 'Desktop'), resolve(DSH_HOME, '.ds
 const WORKSPACE_STORE = join(DSH_HOME, '.dsh', 'storages', 'workspace.json')
 const MAX_HTTP_BODY = 128 * 1024
 const MAX_DIFF_CHARS = 120_000
+const DAILY_COMMIT_LOCK = 'dsh-daily-commit.lock'
+// `--untracked-files=normal` folds untracked directories so a runtime-heavy
+// workspace cannot produce tens of thousands of rows in the client. Keep the
+// API count exact, but cap the rows sent to the UI; the client labels the value
+// as status entries (未提交项), not as an exact file count.
+export const MAX_STATUS_ROWS = 200
 
 export class GitApiError extends Error {
   constructor(code, message, status = 400) {
@@ -62,6 +68,13 @@ async function resolveRepository(requested, basePath = '') {
     throw new GitApiError('GIT_NOT_REPOSITORY', '目标路径不是 Git 仓库', 400)
   }
   return repository
+}
+
+function assertDailyCommitUnlocked(repository) {
+  const lockPath = join(repository, '.git', DAILY_COMMIT_LOCK)
+  if (existsSync(lockPath)) {
+    throw new GitApiError('GIT_DAILY_COMMIT_RUNNING', '每日本地提交正在执行，请稍后再进行 Git 写操作', 409)
+  }
 }
 
 export function normalizeGitFiles(value) {
@@ -143,7 +156,7 @@ async function readJsonBody(req) {
   }
 }
 
-function parseStatus(output) {
+export function parseStatus(output) {
   return String(output || '').split(/\r?\n/).filter(Boolean).map((line) => {
     const code = line.slice(0, 2)
     return {
@@ -153,6 +166,16 @@ function parseStatus(output) {
       path: line.slice(3),
     }
   })
+}
+
+export function limitStatusRows(files, limit = MAX_STATUS_ROWS) {
+  const rows = Array.isArray(files) ? files : []
+  const max = Math.max(0, Number(limit) || 0)
+  return {
+    files: rows.slice(0, max),
+    statusCount: rows.length,
+    statusTruncated: rows.length > max,
+  }
 }
 
 function parseLog(output) {
@@ -170,19 +193,20 @@ function capText(value, max = MAX_DIFF_CHARS) {
 async function repositorySnapshot(ctx, repository) {
   const [branch, status, log] = await Promise.all([
     run(ctx, [GIT, 'branch', '--show-current'], repository),
-    run(ctx, [GIT, 'status', '--short', '--untracked-files=all'], repository),
+    run(ctx, [GIT, 'status', '--short', '--untracked-files=normal'], repository),
     run(ctx, [GIT, 'log', '--date=iso-strict', '--format=%h%x09%ad%x09%s', '-n', '8'], repository),
   ])
   if (branch.code !== 0 || status.code !== 0 || log.code !== 0) {
     const failure = [branch, status, log].find((result) => result.code !== 0)
     throw new GitApiError('GIT_READ_FAILED', (failure && (failure.stderr || failure.stdout)) || '读取仓库状态失败', 400)
   }
-  const files = parseStatus(status.stdout)
+  const allFiles = parseStatus(status.stdout)
+  const limited = limitStatusRows(allFiles)
   return {
     branch: branch.stdout.trim() || '(detached)',
-    files,
+    ...limited,
     recentCommits: parseLog(log.stdout),
-    hasStaged: files.some((file) => file.index !== ' ' && file.index !== '?'),
+    hasStaged: allFiles.some((file) => file.index !== ' ' && file.index !== '?'),
   }
 }
 
@@ -318,6 +342,7 @@ export function apply(ctx) {
     timeoutMs: 30000,
     async execute(args) {
       const cwd = await resolveCwd(ctx, args.path)
+      assertDailyCommitUnlocked(cwd)
       const files = normalizeGitFiles(args.files)
       const argv = files.length ? [GIT, 'add', '--', ...files] : [GIT, 'add', '-A']
       const r = await run(ctx, argv, cwd)
@@ -347,6 +372,7 @@ export function apply(ctx) {
     timeoutMs: 30000,
     async execute(args) {
       const cwd = await resolveCwd(ctx, args.path)
+      assertDailyCommitUnlocked(cwd)
       const files = normalizeGitFiles(args.files)
       const argv = [GIT, 'restore', '--staged', '--', ...(files.length ? files : ['.'])]
       const r = await run(ctx, argv, cwd)
@@ -376,6 +402,7 @@ export function apply(ctx) {
     timeoutMs: 30000,
     async execute(args) {
       const cwd = await resolveCwd(ctx, args.path)
+      assertDailyCommitUnlocked(cwd)
       if (!String(args.message || '').trim()) return { ok: false, error: '提交信息不能为空', code: 'GIT_MESSAGE_REQUIRED' }
       const check = await run(ctx, [GIT, 'diff', '--cached', '--quiet'], cwd)
       if (check.code !== 0 && check.stderr) return errOut(check, 'git 检查失败')
@@ -638,6 +665,7 @@ export function apply(ctx) {
     const guard = validateGitAction(action, body)
     if (!guard.ok) throw new GitApiError(guard.code, guard.error, 400)
     const repository = await resolveRepository(body.path || '')
+    if (action === 'stage' || action === 'unstage' || action === 'commit' || action === 'commit_push') assertDailyCommitUnlocked(repository)
     const files = normalizeGitFiles(body.files)
     let result
     if (action === 'stage') {
