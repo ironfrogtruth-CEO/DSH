@@ -121,4 +121,4 @@ extensions:                          # 扩展注册点
     - "@local/dsh-dsbalance"    # 余额卡片固化 bundle(自动加载)
     - "@local/dsh-knowledge-manager" # 虾缸知识库管理入口(只读模型工具 + UI CRUD)
     - "@local/dsh-imessage-bridge" # iMessage 任务/回执桥(默认关闭)
-    - "@local/dsh-shrimp-run-status" # 会话顶部虾真实运行节点状态(只读 UI)
+    - "@local/dsh-shrimp-run-status" # 会话顶部虾/heartbeat真实运行节点状态(只读桥 + UI)

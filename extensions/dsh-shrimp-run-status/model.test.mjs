@@ -4,6 +4,7 @@ import {
   dismissKey,
   domainOf,
   extractRunReference,
+  heartbeatRunnerCommand,
   isTerminalStatus,
   latestShrimpRun,
   normalizeRunPayload,
@@ -15,6 +16,18 @@ test('parses run ids from API envelopes and resource refs', () => {
   assert.equal(extractRunReference({ schema: 'api_envelope.v1', data: { run_id: 'run-1' } }), 'run-1')
   assert.equal(extractRunReference({ resource_refs: [{ type: 'run', id: 'run-2' }] }), 'run-2')
   assert.equal(extractRunReference({ operation: { aggregate_id: 'run-3' } }), 'run-3')
+})
+
+test('real heartbeat bash launch becomes a durable article-run candidate, but grep/read commands do not', () => {
+  const command = `cd /Users/marcus/Desktop/虾缸\nnohup /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 scripts/heartbeat_gzh_publish.py > output/run.log 2>&1 &`
+  assert.equal(heartbeatRunnerCommand({ command }), true)
+  assert.equal(heartbeatRunnerCommand({ command: 'grep -n heartbeat_gzh_publish.py scripts/x' }), false)
+  const candidate = latestShrimpRun({ runningCalls: [], nodes: [{ kind: 'tool-result', callId: 'bash-1', seq: 20, call: { name: 'bash', argsRaw: JSON.stringify({ command }) }, content: [{ type: 'text', text: 'PID=49194' }] }], pending: [] })
+  assert.equal(candidate.sourceType, 'heartbeat')
+  assert.equal(candidate.runner, 'gzh-multi-article')
+  assert.equal(candidate.pipelineSlug, 'shrimp-c433b57dac59419d')
+  assert.equal(candidate.pid, '49194')
+  assert.equal(candidate.domain, 'article')
 })
 
 test('latest durable shrimp_run candidate uses call-only or paired result', () => {

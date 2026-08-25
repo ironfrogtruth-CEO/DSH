@@ -156,6 +156,12 @@ export function domainOf(value, pipelineSlug = '') {
   return 'generic'
 }
 
+export function heartbeatRunnerCommand(value) {
+  const parsed = parseJson(value)
+  const command = textOf(parsed?.command ?? value)
+  return /(?:^|[\n;&])\s*(?:nohup\s+)?(?:arch\s+-arm64\s+)?(?:\/\S*\/)?python(?:3(?:\.\d+)?)?\s+(?:\S*\/)?scripts\/heartbeat_gzh_publish\.py(?:\s|>|&|$)/m.test(command)
+}
+
 export function latestShrimpRun(snapshot) {
   const calls = new Map()
   const running = Array.isArray(snapshot?.runningCalls) ? snapshot.runningCalls : []
@@ -175,9 +181,40 @@ export function latestShrimpRun(snapshot) {
       source,
     })
   }
+  const addHeartbeat = (call, fallbackSeq, source = 'heartbeat-call') => {
+    if (!call || String(call.name || '').trim() !== 'bash') return
+    const args = parseJson(call.argsRaw) || (call.args && typeof call.args === 'object' ? call.args : {}) || {}
+    if (!heartbeatRunnerCommand(args)) return
+    const callId = textOf(call.callId || call.id || `${source}-${fallbackSeq}`)
+    const current = calls.get(callId)
+    calls.set(callId, {
+      ...(current || {}),
+      callId,
+      seq: Number(call.seq ?? fallbackSeq ?? current?.seq ?? 0),
+      time: Number(call.time ?? current?.time ?? 0),
+      pipelineSlug: 'shrimp-c433b57dac59419d',
+      args,
+      runner: 'gzh-multi-article',
+      sourceType: 'heartbeat',
+      source,
+    })
+  }
   running.forEach((call, index) => addCall(call, call?.seq ?? call?.time ?? index, 'call'))
+  running.forEach((call, index) => addHeartbeat(call, call?.seq ?? call?.time ?? index, 'heartbeat-call'))
   nodes.forEach((node, index) => {
-    if (node?.kind !== 'tool-result' || String(node.call?.name || '') !== 'shrimp_run') return
+    if (node?.kind !== 'tool-result') return
+    if (String(node.call?.name || '') === 'bash') {
+      const resultCallId = node.callId || node.call?.callId
+      addHeartbeat({ ...node.call, ...(resultCallId ? { callId: resultCallId } : {}), seq: node.seq, time: node.callTime || node.time }, node.seq ?? index, 'heartbeat-result')
+      const heartbeatKey = textOf(resultCallId || `heartbeat-result-${node.seq ?? index}`)
+      const heartbeat = calls.get(heartbeatKey)
+      if (heartbeat) {
+        const pid = /\bPID\s*=\s*(\d+)\b/.exec(contentText(node.content))?.[1] || ''
+        calls.set(heartbeatKey, { ...heartbeat, callId: heartbeatKey, seq: Number(node.seq ?? heartbeat.seq), time: Number(node.time ?? heartbeat.time), pid, source: 'heartbeat-result' })
+      }
+      return
+    }
+    if (String(node.call?.name || '') !== 'shrimp_run') return
     const result = parseRunResult(node)
     const resultCallId = node.callId || node.call?.callId
     addCall({ ...node.call, ...(resultCallId ? { callId: resultCallId } : {}), seq: node.seq, time: node.callTime || node.time }, node.seq ?? index, 'result')
@@ -200,7 +237,7 @@ export function latestShrimpRun(snapshot) {
   const latest = entries.at(-1)
   if (!latest) return null
   const approval = Array.isArray(snapshot?.pending) && snapshot.pending.some((item) => item?.kind === 'approval')
-  return { ...latest, approvalPending: approval, domain: domainOf(latest, latest.pipelineSlug) }
+  return { ...latest, approvalPending: approval, domain: latest.sourceType === 'heartbeat' ? 'article' : domainOf(latest, latest.pipelineSlug) }
 }
 
 export function visibleNodes(nodes, limit = 6) {

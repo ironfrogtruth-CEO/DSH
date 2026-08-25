@@ -1,6 +1,6 @@
-// @local/dsh-shrimp-run-status — browser-only session run-status rail.
-// This module reads the real session standard kit; it does not create a Host
-// tool or infer a run from user prose.
+// @local/dsh-shrimp-run-status — session run-status rail.
+// It reads durable tool evidence and a fixed read-only heartbeat checkpoint;
+// it never infers a run from user prose.
 window.__ModuleLoader__.load({
   id: '@local/dsh-shrimp-run-status',
   factory: (require) => {
@@ -100,6 +100,11 @@ window.__ModuleLoader__.load({
       if (/(article|wechat|公众号|文章|虾六答)/i.test(source)) return 'article'
       return 'generic'
     }
+    const heartbeatCommand = (value) => {
+      const parsed = parseJson(value)
+      const command = text(parsed?.command ?? value)
+      return /(?:^|[\n;&])\s*(?:nohup\s+)?(?:arch\s+-arm64\s+)?(?:\/\S*\/)?python(?:3(?:\.\d+)?)?\s+(?:\S*\/)?scripts\/heartbeat_gzh_publish\.py(?:\s|>|&|$)/m.test(command)
+    }
     function latestRun(snapshot) {
       const map = new Map()
       const add = (call, fallback, source) => {
@@ -109,9 +114,27 @@ window.__ModuleLoader__.load({
         const previous = map.get(id) || {}
         map.set(id, { ...previous, callId: id, seq: Number(call.seq ?? fallback ?? previous.seq ?? 0), time: Number(call.time ?? previous.time ?? 0), pipelineSlug: text(args?.pipelineSlug || args?.pipeline_slug || args?.slug), args, source })
       }
+      const addHeartbeat = (call, fallback, source) => {
+        if (!call || String(call.name || '').trim() !== 'bash') return
+        const args = parseJson(call.argsRaw) || call.args || {}
+        if (!heartbeatCommand(args)) return
+        const id = text(call.callId || call.id || `${source}-${fallback}`)
+        const previous = map.get(id) || {}
+        map.set(id, { ...previous, callId: id, seq: Number(call.seq ?? fallback ?? previous.seq ?? 0), time: Number(call.time ?? previous.time ?? 0), pipelineSlug: 'shrimp-c433b57dac59419d', args, runner: 'gzh-multi-article', sourceType: 'heartbeat', source })
+      }
       ;(Array.isArray(snapshot?.runningCalls) ? snapshot.runningCalls : []).forEach((call, index) => add(call, call?.seq ?? call?.time ?? index, 'call'))
+      ;(Array.isArray(snapshot?.runningCalls) ? snapshot.runningCalls : []).forEach((call, index) => addHeartbeat(call, call?.seq ?? call?.time ?? index, 'heartbeat-call'))
       ;(Array.isArray(snapshot?.nodes) ? snapshot.nodes : []).forEach((node, index) => {
-        if (node?.kind !== 'tool-result' || String(node.call?.name || '') !== 'shrimp_run') return
+        if (node?.kind !== 'tool-result') return
+        if (String(node.call?.name || '') === 'bash') {
+          const heartbeatCallId = node.callId || node.call?.callId
+          addHeartbeat({ ...node.call, ...(heartbeatCallId ? { callId: heartbeatCallId } : {}), seq: node.seq, time: node.callTime || node.time }, node.seq ?? index, 'heartbeat-result')
+          const heartbeatId = text(heartbeatCallId || `heartbeat-result-${node.seq ?? index}`)
+          const heartbeat = map.get(heartbeatId)
+          if (heartbeat) map.set(heartbeatId, { ...heartbeat, callId: heartbeatId, seq: Number(node.seq ?? heartbeat.seq), time: Number(node.time ?? heartbeat.time), pid: /\bPID\s*=\s*(\d+)\b/.exec(contentText(node.content))?.[1] || '', source: 'heartbeat-result' })
+          return
+        }
+        if (String(node.call?.name || '') !== 'shrimp_run') return
         const resultCallId = node.callId || node.call?.callId
         add({ ...node.call, ...(resultCallId ? { callId: resultCallId } : {}), seq: node.seq, time: node.callTime || node.time }, node.seq ?? index, 'result')
         const id = text(resultCallId || `result-${node.seq ?? index}`)
@@ -123,7 +146,7 @@ window.__ModuleLoader__.load({
       const entries = [...map.values()].sort((left, right) => (left.seq - right.seq) || (left.time - right.time))
       const candidate = entries.at(-1)
       if (!candidate) return null
-      return { ...candidate, approvalPending: Array.isArray(snapshot?.pending) && snapshot.pending.some((item) => item?.kind === 'approval'), domain: domainOf(candidate, candidate.pipelineSlug) }
+      return { ...candidate, approvalPending: Array.isArray(snapshot?.pending) && snapshot.pending.some((item) => item?.kind === 'approval'), domain: candidate.sourceType === 'heartbeat' ? 'article' : domainOf(candidate, candidate.pipelineSlug) }
     }
     const normalizeNode = (node, index) => {
       const status = normalizeStatus(node?.status || node?.state || node?.lifecycle_status)
@@ -160,6 +183,12 @@ window.__ModuleLoader__.load({
       if (!response.ok) throw new Error(text(value?.error || value?.message || `虾缸请求失败（${response.status}）`))
       return unwrap(value)
     }
+    const fetchHeartbeatRuntime = async () => {
+      const response = await fetch('/api/dsh-shrimp-run-status/heartbeat', { cache: 'no-store', headers: { Accept: 'application/json' } })
+      const value = await response.json().catch(() => null)
+      if (!response.ok || value?.ok !== true) throw new Error(text(value?.error || `运行状态请求失败（${response.status}）`))
+      return value
+    }
     const statusText = { completed: '已完成', running: '运行中', queued: '排队中', pending: '待运行', approval_needed: '等待确认', failed: '失败', blocked: '已阻断', cancelled: '已取消', unknown: '启动中', offline: '虾缸离线' }
     const stateColor = { done: '#35a56f', running: '#3d83e6', queued: '#3d83e6', pending: '#858c96', approval_needed: '#d99532', failed: '#d84c45', blocked: '#d84c45' }
     const finalState = (status) => status === 'completed' ? 'done' : status === 'failed' ? 'failed' : status === 'cancelled' ? 'blocked' : status === 'blocked' ? 'failed' : status
@@ -178,33 +207,54 @@ window.__ModuleLoader__.load({
       }, [identity, sessionId, candidate?.runId, candidate?.callId])
       React.useEffect(() => {
         const runId = candidate?.runId
-        if (!runId || dismissed) return undefined
+        if ((!runId && candidate?.sourceType !== 'heartbeat') || dismissed) return undefined
         let alive = true
         let timer = null
         const read = async () => {
-          const summaryPath = `/api/v1/runs/${encodeURIComponent(runId)}/summary`
-          const statusPath = `/api/v1/runs/${encodeURIComponent(runId)}/status`
-          const results = await Promise.allSettled([fetchApi(summaryPath), fetchApi(statusPath)])
+          let heartbeat = null
+          let activeRunId = runId
+          if (candidate?.sourceType === 'heartbeat') {
+            try { heartbeat = await fetchHeartbeatRuntime(); activeRunId = text(heartbeat.currentRunId) } catch (cause) {
+              if (alive) setError(text(cause?.message || cause)); return
+            }
+          }
+          const paths = activeRunId
+            ? [`/api/v1/runs/${encodeURIComponent(activeRunId)}/summary`, `/api/v1/runs/${encodeURIComponent(activeRunId)}/status`]
+            : heartbeat?.pipelineSlug ? [`/api/v1/pipelines/${encodeURIComponent(heartbeat.pipelineSlug)}/summary`] : []
+          const results = await Promise.allSettled(paths.map(fetchApi))
           if (!alive) return
-          const summary = results[0].status === 'fulfilled' ? results[0].value : null
-          const status = results[1].status === 'fulfilled' ? results[1].value : null
-          if (!summary && !status) { setError('虾缸当前不可用，运行节点会在恢复后重试。'); return }
+          const summary = results[0]?.status === 'fulfilled' ? results[0].value : null
+          const status = results[1]?.status === 'fulfilled' ? results[1].value : null
+          if (!summary && !status && !heartbeat?.exists) { setError('虾缸当前不可用，运行节点会在恢复后重试。'); return }
           setError('')
-          const next = normalizePayload(summary, status)
+          const canonical = normalizePayload(summary, status)
+          const next = heartbeat ? {
+            ...canonical,
+            runId: activeRunId,
+            status: heartbeat.status || canonical.status,
+            terminal: Boolean(heartbeat.terminal),
+            progress: activeRunId ? canonical.progress : 0,
+            name: `${heartbeat.taskName || '虾六答'}${heartbeat.currentOut ? ` · ${heartbeat.currentOut}` : ''}`,
+            domain: 'article',
+            startedAt: heartbeat.createdAt || canonical.startedAt,
+            updatedAt: heartbeat.updatedAt || canonical.updatedAt,
+            failure: canonical.failure,
+            heartbeat,
+          } : canonical
           setRemote(next)
           if (next.terminal && timer) clearInterval(timer)
         }
         void read()
         timer = setInterval(() => { void read() }, 3000)
         return () => { alive = false; if (timer) clearInterval(timer) }
-      }, [candidate?.runId, dismissed])
+      }, [candidate?.runId, candidate?.sourceType, candidate?.callId, dismissed])
       if (!candidate || dismissed) return null
       const run = remote || { status: candidate.approvalPending ? 'approval_needed' : candidate.isError ? 'failed' : 'unknown', terminal: Boolean(candidate.isError), progress: null, nodes: [], name: '', domain: '', startedAt: '', updatedAt: '', failure: candidate.error || '' }
       const kind = domainOf(run, candidate.pipelineSlug)
       const status = normalizeStatus(error && !run.terminal ? 'offline' : run.status)
       const terminalState = run.terminal || terminal(status)
       const name = run.name || candidate.pipelineSlug || '虾运行'
-      const runId = candidate.runId || ''
+      const runId = candidate.runId || run.runId || ''
       const dismissalId = runId || candidate.callId
       const close = () => { if (!terminalState || !dismissalId) return; saveDismissed(storageKey(sessionId, dismissalId)); setDismissed(true) }
       const openDetail = () => {

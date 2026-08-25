@@ -15,6 +15,7 @@
     "client.js",
     "model.mjs",
     "model.test.mjs",
+    "index.test.mjs",
     "client.test.mjs",
     "README.md",
     "cordis.patch.yml",
