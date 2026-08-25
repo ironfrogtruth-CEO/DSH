@@ -30,10 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     var webView: WKWebView!
     var loadInFlight = false
     var isTerminating = false
+    var statusItem: NSStatusItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         installMainMenu()
+        installStatusItem()
 
         let rect = NSRect(x: 0, y: 0, width: 1280, height: 840)
         window = NSWindow(
@@ -163,6 +165,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         editMenu.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
         NSApp.mainMenu = mainMenu
+    }
+
+    // ---- macOS 顶部菜单栏小 logo(虾缸 mark,有边框无文字) ----
+    // 图标: Resources/menubar-logo.png(36px @2x, 展示 18pt)
+    func installStatusItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        guard let button = statusItem.button else { return }
+        let iconPath = Bundle.main.path(forResource: "menubar-logo", ofType: "png") ?? ""
+        if let img = NSImage(contentsOfFile: iconPath) {
+            img.size = NSSize(width: 18, height: 18)
+            button.image = img
+        }
+        button.toolTip = "大神"
+        let menu = NSMenu()
+        let showItem = NSMenuItem(title: "显示大神窗口", action: #selector(showMainWindow), keyEquivalent: "")
+        showItem.target = self
+        menu.addItem(showItem)
+        menu.addItem(NSMenuItem.separator())
+        let quitItem = NSMenuItem(title: "退出大神", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quitItem.target = NSApp
+        menu.addItem(quitItem)
+        statusItem.menu = menu
+    }
+
+    @objc func showMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 
     // ---- 语音输入: macOS 系统语音识别(SFSpeechRecognizer),离线、中文 --
@@ -379,6 +408,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.loadWithRetry()
         }
+    }
+
+    // ---- WKWebView 默认不实现 window.alert/confirm/prompt：不实现这些代理时
+    // 三者会被静默吞掉，confirm 恒返回 false（undefined），导致「运行虾」「抓虾
+    // 发布/方案确认」等依赖 confirm 的按钮点了毫无反应。这里补上原生对话框。
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "好")
+        alert.runModal()
+        completionHandler()
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "确定")
+        alert.addButton(withTitle: "取消")
+        let response = alert.runModal()
+        completionHandler(response == .alertFirstButtonReturn)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = prompt
+        alert.addButton(withTitle: "确定")
+        alert.addButton(withTitle: "取消")
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        textField.stringValue = defaultText ?? ""
+        alert.accessoryView = textField
+        let response = alert.runModal()
+        completionHandler(response == .alertFirstButtonReturn ? textField.stringValue : nil)
     }
 }
 

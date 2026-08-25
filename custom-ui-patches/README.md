@@ -12,6 +12,7 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
 1. **隐藏右上角"Session log"按钮**(dsh-session-log-export)
 2. **会话 header 改造**(dsh-client-ui-conversation):
    - tabs 行 = [对话][抓虾][我的虾] 三个用户任务入口
+   - 2026-08-25: 把 deepseek-idesign / deepseek-ippt 的视图 id(`ipollowork-design-studio`、`ipollowork-ppt-studio`)加入 `PRIMARY_VIEW_IDS`,Design / PPT 作为主入口 tab 出现,交互与现有 tab 完全一致;`ACTIVE_VIEW_IDS` 由 PRIMARY 展开自动包含,可正常恢复视图
    - 后台任务、子代理和 Skill 继续注册给运行时使用，但不再占据主导航
    - 历史会话若持久化在已隐藏视图，打开时自动回到“对话”，不会落入无返回入口的页面
    - utilities 区固定顺序为：轨迹 → 心跳 → Git → 项目与产物
@@ -30,6 +31,16 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
    - 仓库选择、分支和改动状态、单文件 diff、暂存/取消暂存、提交、推送
    - 支持“提交并推送”：暂存全部 → 本地 commit → 推送 GitHub
    - 写操作均有确认门；路径只允许 Desktop 与 ~/.dsh 下的真实 Git 仓库
+8. **Design/PPT Studio 品牌**(custom-ui-patches/dsh-idesign-ippt-studio/):
+   - 2026-08-25: iDesign→HTML、iPPT→皮皮虾、by iPolloWork→by ShrimpTank
+   - 全部模板 iPolloWork→ShrimpTank + 品牌图标替换为虾缸 mark(无文字)
+   - PPTX 导出 span 覆盖检查修复(tVe 文本标签补 span 等内联标签)
+   - bundle 重命名 -ipw.js 规避 immutable 缓存;index.html 注入品牌强制脚本,导出后不回退
+   - 升级后重放:bash custom-ui-patches/dsh-idesign-ippt-studio/replay-brand.sh
+9. **大神 App macOS 菜单栏图标**(apps/大神.swift):
+   - 2026-08-25: 新增 NSStatusItem(顶部菜单栏小 logo),图标取自虾缸 mark-dark 反转的浅色版(无文字),深色菜单栏上醒目
+   - 图标: apps/menubar-logo.png → 大神.app/Contents/Resources/
+   - 编译: swiftc -O -target arm64-apple-macosx12.0 -o 大神-arm64 大神.swift -framework Cocoa -framework WebKit -framework Speech -framework AVFoundation
 
 ## 文件说明
 

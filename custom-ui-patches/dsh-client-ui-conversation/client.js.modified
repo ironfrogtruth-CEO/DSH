@@ -7286,7 +7286,8 @@ window.__ModuleLoader__.load({
 		// [local-mod] 只允许用户主入口和独立“轨迹”入口恢复为活动视图。
 		// 历史持久化的 jobs/subagent/skill 选择必须回落到 chat，避免标签已隐藏
 		// 但会话正文仍停在不可返回的旧页面。
-		const PRIMARY_VIEW_IDS = /* @__PURE__ */ new Set(["chat", "shrimp-catch", "shrimp-library"]);
+		// [local-mod] Design/PPT Studio 加入主入口 tab(deepseek-idesign / deepseek-ippt),交互与现有 tab 一致
+		const PRIMARY_VIEW_IDS = /* @__PURE__ */ new Set(["chat", "shrimp-catch", "shrimp-library", "ipollowork-design-studio", "ipollowork-ppt-studio"]);
 		const ACTIVE_VIEW_IDS = /* @__PURE__ */ new Set([...PRIMARY_VIEW_IDS, "trajectory"]);
 		let activeHeaderSessionId = null;
 		/** Resolve by id and keep stale persisted selections on the stable Chat fallback. */
