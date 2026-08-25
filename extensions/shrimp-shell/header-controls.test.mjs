@@ -34,3 +34,17 @@ test('Git 工具自身也具备 HMR 后的固定高度与不可拉伸合同', as
   assert.match(source, /\.dsh-git-trigger\{[^}]*display:inline-flex;[^}]*flex:0 0 auto;[^}]*height:36px/)
   assert.match(source, /\.dsh-git-trigger svg\{[^}]*width:16px;height:16px;flex:0 0 16px/)
 })
+
+test('品牌垂直微调只移动虾缸 wordmark，不改变 Delivery 或收起态图标', async () => {
+  const [source, custom] = await Promise.all([
+    readFile(shrimpClientPath, 'utf8'),
+    readFile(customClientPath, 'utf8'),
+  ])
+  assert.match(source, /\.shrimp-harness-brand::before \{ transform: translateY\(6px\); \}/)
+  assert.match(source, /wordmark-dark-cropped\.png/)
+  assert.match(source, /wordmark-light-cropped\.png/)
+  assert.match(source, /\.shrimp-rail-brand::before/)
+  assert.match(source, /content: 'DELIVERY'/)
+  assert.match(source, /transform: translate\(-2px, -3px\)/)
+  assert.equal(custom, source, '正式 shrimp client 与 custom patch 必须同步')
+})

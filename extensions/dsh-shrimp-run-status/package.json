@@ -1,0 +1,31 @@
+{
+  "name": "@local/dsh-shrimp-run-status",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./model": "./model.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "model.mjs",
+    "model.test.mjs",
+    "client.test.mjs",
+    "README.md",
+    "cordis.patch.yml",
+    "package.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}

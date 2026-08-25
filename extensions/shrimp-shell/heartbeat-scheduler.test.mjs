@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 
 import {
   HEARTBEAT_TIMEZONE,
+  HEARTBEAT_CATCH_UP_MAX_OCCURRENCES,
+  HEARTBEAT_CATCH_UP_WINDOW_MS,
   clearHeartbeatRunnerFailure,
   executeHeartbeatRunner,
   heartbeatFailureFingerprint,
@@ -13,6 +15,7 @@ import {
   MAX_SCHEDULE_SCAN_SESSIONS,
   nextHeartbeatCronAt,
   normalizeHeartbeatCron,
+  normalizeHeartbeatCatchUp,
   planHeartbeatTask,
   recordHeartbeatRunnerFailure,
   SCHEDULE_SCAN_BATCH_SIZE,
@@ -53,6 +56,41 @@ test('cron scheduling does not drift by seven-day intervals and marks a stale wi
   assert.ok(missed.missedByMs > 2 * 60 * 1000)
 })
 
+test('explicit catch-up runs only the latest due occurrence within a bounded 24-hour window', () => {
+  const scheduledAt = at('2026-08-26T06:00:00+08:00')
+  const policy = normalizeHeartbeatCatchUp({ enabled: true })
+  assert.deepEqual(policy, {
+    enabled: true,
+    maxWindowMs: HEARTBEAT_CATCH_UP_WINDOW_MS,
+    maxOccurrences: HEARTBEAT_CATCH_UP_MAX_OCCURRENCES,
+  })
+  const recovered = planHeartbeatTask(
+    { cron: { time: '06:00', days: [3], timezone: HEARTBEAT_TIMEZONE }, nextRunAt: scheduledAt, catchUp: policy },
+    at('2026-08-26T08:00:00+08:00'),
+  )
+  assert.equal(recovered.action, 'run')
+  assert.equal(recovered.catchUp, true)
+  assert.equal(recovered.catchUpPolicy.maxOccurrences, 1)
+  assert.ok(recovered.nextRunAt > at('2026-08-26T08:00:00+08:00'))
+
+  const tooOld = planHeartbeatTask(
+    { cron: { time: '06:00', days: [3], timezone: HEARTBEAT_TIMEZONE }, nextRunAt: scheduledAt, catchUp: policy },
+    at('2026-08-27T07:00:01+08:00'),
+  )
+  assert.equal(tooOld.action, 'miss')
+  assert.equal(tooOld.catchUp, false)
+})
+
+test('non opted-in cron tasks retain the two-minute miss behavior', () => {
+  const scheduledAt = at('2026-08-26T06:00:00+08:00')
+  const plan = planHeartbeatTask(
+    { cron: { time: '06:00', days: [3], timezone: HEARTBEAT_TIMEZONE }, nextRunAt: scheduledAt },
+    at('2026-08-26T06:03:00+08:00'),
+  )
+  assert.equal(plan.action, 'miss')
+  assert.equal(plan.catchUp, false)
+})
+
 test('missing nextRunAt is initialized without firing immediately', () => {
   const plan = planHeartbeatTask({ cron: CRON }, at('2026-08-24T01:00:00+08:00'))
   assert.equal(plan.action, 'schedule')
@@ -64,20 +102,28 @@ test('runner is an immutable allowlist and cannot accept an arbitrary command', 
   assert.equal(spec.command, '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3')
   assert.deepEqual(spec.args, ['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py'])
   assert.equal(spec.cwd, '/Users/marcus/Desktop/虾缸')
+  assert.deepEqual(spec.preflight, {
+    command: '/bin/bash',
+    args: ['/Users/marcus/Desktop/虾缸/scripts/start_for_dsh.sh'],
+    cwd: '/Users/marcus/Desktop/虾缸',
+    timeoutMs: 90 * 1000,
+  })
   assert.equal(heartbeatRunnerSpec('rm -rf /'), null)
 
   const calls = []
   const fakeExecFile = (command, args, options, callback) => {
     calls.push({ command, args, options })
-    callback(null, '{"publish_summary":"三篇多图文草稿已保存"}\n', '')
+    callback(null, args[0].endsWith('start_for_dsh.sh') ? '{"ok":true,"api":"http://127.0.0.1:7843"}\n' : '{"publish_summary":"三篇多图文草稿已保存"}\n', '')
   }
   const result = await executeHeartbeatRunner({ runner: 'gzh-multi-article' }, { execFileImpl: fakeExecFile })
   assert.equal(result.runner, 'gzh-multi-article')
-  assert.equal(calls.length, 1)
-  assert.deepEqual(calls[0].args, spec.args)
-  assert.equal(calls[0].options.cwd, spec.cwd)
-  assert.equal(calls[0].options.shell, undefined)
-  assert.equal(calls[0].options.env.DSH_HEARTBEAT_PAYLOAD_JSON, '{}')
+  assert.equal(calls.length, 2)
+  assert.deepEqual(calls[0].args, spec.preflight.args)
+  assert.equal(calls[0].options.cwd, spec.preflight.cwd)
+  assert.equal(calls[1].args[0], spec.args[0])
+  assert.equal(calls[1].options.cwd, spec.cwd)
+  assert.equal(calls[1].options.shell, undefined)
+  assert.equal(calls[1].options.env.DSH_HEARTBEAT_PAYLOAD_JSON, '{}')
 })
 
 test('git daily commit runner uses the fixed local Node script and ignores payload command/path', async () => {
@@ -121,11 +167,25 @@ test('runner passes only bounded JSON payload and supports one-shot tasks', asyn
   const calls = []
   const fakeExecFile = (command, args, options, callback) => {
     calls.push({ command, args, options })
-    callback(null, '{}', '')
+    callback(null, args[0].endsWith('start_for_dsh.sh') ? '{"ok":true}\n' : '{}', '')
   }
   await executeHeartbeatRunner({ runner: 'gzh-multi-article', payload }, { execFileImpl: fakeExecFile })
-  assert.deepEqual(JSON.parse(calls[0].options.env.DSH_HEARTBEAT_PAYLOAD_JSON), payload)
-  assert.deepEqual(calls[0].args, ['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py'])
+  assert.deepEqual(JSON.parse(calls[1].options.env.DSH_HEARTBEAT_PAYLOAD_JSON), payload)
+  assert.deepEqual(calls[1].args, ['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py'])
+})
+
+test('gzh runner refuses to start article workflow when ShrimpTank preflight is unhealthy', async () => {
+  const calls = []
+  const fakeExecFile = (command, args, options, callback) => {
+    calls.push({ command, args, options })
+    callback(null, '{"ok":false,"error":"WORKER_START_FAILED"}\n', '')
+  }
+  await assert.rejects(
+    executeHeartbeatRunner({ runner: 'gzh-multi-article' }, { execFileImpl: fakeExecFile }),
+    /虾缸依赖预检失败/,
+  )
+  assert.equal(calls.length, 1)
+  assert.deepEqual(calls[0].args, ['/Users/marcus/Desktop/虾缸/scripts/start_for_dsh.sh'])
 })
 
 test('runner failure surfaces structured stdout before generic command error', async () => {

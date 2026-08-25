@@ -13,9 +13,12 @@
     "@local/dsh-git": "link:/Users/marcus/.dsh/extensions/dsh-git",
     "@local/dsh-goal-first-state-machine": "link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine",
     "@local/dsh-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-intelligence",
+    "@local/dsh-imessage-bridge": "link:/Users/marcus/.dsh/extensions/dsh-imessage-bridge",
+    "@local/dsh-knowledge-manager": "link:/Users/marcus/.dsh/extensions/dsh-knowledge-manager",
     "@local/dsh-local-route-policy": "link:/Users/marcus/.dsh/extensions/dsh-local-route-policy",
     "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
     "@local/dsh-screen": "link:/Users/marcus/.dsh/extensions/dsh-screen",
+    "@local/dsh-shrimp-run-status": "link:/Users/marcus/.dsh/extensions/dsh-shrimp-run-status",
     "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell",
     "@local/dsh-tool-policy": "link:/Users/marcus/.dsh/extensions/dsh-tool-policy",
     "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media",
@@ -44,6 +47,9 @@
         "@local/dsh-compaction-v2",
         "deepseek-idesign",
         "deepseek-ippt",
+        "@local/dsh-imessage-bridge",
+        "@local/dsh-knowledge-manager",
+        "@local/dsh-shrimp-run-status",
         "@local/dsh-shrimp-shell"
       ]
     }

@@ -8,8 +8,10 @@ import AVFoundation
 
 let PORT = 3080
 let UI_URL = "http://127.0.0.1:\(PORT)"
-let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/ensure-web"
-let STOP_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/stop"
+let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/enable-host"
+let STOP_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/disable-host"
+let BACKGROUND_LAUNCH_SENTINEL = NSHomeDirectory() + "/.dsh/private/background-launch"
+let BACKGROUND_LAUNCH_MAX_AGE: TimeInterval = 5 * 60
 
 // WKWebView 会吃掉无边框标题栏的鼠标事件。用一条完全透明的原生视图
 // 接管顶部空白区域的按下事件，恢复系统窗口拖动，同时避开左侧红绿灯和右侧工具按钮。
@@ -31,8 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     var loadInFlight = false
     var isTerminating = false
     var statusItem: NSStatusItem!
+    var hostHealthTimer: Timer?
+    var hostWakeObserver: NSObjectProtocol?
+    var hostHealthProbeInFlight = false
+    var hostEnsureInFlight = false
+    var backgroundRecoveryLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        backgroundRecoveryLaunch = consumeBackgroundLaunchSentinel()
         NSApp.setActivationPolicy(.regular)
         installMainMenu()
         installStatusItem()
@@ -89,14 +97,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         dragRegion.setAccessibilityElement(false)
         contentContainer.addSubview(dragRegion, positioned: .above, relativeTo: webView)
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // LaunchAgent recovery opens 大神 with -gj so TCC attaches to this App
+        // without stealing focus. A normal user double-click still presents it.
+        if !backgroundRecoveryLaunch {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
 
         // 先等待 ensure-web 完成可能发生的 Host 重载，再连续确认两次 HTTP
         // 可用后加载页面，避免 WebView 命中旧插件 rev。
-        ensureService { [weak self] in
-            self?.waitForStableService()
-        }
+        startHostRecovery()
+        installHostHealthMonitoring()
     }
 
     // 红色关闭按钮只隐藏窗口，保留 App、WebView 和 3080 Host。
@@ -113,6 +124,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
+            backgroundRecoveryLaunch = false
             window.makeKeyAndOrderFront(nil)
             sender.activate(ignoringOtherApps: true)
         }
@@ -125,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        stopHostHealthMonitoring()
         if audioEngine.isRunning || recognitionRequest != nil || recognitionTask != nil {
             cleanupRecording()
         }
@@ -136,6 +149,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             process.waitUntilExit()
         } catch {
             // App 仍应退出；下次启动会通过 ensure-web 校正 Host 状态。
+        }
+    }
+
+    // Watchdog writes this only for a hidden recovery launch. Always consume
+    // the marker so a stale launch request cannot suppress a later user open.
+    func consumeBackgroundLaunchSentinel() -> Bool {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: BACKGROUND_LAUNCH_SENTINEL) else { return false }
+        defer { try? fileManager.removeItem(atPath: BACKGROUND_LAUNCH_SENTINEL) }
+        guard let attributes = try? fileManager.attributesOfItem(atPath: BACKGROUND_LAUNCH_SENTINEL),
+              let modified = attributes[.modificationDate] as? Date else { return false }
+        let age = Date().timeIntervalSince(modified)
+        return age >= -60 && age <= BACKGROUND_LAUNCH_MAX_AGE
+    }
+
+    func installHostHealthMonitoring() {
+        hostHealthTimer?.invalidate()
+        hostHealthTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.checkHostHealth()
+        }
+        hostHealthTimer?.tolerance = 3
+        hostWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self?.checkHostHealth()
+            }
+        }
+    }
+
+    func stopHostHealthMonitoring() {
+        hostHealthTimer?.invalidate()
+        hostHealthTimer = nil
+        if let observer = hostWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            hostWakeObserver = nil
         }
     }
 
@@ -264,7 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                     self.injectText(result.bestTranscription.formattedString)
                 }
                 self.cleanupRecording()
-            } else if let result = result {
+            } else if result != nil {
                 // 实时预览: 部分结果发到 Web 按钮 tooltip(可选,不打扰)
             }
         }
@@ -316,6 +367,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
     // 后台确保服务运行。脚本可能先停掉旧 Host 再拉起新 Host，因此必须等
     // 脚本结束后再探测页面，不能看到旧 3080 就立即加载。
+    func startHostRecovery() {
+        guard !isTerminating, !hostEnsureInFlight else { return }
+        hostEnsureInFlight = true
+        ensureService { [weak self] in
+            guard let self = self else { return }
+            self.hostEnsureInFlight = false
+            self.waitForStableService()
+        }
+    }
+
+    func checkHostHealth() {
+        guard !isTerminating, !hostHealthProbeInFlight, !hostEnsureInFlight,
+              let url = URL(string: UI_URL) else { return }
+        hostHealthProbeInFlight = true
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 1.5
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, _ in
+            let healthy = (response as? HTTPURLResponse).map { 200..<500 ~= $0.statusCode } ?? false
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.hostHealthProbeInFlight = false
+                if !healthy { self.startHostRecovery() }
+            }
+        }.resume()
+    }
+
     func ensureService(completion: @escaping () -> Void) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")

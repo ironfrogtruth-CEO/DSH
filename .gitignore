@@ -17,6 +17,7 @@ web.log
 
 # 依赖目录
 node_modules/
+node_modules
 
 # 私有凭证 — 永不入库
 private/

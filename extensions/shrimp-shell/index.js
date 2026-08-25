@@ -82,12 +82,39 @@ export function gitBackupLockState(dir) {
 // 调用下面登记过的固定脚本，绝不从任务数据中读取任意 command/path/args。
 export const HEARTBEAT_TIMEZONE = 'Asia/Shanghai'
 export const HEARTBEAT_CRON_MISSED_WINDOW_MS = 2 * 60 * 1000
+// Only explicitly opted-in tasks may catch up after a Host sleep/restart.
+// The bounded policy runs at most the latest due occurrence and never scans
+// or replays a backlog of old cron occurrences.
+export const HEARTBEAT_CATCH_UP_WINDOW_MS = 24 * 60 * 60 * 1000
+export const HEARTBEAT_CATCH_UP_MAX_OCCURRENCES = 1
+
+export function normalizeHeartbeatCatchUp(policy) {
+  if (policy === true) {
+    return { enabled: true, maxWindowMs: HEARTBEAT_CATCH_UP_WINDOW_MS, maxOccurrences: HEARTBEAT_CATCH_UP_MAX_OCCURRENCES }
+  }
+  if (!policy || typeof policy !== 'object' || policy.enabled !== true) return null
+  const requestedWindow = Number(policy.maxWindowMs ?? policy.windowMs)
+  const maxWindowMs = Number.isFinite(requestedWindow) && requestedWindow > 0
+    ? Math.min(requestedWindow, HEARTBEAT_CATCH_UP_WINDOW_MS)
+    : HEARTBEAT_CATCH_UP_WINDOW_MS
+  // The current scheduler intentionally has no backlog loop. Keep the field
+  // explicit in the normalized contract so future callers cannot widen it by
+  // accident when they persist user-provided data.
+  return { enabled: true, maxWindowMs, maxOccurrences: HEARTBEAT_CATCH_UP_MAX_OCCURRENCES }
+}
+
 const HEARTBEAT_RUNNER_SPECS = Object.freeze({
   'gzh-multi-article': Object.freeze({
     command: '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3',
     args: Object.freeze(['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py']),
     cwd: '/Users/marcus/Desktop/虾缸',
     timeoutMs: 6 * 60 * 60 * 1000,
+    preflight: Object.freeze({
+      command: '/bin/bash',
+      args: Object.freeze(['/Users/marcus/Desktop/虾缸/scripts/start_for_dsh.sh']),
+      cwd: '/Users/marcus/Desktop/虾缸',
+      timeoutMs: 90 * 1000,
+    }),
   }),
   'git-daily-commit': Object.freeze({
     command: '/usr/local/bin/node',
@@ -190,13 +217,18 @@ export function planHeartbeatTask(task, nowMs = Date.now(), { missedWindowMs = H
     if (!scheduledAt) return { action: 'schedule', nextRunAt: nextHeartbeatCronAt(current, cron), cron }
     if (scheduledAt > current) return { action: 'wait', nextRunAt: scheduledAt, cron }
     const nextRunAt = nextHeartbeatCronAt(current, cron)
-    const missed = current - scheduledAt > missedWindowMs
+    const catchUp = normalizeHeartbeatCatchUp(task.catchUp)
+    const lateness = Math.max(0, current - scheduledAt)
+    const allowedWindow = catchUp ? catchUp.maxWindowMs : missedWindowMs
+    const missed = lateness > allowedWindow
     return {
       action: missed ? 'miss' : 'run',
       scheduledAt,
       nextRunAt,
       cron,
-      missedByMs: Math.max(0, current - scheduledAt),
+      missedByMs: lateness,
+      catchUp: Boolean(catchUp && !missed && lateness > missedWindowMs),
+      catchUpPolicy: catchUp,
     }
   }
   const intervalMs = Math.max(60, Number(task && task.interval) || 0) * 1000
@@ -215,7 +247,21 @@ export function scheduleScanCacheIsFresh(cache, nowMs = Date.now(), ttlMs = SCHE
 export function heartbeatRunnerSpec(runner) {
   const key = String(runner || '').trim()
   const spec = HEARTBEAT_RUNNER_SPECS[key]
-  return spec ? { runner: key, command: spec.command, args: [...spec.args], cwd: spec.cwd, timeoutMs: spec.timeoutMs } : null
+  return spec ? {
+    runner: key,
+    command: spec.command,
+    args: [...spec.args],
+    cwd: spec.cwd,
+    timeoutMs: spec.timeoutMs,
+    ...(spec.preflight ? {
+      preflight: {
+        command: spec.preflight.command,
+        args: [...spec.preflight.args],
+        cwd: spec.preflight.cwd,
+        timeoutMs: spec.preflight.timeoutMs,
+      },
+    } : {}),
+  } : null
 }
 
 export function heartbeatRunnerPayloadEnv(payload) {
@@ -231,9 +277,7 @@ export function heartbeatTaskIsOneShot(task) {
   return Boolean(task && task.payload && typeof task.payload === 'object' && task.payload.one_shot === true)
 }
 
-export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
-  const spec = heartbeatRunnerSpec(task && task.runner)
-  if (!spec) return Promise.reject(new Error(`不允许的心跳 runner：${String(task && task.runner || '')}`))
+function executeFixedHeartbeatCommand(spec, payload, { execFileImpl = execFile } = {}) {
   return new Promise((resolve, reject) => {
     try {
       execFileImpl(
@@ -244,7 +288,7 @@ export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
           env: {
             ...process.env,
             PYTHONUNBUFFERED: '1',
-            DSH_HEARTBEAT_PAYLOAD_JSON: heartbeatRunnerPayloadEnv(task && task.payload),
+            DSH_HEARTBEAT_PAYLOAD_JSON: heartbeatRunnerPayloadEnv(payload),
           },
           timeout: spec.timeoutMs,
           maxBuffer: 8 * 1024 * 1024,
@@ -252,12 +296,10 @@ export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
         },
         (error, stdout, stderr) => {
           const result = {
-            runner: spec.runner,
             stdout: String(stdout || '').trim(),
             stderr: String(stderr || '').trim(),
           }
           if (error) {
-            error.runner = spec.runner
             error.stdout = result.stdout.slice(-4000)
             error.stderr = result.stderr.slice(-4000)
             reject(error)
@@ -270,6 +312,50 @@ export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
       reject(error)
     }
   })
+}
+
+function parseHeartbeatPreflightResult(result) {
+  const lines = String(result && result.stdout || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+  for (const line of lines.reverse()) {
+    try {
+      const payload = JSON.parse(line)
+      if (payload && typeof payload === 'object') return payload
+    } catch { /* start_for_dsh may emit non-JSON diagnostics before its final line */ }
+  }
+  return null
+}
+
+export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
+  const spec = heartbeatRunnerSpec(task && task.runner)
+  if (!spec) return Promise.reject(new Error(`不允许的心跳 runner：${String(task && task.runner || '')}`))
+  return (async () => {
+    let preflight = null
+    if (spec.preflight) {
+      try {
+        const result = await executeFixedHeartbeatCommand(spec.preflight, {}, { execFileImpl })
+        const health = parseHeartbeatPreflightResult(result)
+        if (!health || health.ok !== true) {
+          const error = new Error(`虾缸依赖预检失败：/health/live 或 /health/dependencies 未就绪`)
+          error.code = 'SHRIMP_TANK_DEPENDENCY_UNHEALTHY'
+          error.runner = spec.runner
+          error.stdout = result.stdout.slice(-4000)
+          error.stderr = result.stderr.slice(-4000)
+          throw error
+        }
+        preflight = { stdout: result.stdout, stderr: result.stderr }
+      } catch (error) {
+        error.runner = spec.runner
+        if (!error.message || !String(error.message).includes('虾缸依赖预检失败')) {
+          error.message = `虾缸依赖预检失败：${errorText(error)}`
+        }
+        error.code = error.code || 'SHRIMP_TANK_DEPENDENCY_UNHEALTHY'
+        error.stderr = `${error.message}${error.stderr ? `\n${error.stderr}` : ''}`.slice(-4000)
+        throw error
+      }
+    }
+    const result = await executeFixedHeartbeatCommand(spec, task && task.payload, { execFileImpl })
+    return { runner: spec.runner, ...result, ...(preflight ? { preflight } : {}) }
+  })()
 }
 
 export function heartbeatRunnerErrorDetail(error) {
@@ -443,8 +529,12 @@ const SHRIMP_TANK_PATH_RULES = [
   ['POST', /^\/api\/v1\/pipelines\/[A-Za-z0-9_.-]+\/runs$/],
   ['POST', /^\/api\/v1\/pipelines\/[A-Za-z0-9_.-]+:knowledge-bindings$/],
   ['GET', /^\/api\/v1\/knowledge-bases$/],
+  ['POST', /^\/api\/v1\/knowledge-bases$/],
+  ['PATCH', /^\/api\/v1\/knowledge-bases\/[A-Za-z0-9_.:-]+$/],
+  ['DELETE', /^\/api\/v1\/knowledge-bases\/[A-Za-z0-9_.:-]+$/],
   ['GET', /^\/api\/v1\/knowledge-bases\/[A-Za-z0-9_.:-]+$/],
   ['GET', /^\/api\/v1\/knowledge-bases\/[A-Za-z0-9_.:-]+\/wiki$/],
+  ['POST', /^\/api\/v1\/knowledge-bases\/[A-Za-z0-9_.:-]+:archive$/],
   ['POST', /^\/api\/v1\/knowledge-bases\/[A-Za-z0-9_.:-]+\/search$/],
   ['GET', /^\/api\/v1\/runs$/],
   ['GET', /^\/api\/v1\/runs\/[A-Za-z0-9_.:-]+(\/(summary|status|artifacts))?$/],
@@ -1617,6 +1707,7 @@ export function apply(ctx) {
           idempotencyKey,
           scheduledAt: plan.scheduledAt,
           executionId: `heartbeat:${task.id}:${plan.scheduledAt}`,
+          catchUp: plan.catchUp === true,
           oneShot: heartbeatTaskIsOneShot(task),
         })
         changed = true
@@ -1649,6 +1740,7 @@ export function apply(ctx) {
             task.status = item.runner ? 'done' : result.ok ? 'queued' : 'failed'
             task.lastRunId = item.runner ? item.executionId : heartbeatRunId(result) || task.lastRunId || null
             task.runnerExecutionId = item.runner ? item.executionId : task.runnerExecutionId || null
+            task.lastRunMode = item.catchUp ? 'catch-up' : 'scheduled'
             task.lastError = result.ok ? null : `虾缸返回 ${result.status}`
             if (item.runner && result.ok) Object.assign(task, clearHeartbeatRunnerFailure(task))
             task.lastResultAt = new Date().toISOString()
@@ -1669,6 +1761,7 @@ export function apply(ctx) {
               status: task.status,
               idempotencyKey: item.idempotencyKey,
               scheduledAt: new Date(item.scheduledAt).toISOString(),
+              executionMode: item.catchUp ? 'catch-up' : 'scheduled',
             })
             }
             return { write: Boolean(task) }
@@ -1699,6 +1792,7 @@ export function apply(ctx) {
               status: failure && failure.autoPaused ? 'auto_paused' : task.status,
               idempotencyKey: item.idempotencyKey,
               scheduledAt: new Date(item.scheduledAt).toISOString(),
+              executionMode: item.catchUp ? 'catch-up' : 'scheduled',
               ...(failure ? { failure_fingerprint: failure.fingerprint, failure_count: failure.count, autoPaused: failure.autoPaused } : {}),
             })
             }
@@ -2000,6 +2094,8 @@ export function apply(ctx) {
               enabled: t.enabled !== false,
               nextRunAt: t.nextRunAt || merged.get(key).nextRunAt || null,
               lastRunId: t.lastRunId || merged.get(key).lastRunId || null,
+              lastRunMode: t.lastRunMode || merged.get(key).lastRunMode || null,
+              catchUp: normalizeHeartbeatCatchUp(t.catchUp) || normalizeHeartbeatCatchUp(merged.get(key).catchUp) || null,
               status: t.status || merged.get(key).status || 'scheduled',
               lastError: t.lastError || null,
               autoPaused: t.autoPaused === true || merged.get(key).autoPaused === true,
@@ -2011,7 +2107,8 @@ export function apply(ctx) {
           else merged.set(key, {
             id: t.id, name: t.name, interval: t.interval || 0, sessionId: t.sessionId || '', workspaceId: t.workspaceId || '',
             pipelineSlug: t.pipelineSlug || '', runner: t.runner || '', payload: t.payload || {}, enabled: t.enabled !== false,
-            nextRunAt: t.nextRunAt || null, lastRunId: t.lastRunId || null, status: t.status || 'scheduled', lastError: t.lastError || null,
+            nextRunAt: t.nextRunAt || null, lastRunId: t.lastRunId || null, lastRunMode: t.lastRunMode || null,
+            catchUp: normalizeHeartbeatCatchUp(t.catchUp), status: t.status || 'scheduled', lastError: t.lastError || null,
             autoPaused: t.autoPaused === true, failure_fingerprint: t.failure_fingerprint || null, failure_count: Number(t.failure_count) || 0,
             cron: t.cron || null, createdAt: t.createdAt,
           })
@@ -2092,6 +2189,9 @@ export function apply(ctx) {
         const cronInput = body.cron === undefined ? ((prev && prev.cron) || null) : body.cron
         const cron = cronInput ? normalizeHeartbeatCron(cronInput) : null
         if (cronInput && !cron) throw new Error('cron 无效：需要合法 time、days 和 timezone')
+        const catchUpInput = body.catchUp === undefined ? ((prev && prev.catchUp) || null) : body.catchUp
+        const catchUp = catchUpInput ? normalizeHeartbeatCatchUp(catchUpInput) : null
+        if (catchUpInput && !catchUp) throw new Error('catch-up 配置无效：需要 enabled=true')
         const nextRunAt = body.nextRunAt !== undefined
           ? body.nextRunAt
           : body.cron !== undefined
@@ -2115,10 +2215,12 @@ export function apply(ctx) {
           enabled: body.enabled === undefined ? (prev && prev.enabled !== false) : body.enabled !== false,
           nextRunAt,
           lastRunId: (prev && prev.lastRunId) || null,
+          lastRunMode: (prev && prev.lastRunMode) || null,
           status: (prev && prev.status) || 'scheduled',
           lastError: null,
           // [local-mod] cron 定时计划(周几+时刻)持久化
           cron,
+          catchUp,
           createdAt: prev && prev.createdAt ? prev.createdAt : new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })

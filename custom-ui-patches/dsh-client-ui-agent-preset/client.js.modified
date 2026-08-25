@@ -157,6 +157,12 @@ window.__ModuleLoader__.load({
 				...preset.description === void 0 ? {} : { description: preset.description }
 			};
 		}
+		// [local-mod] Historical sessions may still persist the retired
+		// reliable-local id. Keep the durable id intact, but never expose that
+		// internal implementation name in the single-preset CyberMarcus UI.
+		function agentPresetHeaderName(presetId, resolvedName) {
+			return presetId === "reliable-development" || presetId === "reliable-local" ? "CyberMarcus" : resolvedName ?? presetId;
+		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-agent-preset/src/client/AgentPresetLabel.module.css.mjs
 		const css$3 = ".SVAs4q_label{background:var(--dsw-alias-fill-tsp-secondary);max-width:180px;height:22px;color:var(--dsw-alias-label-secondary);white-space:nowrap;text-overflow:ellipsis;border-radius:6px;align-items:center;gap:4px;padding:0 2px 0 0;font-size:12px;line-height:22px;display:inline-flex;overflow:hidden}.SVAs4q_icon{opacity:.7;flex:none}";
@@ -203,7 +209,7 @@ window.__ModuleLoader__.load({
 				children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconAgentPresetOutline16, {
 					size: 14,
 					className: AgentPresetLabel_module_css_default.icon
-				}), text?.name ?? preset]
+				}), agentPresetHeaderName(preset, text?.name)]
 			});
 		}
 		//#endregion

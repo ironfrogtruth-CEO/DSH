@@ -40,6 +40,14 @@ test('conversation patch keeps context events durable but out of the chat public
   assert.match(patched, /key: "context"/)
 })
 
+test('iMessage security envelope remains durable but chat renders only the remote task text', async () => {
+  const source = await readFile(patchUrl, 'utf8')
+  assert.match(source, /function projectRemoteTaskContent\(content\)/)
+  assert.match(source, /\[BEGIN UNTRUSTED REMOTE TASK\]/)
+  assert.match(source, /--- remote task text ---\\s\*\(\[\\s\\S\]\*\?\)\\s\*--- end remote task text ---/)
+  assert.match(source, /content: projectRemoteTaskContent\(data\.content\)/)
+})
+
 test('conversation flow projects durable child lifecycle into clickable Marvel status pills', async () => {
   const [patched, installed] = await Promise.all([
     readFile(patchUrl, 'utf8'),
@@ -62,4 +70,15 @@ test('conversation flow projects durable child lifecycle into clickable Marvel s
   assert.match(patched, /openSubagent: \(address\) => \{/)
   assert.match(patched, /sessions\.openSubagent\(retained \?\? address\)/)
   assert.match(patched, /SubagentStatusRail, \{\n\s*sessionId,\n\s*useSessions,\n\s*openSubagent/)
+})
+
+test('conversation exposes a formal session run-status seat above the active chat view', async () => {
+  const [patched, installed] = await Promise.all([
+    readFile(patchUrl, 'utf8'),
+    readFile(installedUrl, 'utf8'),
+  ])
+  assert.equal(installed, patched)
+  assert.match(patched, /"conversation\.session\.run-status": \{\n\s*kind: "single",\n\s*scope: "session"\n\s*\}/)
+  assert.match(patched, /renderSlot\("conversation\.session\.run-status", \{\}\)/)
+  assert.ok(patched.indexOf('renderSlot("conversation.session.run-status", {})') > patched.indexOf('function ConversationSession'))
 })

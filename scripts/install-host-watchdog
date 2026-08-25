@@ -1,0 +1,36 @@
+#!/bin/bash
+# install-host-watchdog — install/remove the per-user LaunchAgent.
+# No KeepAlive is used: launchd schedules short idempotent probes, while the
+# Host itself remains the sole process bound to 127.0.0.1:3080.
+set -euo pipefail
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+ROOT="$HOME/.dsh"
+LABEL="com.shrimptank.dashen.host-watchdog"
+TEMPLATE="$ROOT/scripts/$LABEL.plist.template"
+AGENT_DIR="$HOME/Library/LaunchAgents"
+PLIST="$AGENT_DIR/$LABEL.plist"
+DOMAIN="gui/$(/usr/bin/id -u)"
+
+if [ "${1:-}" = "--uninstall" ]; then
+  /bin/launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+  /bin/rm -f "$PLIST"
+  echo "已移除 ${LABEL}"
+  exit 0
+fi
+
+if [ ! -f "$TEMPLATE" ]; then
+  echo "缺少模板: $TEMPLATE" >&2
+  exit 1
+fi
+/bin/mkdir -p "$AGENT_DIR" "$ROOT/logs"
+temporary="$PLIST.tmp-$$"
+/usr/bin/sed "s#__HOME__#$HOME#g" "$TEMPLATE" >"$temporary"
+/usr/bin/plutil -lint "$temporary" >/dev/null
+/bin/mv -f "$temporary" "$PLIST"
+/bin/chmod 600 "$PLIST"
+
+# Re-bootstrap only this watchdog label. The running Host is not restarted.
+/bin/launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+/bin/launchctl bootstrap "$DOMAIN" "$PLIST"
+echo "已安装 ${LABEL}（每 30 秒探活；不使用 KeepAlive）"

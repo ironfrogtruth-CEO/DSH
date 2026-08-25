@@ -28,6 +28,18 @@
       {
         "path": "extensions/dsh-git",
         "reason": "提交 60f5afd 引入的既有 Git Host 工具与工作区客户端入口；属于当前 App UI 合同，不作为新 Host 扩展模板"
+      },
+      {
+        "path": "extensions/dsh-knowledge-manager",
+        "reason": "虾缸知识库管理的显式 sidebar 弹窗 seam；模型工具仍保持只读"
+      },
+      {
+        "path": "extensions/dsh-imessage-bridge",
+        "reason": "iMessage opt-in 控制面板与 Host 任务桥的显式 sidebar seam"
+      },
+      {
+        "path": "extensions/dsh-shrimp-run-status",
+        "reason": "只读 conversation.session.run-status 客户端状态卡；不注册 Host 工具或写接口"
       }
     ],
     "warnings": {

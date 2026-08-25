@@ -1,0 +1,5 @@
+# iMessage bridge bundle: defaults to disabled; enabling is an explicit UI action
+# after the operator has granted Messages/Full Disk Access permissions.
+- insert:
+    - id: dsh-imessage-bridge
+      name: '@local/dsh-imessage-bridge'

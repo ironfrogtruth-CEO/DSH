@@ -786,6 +786,10 @@ window.__ModuleLoader__.load({
         "html[data-shrimp-desktop=\"true\"] .shrimp-harness-brand::after { flex: 0 0 74px; min-width: 74px; height: 26px; padding: 0 7px; border-radius: 5px; font-size: 9.5px; line-height: 26px; letter-spacing: .08em; transform: translate(-2px, -4px); }",
         '.shrimp-harness-brand .shrimp-native-brand-part, .shrimp-harness-brand > svg { display: none !important; }',
         ".shrimp-harness-brand::before { content: ''; display: block; flex: 0 0 142px; min-width: 142px; max-width: 142px; height: 68px; background-image: url('/api/shrimp/assets/wordmark-dark-cropped.png'); background-repeat: no-repeat; background-size: contain; background-position: center; }",
+        // The cropped wordmark contains transparent lower padding. Move only
+        // the logo + 虾缸 + Shrimp Tank artwork down a few pixels so its visual
+        // center aligns with DELIVERY; dimensions and DELIVERY remain locked.
+        ".shrimp-harness-brand::before { transform: translateY(6px); }",
         ".shrimp-harness-brand::after { content: 'DELIVERY'; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 78px; align-self: center; box-sizing: border-box; min-width: 78px; height: 28px; padding: 0 8px; border-radius: 5px; background: var(--dsw-alias-label-primary, #0f1115); color: var(--dsw-alias-label-primary-inverted, #fff); font: 600 10px/28px ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: .08em; white-space: nowrap; transform: translate(-2px, -3px); }",
         "body[data-ds-dark-theme] .shrimp-harness-brand::before { background-image: url('/api/shrimp/assets/wordmark-light-cropped.png'); }",
         '.shrimp-rail-brand > svg:first-child { display: none !important; }',

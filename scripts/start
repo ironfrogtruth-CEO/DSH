@@ -1,6 +1,6 @@
 #!/bin/bash
 # dsh start — 启动 Web 界面(等价现在的手动 npx 启动)
-set -u
+set -euo pipefail
 export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 PORT="${DSH_PORT:-3080}"
 URL="http://127.0.0.1:$PORT"
@@ -13,8 +13,8 @@ if [ ! -f "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js" ]; then
   echo "错误: 容器未安装,请先: cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.1-rc.2 --save-exact" >&2; exit 1
 fi
 
-# ensure-web 同时负责幂等补丁与源码变更重载。
-"$HOME/.dsh/scripts/ensure-web"
+# 用户明确启动时清除退出哨兵；ensure-web 同时负责幂等补丁与源码变更重载。
+"$HOME/.dsh/scripts/enable-host"
 for i in $(seq 1 30); do
   sleep 1
   if lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then break; fi

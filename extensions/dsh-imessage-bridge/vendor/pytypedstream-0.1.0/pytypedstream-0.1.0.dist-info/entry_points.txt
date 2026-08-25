@@ -1,0 +1,2 @@
+[console_scripts]
+pytypedstream = typedstream.__main__:main

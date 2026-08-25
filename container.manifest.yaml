@@ -86,6 +86,8 @@ capabilities:
     - bin/dsh-local-ai               # 本地 AI 工具
     - apps/大神.app                  # 原生桌面应用(双击启动,WKWebView 壳)
     - scripts/ensure-web            # 服务保活脚本(不开浏览器)
+    - scripts/host-watchdog         # LaunchAgent 探活/幂等拉起(唯一 3080)
+    - scripts/install-host-watchdog # 安装/移除当前用户 LaunchAgent
 
 dependencies:                        # 容器依赖的外部资源(不打包)
   ollama:
@@ -107,6 +109,8 @@ data:                                # 不纳入版本管理、导出默认排�
   storages: ~/.dsh/storages
   goal-first-state: ~/.dsh/goal-first-state
   backups: ~/.dsh/backups
+  imessage-bridge: ~/.dsh/private/imessage-bridge  # 仅水位/GUID/session映射/回执，0600
+  host-lifecycle: ~/.dsh/private/service-disabled + background-launch # 生命周期哨兵，0600
 
 extensions:                          # 扩展注册点
   presets: ~/.dsh/.agent-presets/    # 自有 agent preset(每目录一个)
@@ -115,3 +119,6 @@ extensions:                          # 扩展注册点
   patches: ~/.dsh/profiles/web/cordis.patch.yml
   bundles:
     - "@local/dsh-dsbalance"    # 余额卡片固化 bundle(自动加载)
+    - "@local/dsh-knowledge-manager" # 虾缸知识库管理入口(只读模型工具 + UI CRUD)
+    - "@local/dsh-imessage-bridge" # iMessage 任务/回执桥(默认关闭)
+    - "@local/dsh-shrimp-run-status" # 会话顶部虾真实运行节点状态(只读 UI)

@@ -1,0 +1,7 @@
+#!/bin/bash
+# disable-host — explicit app quit: persist the opt-out before stopping Host.
+set -euo pipefail
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+ROOT="$HOME/.dsh"
+"$ROOT/scripts/host-service-state" disable
+exec "$ROOT/scripts/stop" "$@"

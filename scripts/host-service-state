@@ -1,0 +1,33 @@
+#!/bin/bash
+# host-service-state — durable lifecycle sentinel for the DSH Host.
+# The sentinel is intentionally separate from the Host process: a red window
+# close does not touch it, while an explicit app quit writes it before stop.
+set -u
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+PRIVATE="$HOME/.dsh/private"
+SENTINEL="$PRIVATE/service-disabled"
+umask 077
+mkdir -p "$PRIVATE"
+
+case "${1:-}" in
+  enable)
+    rm -f "$SENTINEL"
+    ;;
+  disable)
+    temporary="$SENTINEL.tmp-$$"
+    printf 'explicit-quit %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >"$temporary"
+    chmod 600 "$temporary"
+    mv -f "$temporary" "$SENTINEL"
+    ;;
+  is-disabled)
+    [ -f "$SENTINEL" ]
+    ;;
+  path)
+    printf '%s\n' "$SENTINEL"
+    ;;
+  *)
+    echo "用法: $0 enable|disable|is-disabled|path" >&2
+    exit 2
+    ;;
+esac

@@ -5,7 +5,7 @@ echo "停止服务..."
 "$HOME/.dsh/scripts/stop"
 sleep 2
 echo "启动服务..."
-"$HOME/.dsh/scripts/ensure-web"
+"$HOME/.dsh/scripts/enable-host"
 for i in $(seq 1 20); do
   sleep 1
   lsof -iTCP:3080 -sTCP:LISTEN >/dev/null 2>&1 && { echo "✅ 服务已就绪: http://127.0.0.1:3080"; exit 0; }

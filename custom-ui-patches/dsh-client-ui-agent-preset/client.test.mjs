@@ -50,17 +50,13 @@ test('picker and settings project only reliable-development while the host roste
   assert.match(patched, /rows: visiblePresets\.map\(\(preset\) => \(\{ \.\.\.preset \}\)\)/)
 })
 
-test('historical session labels still fall back to the recorded preset id', async () => {
-  const [original, patched] = await Promise.all([
-    readFile(originalUrl, 'utf8'),
-    readFile(patchUrl, 'utf8'),
-  ])
+test('historical reliable-local session labels display CyberMarcus while unknown ids remain recoverable', async () => {
+  const patched = await readFile(patchUrl, 'utf8')
 
-  const labelStart = 'function AgentPresetLabel('
-  const labelEnd = '\n\t\t//#endregion'
-  assert.equal(section(original, labelStart, labelEnd), section(patched, labelStart, labelEnd))
   assert.match(patched, /const option = options\.find\(\(entry\) => entry\.id === preset\)/)
-  assert.match(patched, /text\?\.name \?\? preset/)
+  assert.match(patched, /function agentPresetHeaderName\(presetId, resolvedName\)/)
+  assert.match(patched, /presetId === "reliable-development" \|\| presetId === "reliable-local" \? "CyberMarcus" : resolvedName \?\? presetId/)
+  assert.match(patched, /agentPresetHeaderName\(preset, text\?\.name\)/)
   assert.match(patched, /const sessionPreset = this\.currentSession\(\)\?\.agentPreset;/)
   assert.match(patched, /sessionPreset === VISIBLE_PRESET_ID \? sessionPreset : this\.fallback/)
 })

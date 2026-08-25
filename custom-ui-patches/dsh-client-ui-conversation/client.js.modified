@@ -5381,10 +5381,24 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** User and admitted-steering keyed Chat renderer. */
+		// [local-mod] iMessage ingress keeps its security envelope durable for the
+		// model, but the chat surface only shows the user's actual remote text.
+		function projectRemoteTaskContent(content) {
+			if (!Array.isArray(content)) return content;
+			let changed = false;
+			const projected = content.map((block) => {
+				if (block?.type !== "text" || !String(block.text ?? "").includes("[BEGIN UNTRUSTED REMOTE TASK]")) return block;
+				const match = /--- remote task text ---\s*([\s\S]*?)\s*--- end remote task text ---/.exec(String(block.text ?? ""));
+				if (match === null) return block;
+				changed = true;
+				return { ...block, text: match[1].trim() };
+			});
+			return changed ? projected : content;
+		}
 		const UserMessageNodeView = (0, react.memo)(function UserMessageNodeView({ node, renderMessageImages, t }) {
 			const data = node.data;
 			return (0, react_jsx_runtime.jsx)(UserStyleBubble, {
-				content: data.content,
+				content: projectRemoteTaskContent(data.content),
 				renderMessageImages,
 				...data.referenceLabels === void 0 ? {} : { referenceLabels: data.referenceLabels },
 				t,
@@ -7589,12 +7603,14 @@ window.__ModuleLoader__.load({
 			if (blank && composerPhase === "blank") return null;
 			return (0, react_jsx_runtime.jsx)("div", {
 				className: ConversationRoot_module_css_default.viewArea,
-				children: active !== void 0 && renderSlot("conversation.view", {
+				children: [(0, react_jsx_runtime.jsx)(react_jsx_runtime.Fragment, {
+					children: renderSlot("conversation.session.run-status", {})
+				}), active !== void 0 && renderSlot("conversation.view", {
 					inspect,
 					onInspectDone: () => {
 						actions.setInspect(null);
 					}
-				}, { only: active.id })
+				}, { only: active.id })]
 			});
 		}
 		//#endregion
@@ -10207,7 +10223,12 @@ window.__ModuleLoader__.load({
 				children: { "conversation.view": {
 					kind: "list",
 					scope: "session"
-				} },
+				},
+					"conversation.session.run-status": {
+						kind: "single",
+						scope: "session"
+					}
+				},
 				store: chatStore,
 				inject: (sessionId, _actions) => {
 					const conversation = concreteConversation(ctx);

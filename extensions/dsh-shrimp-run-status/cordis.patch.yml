@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-shrimp-run-status
+      name: '@local/dsh-shrimp-run-status'

@@ -96,3 +96,8 @@
     workspaceRoots:
       - /Users/marcus/Desktop
       - /Users/marcus/.dsh
+
+# iMessage bridge is opt-in at runtime; its bundle is present so the panel and
+# formal DSH session ingress are available after explicit local authorization.
+- id: dsh-imessage-bridge
+  name: '@local/dsh-imessage-bridge'

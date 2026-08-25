@@ -26,6 +26,8 @@
 	<string>用于语音输入:按住麦克风按钮说话,识别为文字填入输入框</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>用于语音输入:将您的语音转写为文字</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>用于通过本机 Messages 接收白名单任务，并发送任务完成、产物、授权与余额提醒；功能默认关闭，由用户在大神中启用。</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

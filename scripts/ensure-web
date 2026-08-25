@@ -1,12 +1,54 @@
 #!/bin/bash
 # ensure-web — 确保 dsh web 服务在运行(不打开浏览器)
 # 已在运行 → 直接返回(绝不杀现有实例);未运行 → 后台拉起
+set -u
 PORT="${DSH_PORT:-3080}"
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
 LOG="$HOME/.dsh/web.log"
 STATE="$HOME/.dsh/.web-load-signature"
-mkdir -p "$HOME/.dsh"
+PRIVATE="$HOME/.dsh/private"
+LOCK_DIR="$PRIVATE/ensure-web.lock"
+mkdir -p "$HOME/.dsh" "$PRIVATE"
+
+# mkdir is atomic on macOS. This closes the app/watchdog race where two
+# callers both observe an empty port and spawn two Hosts. A dead owner is
+# recoverable; a live owner makes this invocation a no-op and the caller's
+# health poll will observe the same Host.
+acquire_lock() {
+  local attempt=0 owner=""
+  while [ "$attempt" -lt 3 ]; do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      printf '%s\n' "$$" >"$LOCK_DIR/pid"
+      LOCK_HELD=1
+      trap release_lock EXIT
+      return 0
+    fi
+    owner=$(/bin/cat "$LOCK_DIR/pid" 2>/dev/null || true)
+    if [ "$owner" != "$$" ] && [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
+      return 1
+    fi
+    # Stale lock from a crashed launcher. Remove only this exact lock path.
+    rm -f "$LOCK_DIR/pid"
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
+release_lock() {
+  if [ "${LOCK_HELD:-0}" = "1" ]; then
+    rm -f "$LOCK_DIR/pid"
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+    LOCK_HELD=0
+    trap - EXIT
+  fi
+}
+
+if ! acquire_lock; then
+  exit 0
+fi
+
 if [ ! -f "$DSH_BIN" ]; then
   echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.1-rc.2 --save-exact" >>"$LOG"
   exit 1
@@ -31,6 +73,27 @@ if [ ! -f "$SHRIMP_SHELL_DIR/node_modules/@deepseek-ai/dsh-tools/package.json" ]
   fi
 fi
 
+# 知识库管理 Host 只注册只读模型工具，也需要和 shrimp-shell 一样拥有
+# 独立的 dsh-tools 声明依赖；迁移到新 Mac 后首次启动时自动补齐。
+KB_MANAGER_DIR="$HOME/.dsh/extensions/dsh-knowledge-manager"
+if [ -d "$KB_MANAGER_DIR" ] && [ ! -f "$KB_MANAGER_DIR/node_modules/@deepseek-ai/dsh-tools/package.json" ]; then
+  if ! /usr/local/bin/npm install --prefix "$KB_MANAGER_DIR" --ignore-scripts --no-audit --no-fund >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: knowledge-manager 依赖安装失败" >>"$LOG"
+    exit 1
+  fi
+fi
+
+# iMessage bridge is a local-only bundle. Its only external dependency is the
+# already-installed DSH tools contract; keep the package self-contained on a
+# migrated Mac without touching Messages or sending anything during startup.
+IMESSAGE_BRIDGE_DIR="$HOME/.dsh/extensions/dsh-imessage-bridge"
+if [ -d "$IMESSAGE_BRIDGE_DIR" ] && [ ! -f "$IMESSAGE_BRIDGE_DIR/node_modules/@deepseek-ai/dsh-tools/package.json" ]; then
+  if ! /usr/local/bin/npm install --prefix "$IMESSAGE_BRIDGE_DIR" --ignore-scripts --no-audit --no-fund >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: iMessage bridge 依赖安装失败" >>"$LOG"
+    exit 1
+  fi
+fi
+
 # 端口已监听不等于代码已加载。插件或适配器内容变化时自动重启一次，
 # 避免 App 启动后继续使用旧 Node 进程（本次截图污染复发的直接原因）。
 SIGNATURE=$(/usr/bin/shasum -a 256 \
@@ -42,6 +105,24 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/machine.js" \
   "$HOME/.dsh/extensions/dsh-local-route-policy/index.js" \
   "$HOME/.dsh/extensions/dsh-local-route-policy/package.json" \
+  "$HOME/.dsh/extensions/dsh-knowledge-manager/package.json" \
+  "$HOME/.dsh/extensions/dsh-knowledge-manager/index.js" \
+  "$HOME/.dsh/extensions/dsh-knowledge-manager/client.js" \
+  "$HOME/.dsh/extensions/dsh-knowledge-manager/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-knowledge-manager/index.test.mjs" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/package.json" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/index.js" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/client.js" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/reader.py" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/send_message.applescript" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/probe_messages.applescript" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/vendor/VENDOR-SHA256.md" \
+  "$HOME/.dsh/extensions/dsh-imessage-bridge/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-shrimp-run-status/package.json" \
+  "$HOME/.dsh/extensions/dsh-shrimp-run-status/index.js" \
+  "$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js" \
+  "$HOME/.dsh/extensions/dsh-shrimp-run-status/model.mjs" \
+  "$HOME/.dsh/extensions/dsh-shrimp-run-status/cordis.patch.yml" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.modified" \
@@ -50,6 +131,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js" \
   "$HOME/.dsh/scripts/ensure-web" \
+  "$HOME/.dsh/scripts/host-service-state" \
   "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" \
   "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" \
   "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" \
@@ -72,7 +154,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
 LOADED=""
 [ -f "$STATE" ] && LOADED=$(/bin/cat "$STATE" 2>/dev/null || true)
 if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-  if [ -n "$SIGNATURE" ] && [ "$SIGNATURE" = "$LOADED" ]; then
+  if [ "${DSH_FORCE_RESTART:-0}" != "1" ] && [ -n "$SIGNATURE" ] && [ "$SIGNATURE" = "$LOADED" ]; then
     exit 0
   fi
   echo "$(date '+%F %T') ensure-web: 检测到插件/适配器已更新，重载 Host" >>"$LOG"
@@ -80,11 +162,61 @@ if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
 fi
 cd "$HOME" || exit 1
 PTY_RUNNER="$HOME/.dsh/scripts/run-web-pty.py"
+PYTHON_RUNNER="/usr/bin/python3"
+if [ "$(uname -s)" = "Darwin" ] && [ -x "/usr/bin/python3" ]; then
+  # Command Line Tools' /usr/bin/python3 is a launcher. Resolve the real
+  # Python.app binary so the foreground PID remains the long-lived PTY owner;
+  # otherwise launchd can see the launcher exit and orphan run-web-pty.py.
+  ACTUAL_PYTHON=$(/usr/bin/python3 -c 'import os,sys; print(os.path.join(sys.base_prefix,"Resources","Python.app","Contents","MacOS","Python"))' 2>/dev/null || true)
+  if [ -n "$ACTUAL_PYTHON" ] && [ -x "$ACTUAL_PYTHON" ]; then
+    PYTHON_RUNNER="$ACTUAL_PYTHON"
+  fi
+fi
 if [ "$(uname -s)" = "Darwin" ] && [ -f "$PTY_RUNNER" ]; then
   # rc.8 hosts stdio MCP children and exits when detached stdin immediately
   # reaches EOF. The private PTY stays open without creating a Terminal window.
-  /usr/bin/nohup /usr/bin/python3 "$PTY_RUNNER" /usr/local/bin/node "$DSH_BIN" web --no-open </dev/null >>"$LOG" 2>&1 &
+  if [ "${DSH_FOREGROUND:-0}" = "1" ]; then
+    # Keep this LaunchAgent job in the foreground; launchd otherwise reaps
+    # the detached Host as soon as the watchdog exits. Hold the lock only
+    # through the bind window, then release it so app/upgrade ensure-web calls
+    # can compare signatures and intentionally reload this live Host.
+    [ -n "$SIGNATURE" ] && /bin/echo "$SIGNATURE" >"$STATE"
+    "$PYTHON_RUNNER" "$PTY_RUNNER" /usr/local/bin/node "$DSH_BIN" web --no-open >>"$LOG" 2>&1 &
+    HOST_PID=$!
+    bound=0
+    for _ in $(seq 1 120); do
+      if ! kill -0 "$HOST_PID" 2>/dev/null; then break; fi
+      if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then bound=1; break; fi
+      sleep 0.25
+    done
+    release_lock
+    if [ "$bound" -ne 1 ] && kill -0 "$HOST_PID" 2>/dev/null; then
+      echo "$(date '+%F %T') ensure-web: foreground Host 未在 30 秒内监听 $PORT，终止本次启动" >>"$LOG"
+      kill "$HOST_PID" 2>/dev/null || true
+    fi
+    wait "$HOST_PID"
+    exit $?
+  fi
+  /usr/bin/nohup "$PYTHON_RUNNER" "$PTY_RUNNER" /usr/local/bin/node "$DSH_BIN" web --no-open </dev/null >>"$LOG" 2>&1 &
 else
+  if [ "${DSH_FOREGROUND:-0}" = "1" ]; then
+    [ -n "$SIGNATURE" ] && /bin/echo "$SIGNATURE" >"$STATE"
+    /usr/local/bin/node "$DSH_BIN" web --no-open >>"$LOG" 2>&1 &
+    HOST_PID=$!
+    bound=0
+    for _ in $(seq 1 120); do
+      if ! kill -0 "$HOST_PID" 2>/dev/null; then break; fi
+      if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then bound=1; break; fi
+      sleep 0.25
+    done
+    release_lock
+    if [ "$bound" -ne 1 ] && kill -0 "$HOST_PID" 2>/dev/null; then
+      echo "$(date '+%F %T') ensure-web: foreground Host 未在 30 秒内监听 $PORT，终止本次启动" >>"$LOG"
+      kill "$HOST_PID" 2>/dev/null || true
+    fi
+    wait "$HOST_PID"
+    exit $?
+  fi
   /usr/bin/nohup /usr/local/bin/node "$DSH_BIN" web --no-open </dev/null >>"$LOG" 2>&1 &
 fi
 [ -n "$SIGNATURE" ] && /bin/echo "$SIGNATURE" >"$STATE"

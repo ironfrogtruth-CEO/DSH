@@ -1,0 +1,7 @@
+#!/bin/bash
+# enable-host — explicit app/CLI start: clear quit sentinel, then ensure Host.
+set -euo pipefail
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+ROOT="$HOME/.dsh"
+"$ROOT/scripts/host-service-state" enable
+exec "$ROOT/scripts/ensure-web" "$@"

@@ -1,0 +1,55 @@
+#!/bin/bash
+# host-watchdog — one idempotent LaunchAgent tick.
+# It never owns a Host process. The native 大神 App is the TCC-capable Host
+# owner; this tick only checks health and restores the App when it is absent.
+set -u
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+ROOT="$HOME/.dsh"
+PORT="${DSH_PORT:-3080}"
+URL="http://127.0.0.1:$PORT/"
+LOG="$ROOT/logs/host-watchdog.log"
+STATE="$ROOT/scripts/host-service-state"
+APP_PATH="${DSH_APP_PATH:-/Users/marcus/Desktop/大神.app}"
+APP_BINARY="${DSH_APP_BINARY:-$APP_PATH/Contents/MacOS/大神}"
+OPEN_CMD="${DSH_OPEN_CMD:-/usr/bin/open}"
+BACKGROUND_SENTINEL="$ROOT/private/background-launch"
+mkdir -p "$ROOT/logs"
+
+# Explicitly quitting 大神 is a durable user choice. The next app/CLI open
+# runs enable-host, which clears this sentinel before starting the Host.
+if "$STATE" is-disabled; then
+  exit 0
+fi
+
+PIDS="$(/usr/sbin/lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+COUNT="$(printf '%s\n' "$PIDS" | /usr/bin/awk 'NF { n++ } END { print n + 0 }')"
+if [ "$COUNT" -gt 1 ]; then
+  printf '%s watchdog: refusing to touch duplicate listeners on %s: %s\n' "$(date '+%F %T')" "$PORT" "$(printf '%s' "$PIDS" | tr '\n' ' ')" >>"$LOG"
+  exit 1
+fi
+
+if [ "$COUNT" -eq 1 ]; then
+  if /usr/bin/curl -fsS --max-time 4 -o /dev/null "$URL"; then
+    exit 0
+  fi
+  # The native App owns Host recovery so TCC permissions attach to 大神.
+  printf '%s watchdog: listener on %s failed health probe; asking App to recover\n' "$(date '+%F %T')" "$PORT" >>"$LOG"
+  if /usr/bin/pgrep -f "$APP_BINARY" >/dev/null 2>&1; then exit 0; fi
+fi
+
+if [ "$COUNT" -eq 0 ] && /usr/bin/pgrep -f "$APP_BINARY" >/dev/null 2>&1; then
+  printf '%s watchdog: Host absent but 大神 App is running; waiting for App health timer\n' "$(date '+%F %T')" >>"$LOG"
+  exit 0
+fi
+
+# LaunchAgent is intentionally not a TCC-capable Host owner: launching the
+# native app lets Messages DB/Automation permissions attach to 大神 itself.
+mkdir -p "$ROOT/private"
+chmod 700 "$ROOT/private" 2>/dev/null || true
+temporary="$BACKGROUND_SENTINEL.tmp-$$"
+printf 'watchdog %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >"$temporary"
+chmod 600 "$temporary"
+mv -f "$temporary" "$BACKGROUND_SENTINEL"
+printf '%s watchdog: Host absent and App not running; opening 大神 hidden\n' "$(date '+%F %T')" >>"$LOG"
+"$OPEN_CMD" -gj "$APP_PATH" >>"$LOG" 2>&1

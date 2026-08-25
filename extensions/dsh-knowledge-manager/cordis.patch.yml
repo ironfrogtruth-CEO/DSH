@@ -1,0 +1,4 @@
+# dsh-knowledge-manager bundle: 虾缸知识库管理入口
+- insert:
+    - id: dsh-knowledge-manager
+      name: '@local/dsh-knowledge-manager'
