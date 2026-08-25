@@ -1,0 +1,38 @@
+{
+  "name": "@local/dsh-goal-first-state-machine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./machine": "./machine.js",
+    "./state-store": "./state-store.js",
+    "./stream-contract": "./stream-contract.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "machine.js",
+    "state-store.js",
+    "stream-contract.js",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec goal-first-state-machine.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-llm": "^0.1.1-rc.2",
+    "@deepseek-ai/dsh-tools": "^0.1.1-rc.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "hostOnly": true,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

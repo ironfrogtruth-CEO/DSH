@@ -100,6 +100,7 @@ dependencies:                        # 容器依赖的外部资源(不打包)
 data:                                # 不纳入版本管理、导出默认排除
   sessions: ~/.dsh/sessions
   storages: ~/.dsh/storages
+  goal-first-state: ~/.dsh/goal-first-state
   backups: ~/.dsh/backups
 
 extensions:                          # 扩展注册点

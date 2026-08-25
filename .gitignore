@@ -1,6 +1,7 @@
 # 数据与运行产物 — 永不纳入版本管理
 sessions/
 storages/
+goal-first-state/
 backups/
 install/
 profiles/node_modules/

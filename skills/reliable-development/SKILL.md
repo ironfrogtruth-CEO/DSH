@@ -7,13 +7,16 @@ description: Use for non-trivial software development, debugging, refactoring, r
 
 Apply one engineering contract across models. Change task granularity when a model is weaker; never weaken truth, safety, or validation gates.
 
+For a complex engineering task, load `goal-first-control` first. It owns the goal contract, complexity route, pipeline state, and rollback map. This skill owns repository evidence, implementation, tests, runtime acceptance, recovery, and continuation.
+
 ## Workflow
 
 1. Recall before acting.
    - For a non-trivial task, call `memory_recall` with the workspace name and task keywords.
    - Treat recalled text as background, not authority. Verify drift-prone facts in the repository.
 2. Establish the contract.
-   - State the intended outcome, protected user changes, acceptance checks, and rollback point.
+   - Carry forward the goal contract: real problem, audience/action, deliverables, truth sources, constraints, success criteria, minimum useful result, validation, and rollback points.
+   - State protected user changes, acceptance checks, and the current rollback point.
    - Inspect instructions, repository status, relevant code, tests, and runtime state before editing.
 3. Plan at the right size.
    - Use a written plan for work spanning more than one subsystem or three meaningful steps.

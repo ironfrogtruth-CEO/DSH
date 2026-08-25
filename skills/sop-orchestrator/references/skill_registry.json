@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1.0",
-  "registry_policy": "Registry-backed skill selection. Master-control may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
+  "registry_policy": "Registry-backed skill selection. goal-first-control is the default entrypoint for complex work and may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
   "selection_policy_ref": "skill_selection_policy.md",
   "skills": [
     {
       "skill_id": "goal-first-control",
       "name": "goal-first-control",
-      "path": "/Users/marcus/.codex/skills/goal-first-control",
+      "path": "/Users/marcus/.dsh/skills/goal-first-control",
       "portable_path": "skills/goal-first-control",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -20,29 +20,12 @@
         "skill_management",
         "skill_routing"
       ],
-      "description": "以终为始 / goal-first-control：Use this skill as the default entrypoint for complex work. It starts from the desired end state, decomposes the workflow, selects the best-fit skills/tools/models, shows node-by-node progress and artifacts, enforces QA gates, and supports rollback."
-    },
-    {
-      "skill_id": "native-chinese-expression",
-      "name": "native-chinese-expression",
-      "path": "/Users/marcus/.codex/skills/native-chinese-expression",
-      "portable_path": "skills/native-chinese-expression",
-      "path_kind": "local_absolute_with_portable_fallback",
-      "availability": "installed_local",
-      "selection_priority": 0,
-      "roles": [
-        "chinese_expression",
-        "copy_qa",
-        "fact_preservation",
-        "default_chinese_layer",
-        "title_qa"
-      ],
-      "description": "Use natural, clear, context-appropriate modern Chinese for every Chinese reply and artifact. Apply it after facts and domain boundaries are fixed and before final delivery; use it for native-Chinese organization, title closure, fact preservation, and expression QA."
+      "description": "以终为始 / goal-first-control：Use as the default entrypoint for complex work. Start from the required outcome and success criteria, work backward through validation, artifacts, structure, and truth sources, then route to the right skills, tools, models, QA gates, and rollback points. Do not force the full pipeline onto simple one-step requests."
     },
     {
       "skill_id": "master-control",
       "name": "master-control",
-      "path": "/Users/marcus/.codex/skills/master-control",
+      "path": "/Users/marcus/.dsh/skills/master-control",
       "portable_path": "skills/master-control",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -51,15 +34,14 @@
         "legacy_entrypoint",
         "orchestration",
         "pipeline_state",
-        "qa",
         "skill_routing"
       ],
-      "description": "Legacy alias for 以终为始 / goal-first-control. Use goal-first-control as the preferred default entrypoint for complex work requiring SOP orchestration, workflow-fit routing, node-by-node progress, artifacts, QA gates, and rollback."
+      "description": "Legacy compatibility alias for 以终为始 / goal-first-control. Use only when an older prompt or workflow names master-control; route new complex work through goal-first-control."
     },
     {
       "skill_id": "sop-orchestrator",
       "name": "sop-orchestrator",
-      "path": "/Users/marcus/.codex/skills/sop-orchestrator",
+      "path": "/Users/marcus/.dsh/skills/sop-orchestrator",
       "portable_path": "skills/sop-orchestrator",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -75,7 +57,7 @@
     {
       "skill_id": "sop-export",
       "name": "sop-export",
-      "path": "/Users/marcus/.codex/skills/sop-export",
+      "path": "/Users/marcus/.dsh/skills/sop-export",
       "portable_path": "skills/sop-export",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -93,7 +75,7 @@
     {
       "skill_id": "sop-generate",
       "name": "sop-generate",
-      "path": "/Users/marcus/.codex/skills/sop-generate",
+      "path": "/Users/marcus/.dsh/skills/sop-generate",
       "portable_path": "skills/sop-generate",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -108,7 +90,7 @@
     {
       "skill_id": "sop-parse",
       "name": "sop-parse",
-      "path": "/Users/marcus/.codex/skills/sop-parse",
+      "path": "/Users/marcus/.dsh/skills/sop-parse",
       "portable_path": "skills/sop-parse",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -123,7 +105,7 @@
     {
       "skill_id": "sop-review",
       "name": "sop-review",
-      "path": "/Users/marcus/.codex/skills/sop-review",
+      "path": "/Users/marcus/.dsh/skills/sop-review",
       "portable_path": "skills/sop-review",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -140,7 +122,7 @@
     {
       "skill_id": "sop-route",
       "name": "sop-route",
-      "path": "/Users/marcus/.codex/skills/sop-route",
+      "path": "/Users/marcus/.dsh/skills/sop-route",
       "portable_path": "skills/sop-route",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -155,7 +137,7 @@
     {
       "skill_id": "sop-structure",
       "name": "sop-structure",
-      "path": "/Users/marcus/.codex/skills/sop-structure",
+      "path": "/Users/marcus/.dsh/skills/sop-structure",
       "portable_path": "skills/sop-structure",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -170,7 +152,7 @@
     {
       "skill_id": "sop-validate",
       "name": "sop-validate",
-      "path": "/Users/marcus/.codex/skills/sop-validate",
+      "path": "/Users/marcus/.dsh/skills/sop-validate",
       "portable_path": "skills/sop-validate",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -186,7 +168,7 @@
     {
       "skill_id": "html-report-editor",
       "name": "html-report-editor",
-      "path": "/Users/marcus/.codex/skills/html-report-editor",
+      "path": "/Users/marcus/.dsh/skills/html-report-editor",
       "portable_path": "skills/html-report-editor",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -207,7 +189,7 @@
     {
       "skill_id": "magazine-editor",
       "name": "magazine-editor",
-      "path": "/Users/marcus/.codex/skills/magazine-editor",
+      "path": "/Users/marcus/.dsh/skills/magazine-editor",
       "portable_path": "skills/magazine-editor",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -221,92 +203,15 @@
         "magazine_report",
         "pdf",
         "pdf_export",
-        "presentation",
         "qa",
         "skill_management"
       ],
-      "description": "Use this skill when creating or revising fixed-canvas magazine-style HTML reports or 16:9 editable HTML presentation materials, including draggable/editable text, images, components, top/footer image layers, spec-driven rendering, browser QA, and clean PDF export."
-    },
-    {
-      "skill_id": "review-jianshibao",
-      "name": "review-jianshibao",
-      "path": "/Users/marcus/.codex/skills/review-jianshibao",
-      "portable_path": "skills/review-jianshibao",
-      "path_kind": "local_absolute_with_portable_fallback",
-      "availability": "installed_local",
-      "selection_priority": 20,
-      "roles": [
-        "executive_reply",
-        "material_review",
-        "primary_review",
-        "review",
-        "skill_management",
-        "weekly_monthly_report",
-        "work_review"
-      ],
-      "description": "检视宝 / review-jianshibao：Use this skill when the user asks to inspect, review, challenge, or improve reports, product plans, executive instructions, task assignments, weekly/monthly reports, management retrospectives, source sufficiency, feasibility, organizational responsibility, or reply wording. This is the primary Codex-deployed alias for 检视宝."
-    },
-    {
-      "skill_id": "openai-docs",
-      "name": "openai-docs",
-      "path": "/Users/marcus/.codex/skills/.system/openai-docs",
-      "portable_path": "skills/.system/openai-docs",
-      "path_kind": "system_absolute_optional",
-      "availability": "system_skill",
-      "selection_priority": 30,
-      "roles": [
-        "api_current_truth",
-        "official_openai_docs"
-      ],
-      "description": "Use when the user asks how to build with OpenAI products or APIs and needs up-to-date official documentation with citations, help choosing the latest model for a use case, or model upgrade and prompt-upgrade guidance; prioritize OpenAI docs MCP tools, use bundled references only as helper context, and restrict any fallback browsing to official OpenAI domains."
-    },
-    {
-      "skill_id": "plugin-creator",
-      "name": "plugin-creator",
-      "path": "/Users/marcus/.codex/skills/.system/plugin-creator",
-      "portable_path": "skills/.system/plugin-creator",
-      "path_kind": "system_absolute_optional",
-      "availability": "system_skill",
-      "selection_priority": 30,
-      "roles": [
-        "codex_extension",
-        "plugin_creation"
-      ],
-      "description": "Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, or generate or update marketplace entries for plugin ordering and availability metadata."
-    },
-    {
-      "skill_id": "skill-creator",
-      "name": "skill-creator",
-      "path": "/Users/marcus/.codex/skills/.system/skill-creator",
-      "portable_path": "skills/.system/skill-creator",
-      "path_kind": "system_absolute_optional",
-      "availability": "system_skill",
-      "selection_priority": 30,
-      "roles": [
-        "skill_creation",
-        "skill_management"
-      ],
-      "description": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations."
-    },
-    {
-      "skill_id": "skill-installer",
-      "name": "skill-installer",
-      "path": "/Users/marcus/.codex/skills/.system/skill-installer",
-      "portable_path": "skills/.system/skill-installer",
-      "path_kind": "system_absolute_optional",
-      "availability": "system_skill",
-      "selection_priority": 30,
-      "roles": [
-        "github",
-        "skill_installation",
-        "skill_management"
-      ],
-      "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos)."
+      "description": "Use this skill when creating or revising A4 magazine-style enterprise health reports, especially HR/union/management-facing 企业健康报告 with differentiated company storylines, knowledge-base citations, editable HTML components, 220px top image layers, optional 300px footer image layers, browser QA, and clean PDF export."
     },
     {
       "skill_id": "pingan-asset-curator",
       "name": "pingan-asset-curator",
-      "path": "/Users/marcus/.codex/skills/pingan-asset-curator",
+      "path": "/Users/marcus/.dsh/skills/pingan-asset-curator",
       "portable_path": "skills/pingan-asset-curator",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -318,12 +223,12 @@
         "skill_management",
         "visual_assets"
       ],
-      "description": "Use this skill when curating visual assets for Ping An Good Doctor HTML/PPT materials, including screening assets for Ping An corporate style, organizing /Users/marcus/Desktop/平安健康/素材库, creating tags/manifests/contact sheets, and preparing replaceable HTML asset maps."
+      "description": "Use this skill when curating visual assets for Ping An Good Doctor HTML/PPT materials, including screening assets for Ping An corporate style, organizing /Users/marcus/Desktop/平安企康/平安健康知识库&技能/素材库, creating tags/manifests/contact sheets, and preparing replaceable HTML asset maps."
     },
     {
       "skill_id": "pingan-html-materials",
       "name": "pingan-html-materials",
-      "path": "/Users/marcus/.codex/skills/pingan-html-materials",
+      "path": "/Users/marcus/.dsh/skills/pingan-html-materials",
       "portable_path": "skills/pingan-html-materials",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -334,76 +239,249 @@
         "html",
         "pdf",
         "presentation",
+        "qa"
+      ],
+      "description": "生成 16:9 可编辑 HTML 汇报材料，适合作为 PPT 替代稿、内部汇报稿、售前方案、产品介绍、PRD 展示稿和系统建设方案稿；支持轻量编辑、浏览器打印与 PDF 导出，并执行平安企康视觉风格、知识库真源与 QA 闸门。用于平安企康 HTML 材料、方案页、运营商/地产/物业健康养老方案、养老/智能硬件/健康宝/企康会员/企业补充医疗材料，或用户要求可编辑 HTML 版式材料时。"
+    },
+    {
+      "skill_id": "pingan-kb-router",
+      "name": "pingan-kb-router",
+      "path": "/Users/marcus/.dsh/skills/pingan-kb-router",
+      "portable_path": "skills/pingan-kb-router",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "html",
+        "presentation"
+      ],
+      "description": "平安企康知识库路由：在写企业健康报告、售前方案、服务书、PPT/HTML 材料、药箱方案、杂志月报、数据分析报告、MRD、检视评审或回答疾病/服务/商品/合规问题前，先判断是否需要查平安健康知识库，需要时定位到正确分库并执行检索、引用与回源纪律。用于“先查知识库”“从知识库找依据”“别编服务名/药品名”等场景，以及任何可能涉及医学解释、平安服务商品、合规边界或平安视觉规范的内容任务。"
+    },
+    {
+      "skill_id": "pingan-ppt-materials",
+      "name": "pingan-ppt-materials",
+      "path": "/Users/marcus/.dsh/skills/pingan-ppt-materials",
+      "portable_path": "skills/pingan-ppt-materials",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "presentation",
+        "qa"
+      ],
+      "description": "Create or revise Ping An enterprise health PowerPoint/Google Slides materials through the presentations plugin while enforcing the local knowledge base, Ping An visual style, page blueprints, service/product terminology, source references, QA Gate, and the single output root /Users/marcus/Desktop/平安企康/03_产物交付. Use for 平安企康 PPT, 述标材料, 客户方案, 产品介绍, 服务书, 医健付/企业医务室 decks, or whenever the user asks to use the PPT plugin with Ping An style and local KB content."
+    },
+    {
+      "skill_id": "pingan-qikang-kb-curator",
+      "name": "pingan-qikang-kb-curator",
+      "path": "/Users/marcus/.dsh/skills/pingan-qikang-kb-curator",
+      "portable_path": "skills/pingan-qikang-kb-curator",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "qa"
+      ],
+      "description": "平安企康知识库摄取、纯享版打包、来源摘要、索引与 QA 闸门维护。"
+    },
+    {
+      "skill_id": "pingan-qikang-visual-component-library",
+      "name": "pingan-qikang-visual-component-library",
+      "path": "/Users/marcus/.dsh/skills/pingan-qikang-visual-component-library",
+      "portable_path": "skills/pingan-qikang-visual-component-library",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 40,
+      "roles": [
+        "html",
+        "presentation"
+      ],
+      "description": "平安企康 HTML/PPT 材料视觉组件外挂库，负责色彩风格、数据卡片、图表组件、图标与素材注册表。"
+    },
+    {
+      "skill_id": "consumer-frontend-excellence",
+      "name": "consumer-frontend-excellence",
+      "path": "/Users/marcus/.dsh/skills/consumer-frontend-excellence",
+      "portable_path": "skills/consumer-frontend-excellence",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "figma",
+        "qa"
+      ],
+      "description": "Design, implement, repair, or visually QA high-quality consumer-facing web and desktop interfaces. Use for frontend, UI, UX, page, app, dashboard, onboarding, navigation, visual consistency, responsive layout, dark/light themes, interaction states, screenshot references, or Figma implementation where both user experience and production code matter."
+    },
+    {
+      "skill_id": "copywriting-craft-writer",
+      "name": "copywriting-craft-writer",
+      "path": "/Users/marcus/.dsh/skills/copywriting-craft-writer",
+      "portable_path": "skills/copywriting-craft-writer",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "general"
+      ],
+      "description": "Rewrite A07 enterprise-health page copy into clear, formal Chinese for enterprise health and employee-care readers while preserving every fact, boundary, citation, recommendation decision, and component binding. Use for A08 copy polishing and emphasis metadata."
+    },
+    {
+      "skill_id": "enterprise-health-business-analysis",
+      "name": "enterprise-health-business-analysis",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-business-analysis",
+      "portable_path": "skills/enterprise-health-business-analysis",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "general"
+      ],
+      "description": "Turn confirmed enterprise-health facts into traceable risk, service, cost, and management conclusions for HR and union readers. Use for A04 analysis after A02 quality and A03 evidence gates pass."
+    },
+    {
+      "skill_id": "enterprise-health-data-analysis",
+      "name": "enterprise-health-data-analysis",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-data-analysis",
+      "portable_path": "skills/enterprise-health-data-analysis",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "general"
+      ],
+      "description": "Analyze enterprise health report data from the single-sheet field table, verify completeness, derive risks, cost and service conclusions, and prepare 数据分析.md for downstream page planning."
+    },
+    {
+      "skill_id": "enterprise-health-data-quality",
+      "name": "enterprise-health-data-quality",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-data-quality",
+      "portable_path": "skills/enterprise-health-data-quality",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "general"
+      ],
+      "description": "Normalize and validate parsed enterprise-health data for types, units, duplicates, missing values, denominators, periods, and source-cell traceability. Use for A02 confirmed-data-package production and blocking claims."
+    },
+    {
+      "skill_id": "enterprise-health-evidence-validation",
+      "name": "enterprise-health-evidence-validation",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-evidence-validation",
+      "portable_path": "skills/enterprise-health-evidence-validation",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "general"
+      ],
+      "description": "Validate official external health evidence and enforce the boundary between public background sources and enterprise-specific facts. Use for A03 source verification and A04 citation and claim checks."
+    },
+    {
+      "skill_id": "enterprise-health-orchestrator",
+      "name": "enterprise-health-orchestrator",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-orchestrator",
+      "portable_path": "skills/enterprise-health-orchestrator",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "browser",
+        "html",
+        "pdf",
         "qa",
         "skill_management"
       ],
-      "description": "Use this skill when creating or revising editable HTML presentation/report materials for Ping An Good Doctor, using the workspace knowledge base and asset library to produce slide-like 16:9 pages, editable text/elements, replaceable assets, source references, QA checks, and clean PDF export."
+      "description": "Master-control skill for the local A00-A11 Ping An enterprise-health report production line. Use for registered Agent routing, source-bound handoffs, node retry, rollback, user approval, editable HTML rendering, browser QA, PDF export, and clean delivery."
     },
     {
-      "skill_id": "pingan-kb-curator",
-      "name": "pingan-kb-curator",
-      "path": "/Users/marcus/.codex/skills/pingan-kb-curator",
-      "portable_path": "skills/pingan-kb-curator",
+      "skill_id": "enterprise-health-page-plan",
+      "name": "enterprise-health-page-plan",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-page-plan",
+      "portable_path": "skills/enterprise-health-page-plan",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
-      "selection_priority": 40,
+      "selection_priority": 60,
       "roles": [
-        "domain_knowledge_base",
-        "ocr_ingestion",
+        "html"
+      ],
+      "description": "Convert the approved storyline into a locked page-by-page content framework with all visible text, component-visible copy, notes, and service names before HTML generation."
+    },
+    {
+      "skill_id": "enterprise-health-pdf-export",
+      "name": "enterprise-health-pdf-export",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-pdf-export",
+      "portable_path": "skills/enterprise-health-pdf-export",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "browser",
+        "html",
         "pdf",
-        "presentation",
-        "qa",
-        "skill_management",
-        "source_trace"
+        "qa"
       ],
-      "description": "Use this skill when ingesting, restructuring, validating, or packaging the Ping An health knowledge base under /Users/marcus/Desktop/平安健康/知识库, including OCR/photo/PDF/PPT source internalization, wiki extraction, light knowledge graph updates, source-truth locking, and QA gate reports."
+      "description": "Export editable A4 enterprise health report HTML to PDF after browser QA, print QA, editor-control hiding, and file packaging checks."
     },
     {
-      "skill_id": "pingan-work-review",
-      "name": "pingan-work-review",
-      "path": "/Users/marcus/.codex/skills/pingan-work-review",
-      "portable_path": "skills/pingan-work-review",
-      "path_kind": "local_absolute_with_portable_fallback",
-      "availability": "installed_local",
-      "selection_priority": 40,
-      "roles": [
-        "domain_work_review",
-        "review",
-        "skill_management",
-        "weekly_monthly_report"
-      ],
-      "description": "Use this skill when evaluating Ping An health work, writing weekly/monthly reports, creating retrospectives, or running 检视宝-style reviews against the workspace knowledge base, role responsibilities, product facts, SOPs, and measurable outputs."
-    },
-    {
-      "skill_id": "build-things",
-      "name": "build-things",
-      "path": "/Users/marcus/.codex/skills/build-things",
-      "portable_path": "skills/build-things",
+      "skill_id": "enterprise-health-report",
+      "name": "enterprise-health-report",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-report",
+      "portable_path": "skills/enterprise-health-report",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
       "selection_priority": 60,
       "roles": [
-        "special_task"
+        "html",
+        "image",
+        "pdf",
+        "skill_management"
       ],
-      "description": "Generate a Codex Super Bowl merch redemption URL (tokenized) and open it. Use when a user asks to redeem Super Bowl/Codex merch, needs a redemption token, or wants the merch redemption link."
+      "description": "Create, revise, validate, and package Ping An Group enterprise health reports as editable A4 HTML/PDF. This is the single HTML-generation and editor skill for the production line. Use for 企业健康报告, HR/union/management health reports, A4 magazine-style health reports, data-to-action storytelling, page-specific components, source boundaries, free image insertion/resizing, top/footer image layers, opacity controls, and PDF-safe export."
     },
     {
-      "skill_id": "doc",
-      "name": "doc",
-      "path": "/Users/marcus/.codex/skills/doc",
-      "portable_path": "skills/doc",
+      "skill_id": "enterprise-health-storyline",
+      "name": "enterprise-health-storyline",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-storyline",
+      "portable_path": "skills/enterprise-health-storyline",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
       "selection_priority": 60,
       "roles": [
-        "docx"
+        "general"
       ],
-      "description": "Use when the task involves reading, creating, or editing `.docx` documents, especially when formatting or layout fidelity matters; prefer `python-docx` plus the bundled `scripts/render_docx.py` for visual checks."
+      "description": "Design the A06 enterprise health report storyline from verified A04 conclusions, A03 official evidence, and A05 recommendation decisions, producing a gated annual-blueprint.v3 JSON for A07."
+    },
+    {
+      "skill_id": "enterprise-health-visual-design",
+      "name": "enterprise-health-visual-design",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-visual-design",
+      "portable_path": "skills/enterprise-health-visual-design",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "image"
+      ],
+      "description": "Design visual components, image strategy, report VI, color constraints, and editable image layers for A4 enterprise health reports using the provided visual component library."
+    },
+    {
+      "skill_id": "enterprise-health-xlsx-ingestion",
+      "name": "enterprise-health-xlsx-ingestion",
+      "path": "/Users/marcus/.dsh/skills/enterprise-health-xlsx-ingestion",
+      "portable_path": "skills/enterprise-health-xlsx-ingestion",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "general"
+      ],
+      "description": "Parse uploaded enterprise-health XLSX or CSV files deterministically, lock the source hash, recognize headers by meaning and aliases, and emit traceable field mappings without relying on spreadsheet plugins. Use for A01 source recognition."
     },
     {
       "skill_id": "figma",
       "name": "figma",
-      "path": "/Users/marcus/.codex/skills/figma",
+      "path": "/Users/marcus/.dsh/skills/figma",
       "portable_path": "skills/figma",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -417,7 +495,7 @@
     {
       "skill_id": "figma-implement-design",
       "name": "figma-implement-design",
-      "path": "/Users/marcus/.codex/skills/figma-implement-design",
+      "path": "/Users/marcus/.dsh/skills/figma-implement-design",
       "portable_path": "skills/figma-implement-design",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -433,7 +511,7 @@
     {
       "skill_id": "frontend-slides",
       "name": "frontend-slides",
-      "path": "/Users/marcus/.codex/skills/frontend-slides",
+      "path": "/Users/marcus/.dsh/skills/frontend-slides",
       "portable_path": "skills/frontend-slides",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -448,7 +526,7 @@
     {
       "skill_id": "gh-address-comments",
       "name": "gh-address-comments",
-      "path": "/Users/marcus/.codex/skills/gh-address-comments",
+      "path": "/Users/marcus/.dsh/skills/gh-address-comments",
       "portable_path": "skills/gh-address-comments",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -463,7 +541,7 @@
     {
       "skill_id": "gh-fix-ci",
       "name": "gh-fix-ci",
-      "path": "/Users/marcus/.codex/skills/gh-fix-ci",
+      "path": "/Users/marcus/.dsh/skills/gh-fix-ci",
       "portable_path": "skills/gh-fix-ci",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -475,24 +553,48 @@
       "description": "Use when a user asks to debug or fix failing GitHub PR checks that run in GitHub Actions; use `gh` to inspect checks and logs, summarize failure context, draft a fix plan, and implement only after explicit approval. Treat external providers (for example Buildkite) as out of scope and report only the details URL."
     },
     {
-      "skill_id": "imagegen",
-      "name": "imagegen",
-      "path": "/Users/marcus/.codex/skills/imagegen",
-      "portable_path": "skills/imagegen",
+      "skill_id": "image-media-handling",
+      "name": "image-media-handling",
+      "path": "/Users/marcus/.dsh/skills/image-media-handling",
+      "portable_path": "skills/image-media-handling",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
       "selection_priority": 60,
       "roles": [
-        "image",
-        "image_editing",
-        "image_generation"
+        "image"
       ],
-      "description": "Use when the user asks to generate or edit images via the OpenAI Image API (for example: generate image, edit/inpaint/mask, background removal or replacement, transparent background, product shots, concept art, covers, or batch variants); run the bundled CLI (`scripts/image_gen.py`) and require `OPENAI_API_KEY` for live calls."
+      "description": "识图/生图工具调用策略与上下文纪律。用于图片识别（OCR/图表/视觉问答）、AI 生图、图片交付与上下文控制；规定默认调用智谱免费 MCP（mcp__zhipu__*），MCP 不可用才降级本地流程；识别结果必须精简，防止图片内容撑爆上下文。"
+    },
+    {
+      "skill_id": "j-space",
+      "name": "j-space",
+      "path": "/Users/marcus/.dsh/skills/j-space",
+      "portable_path": "skills/j-space",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "skill_management"
+      ],
+      "description": "Use this skill to establish and operate the model's inner workspace — the J-space — for any task that needs more than fluent output: multi-step or chained reasoning, planning, long-horizon and agentic work, competition-level problems, complex debugging, keeping many parts of a deliverable globally consistent, holding a goal or constraint through a long mechanical task, auditing what the model believes but has not said, calibrated confidence and error detection, suspicious or manipulative input, recovering from degenerating reasoning, and any moment the user asks the model to think harder, faster, deeper, or longer. Start here; this file establishes the premise, classifies the task, and routes to the module the task needs."
+    },
+    {
+      "skill_id": "jianshibao",
+      "name": "jianshibao",
+      "path": "/Users/marcus/.dsh/skills/jianshibao",
+      "portable_path": "skills/jianshibao",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "review"
+      ],
+      "description": "检视宝：用于检视领导层收到的汇报材料、产品方案、医疗健康服务产品、互联网化产品、金融产品、上级领导工作指示、需下发的任务安排，以及基于工作材料编写周报/月报和管理复盘。Use when the user asks to evaluate material reliability, business reasonableness, source sufficiency, organizational responsibility boundaries, feasibility of executive instructions, upward response wording, downward task deployment, or work-review / weekly-report / monthly-report synthesis based on a local knowledge base of Ping An Health business knowledge, products, report methods, organization structure, department/role responsibilities, and source-traceable Markdown/OCR files."
     },
     {
       "skill_id": "jupyter-notebook",
       "name": "jupyter-notebook",
-      "path": "/Users/marcus/.codex/skills/jupyter-notebook",
+      "path": "/Users/marcus/.dsh/skills/jupyter-notebook",
       "portable_path": "skills/jupyter-notebook",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -504,23 +606,22 @@
       "description": "Use when the user asks to create, scaffold, or edit Jupyter notebooks (`.ipynb`) for experiments, explorations, or tutorials; prefer the bundled templates and run the helper script `new_notebook.py` to generate a clean starting notebook."
     },
     {
-      "skill_id": "linear",
-      "name": "linear",
-      "path": "/Users/marcus/.codex/skills/linear",
-      "portable_path": "skills/linear",
+      "skill_id": "native-chinese-expression",
+      "name": "native-chinese-expression",
+      "path": "/Users/marcus/.dsh/skills/native-chinese-expression",
+      "portable_path": "skills/native-chinese-expression",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
       "selection_priority": 60,
       "roles": [
-        "linear",
-        "linear_issue_management"
+        "presentation"
       ],
-      "description": "Manage issues, projects & team workflows in Linear. Use when the user wants to read, create or updates tickets in Linear."
+      "description": "使用自然、清楚、符合具体语境的现代汉语完成思考表达、写作、改写和终稿检查。默认用于中文聊天回复、报告、方案、PPT/页面标题、分析结论、产品文案、系统提示、研究说明、正式材料和中英转写；尤其适用于用户要求“中文母语表达”“符合汉语阅读习惯”“像中国人写的”“减少翻译腔或AI味”时。它是所有中文产物的通用表达层，不能代替事实核验、领域技能或合规审查。"
     },
     {
       "skill_id": "notion-meeting-intelligence",
       "name": "notion-meeting-intelligence",
-      "path": "/Users/marcus/.codex/skills/notion-meeting-intelligence",
+      "path": "/Users/marcus/.dsh/skills/notion-meeting-intelligence",
       "portable_path": "skills/notion-meeting-intelligence",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -534,7 +635,7 @@
     {
       "skill_id": "notion-research-documentation",
       "name": "notion-research-documentation",
-      "path": "/Users/marcus/.codex/skills/notion-research-documentation",
+      "path": "/Users/marcus/.dsh/skills/notion-research-documentation",
       "portable_path": "skills/notion-research-documentation",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -548,7 +649,7 @@
     {
       "skill_id": "notion-spec-to-implementation",
       "name": "notion-spec-to-implementation",
-      "path": "/Users/marcus/.codex/skills/notion-spec-to-implementation",
+      "path": "/Users/marcus/.dsh/skills/notion-spec-to-implementation",
       "portable_path": "skills/notion-spec-to-implementation",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -562,7 +663,7 @@
     {
       "skill_id": "pdf",
       "name": "pdf",
-      "path": "/Users/marcus/.codex/skills/pdf",
+      "path": "/Users/marcus/.dsh/skills/pdf",
       "portable_path": "skills/pdf",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -577,41 +678,35 @@
       "description": "Use when tasks involve reading, creating, or reviewing PDF files where rendering and layout matter; prefer visual checks by rendering pages (Poppler) and use Python tools such as `reportlab`, `pdfplumber`, and `pypdf` for generation and extraction."
     },
     {
-      "skill_id": "playwright",
-      "name": "playwright",
-      "path": "/Users/marcus/.codex/skills/playwright",
-      "portable_path": "skills/playwright",
+      "skill_id": "reliable-development",
+      "name": "reliable-development",
+      "path": "/Users/marcus/.dsh/skills/reliable-development",
+      "portable_path": "skills/reliable-development",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
       "selection_priority": 60,
       "roles": [
-        "browser",
-        "browser_qa",
-        "html_render_check"
+        "general"
       ],
-      "description": "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via `playwright-cli` or the bundled wrapper script."
+      "description": "Use for non-trivial software development, debugging, refactoring, repository changes, plugin work, infrastructure changes, or long-running coding tasks that require evidence, tests, durable memory, context compaction, and safe continuation across DeepSeek V4 Flash/Pro or local models."
     },
     {
-      "skill_id": "playwright-interactive",
-      "name": "playwright-interactive",
-      "path": "/Users/marcus/.codex/skills/playwright-interactive",
-      "portable_path": "skills/playwright-interactive",
+      "skill_id": "reliable-development-evolution",
+      "name": "reliable-development-evolution",
+      "path": "/Users/marcus/.dsh/skills/reliable-development-evolution",
+      "portable_path": "skills/reliable-development-evolution",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
       "selection_priority": 60,
       "roles": [
-        "browser",
-        "browser_qa",
-        "html_render_check",
-        "interactive_browser_qa",
-        "persistent_browser_debug"
+        "general"
       ],
-      "description": "Persistent browser and Electron interaction through `js_repl` for fast iterative UI debugging."
+      "description": "每周基于可核验证据回顾可靠开发模式，记录台账、验证结果和可追溯的改进建议。"
     },
     {
       "skill_id": "screenshot",
       "name": "screenshot",
-      "path": "/Users/marcus/.codex/skills/screenshot",
+      "path": "/Users/marcus/.dsh/skills/screenshot",
       "portable_path": "skills/screenshot",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -623,24 +718,9 @@
       "description": "Use when the user explicitly asks for a desktop or system screenshot (full screen, specific app or window, or a pixel region), or when tool-specific capture capabilities are unavailable and an OS-level capture is needed."
     },
     {
-      "skill_id": "transcribe",
-      "name": "transcribe",
-      "path": "/Users/marcus/.codex/skills/transcribe",
-      "portable_path": "skills/transcribe",
-      "path_kind": "local_absolute_with_portable_fallback",
-      "availability": "installed_local",
-      "selection_priority": 60,
-      "roles": [
-        "asr",
-        "audio",
-        "transcription"
-      ],
-      "description": "Transcribe audio files to text with optional diarization and known-speaker hints. Use when a user asks to transcribe speech from audio/video, extract text from recordings, or label speakers in interviews or meetings."
-    },
-    {
       "skill_id": "ux-visual-designer",
       "name": "ux-visual-designer",
-      "path": "/Users/marcus/.codex/skills/ux-visual-designer",
+      "path": "/Users/marcus/.dsh/skills/ux-visual-designer",
       "portable_path": "skills/ux-visual-designer",
       "path_kind": "local_absolute_with_portable_fallback",
       "availability": "installed_local",
@@ -650,6 +730,19 @@
         "visual_design"
       ],
       "description": "User-centered interaction and visual design decision framework for web and mobile products. Use when requests involve page layout, information hierarchy, click/scroll/filter flows, component placement, UI states, or high-fidelity visual design choices (typography, cards, shadows, corner radius, buttons, sliders, selected states, menus). Trigger especially when design must fit specific user groups or usage contexts."
+    },
+    {
+      "skill_id": "wechat-converter",
+      "name": "wechat-converter",
+      "path": "/Users/marcus/.dsh/skills/wechat-converter",
+      "portable_path": "skills/wechat-converter",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 60,
+      "roles": [
+        "skill_management"
+      ],
+      "description": "将通用写作 Skill 产出的内容转换为适合微信公众号平台发布的格式和风格。"
     }
   ]
 }

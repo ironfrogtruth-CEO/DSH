@@ -8,6 +8,7 @@
     "@local/dsh-code-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-code-intelligence",
     "@local/dsh-cross-session": "link:/Users/marcus/.dsh/extensions/dsh-cross-session",
     "@local/dsh-frontend-qa": "link:/Users/marcus/.dsh/extensions/dsh-frontend-qa",
+    "@local/dsh-goal-first-state-machine": "link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine",
     "@local/dsh-evals": "link:/Users/marcus/.dsh/extensions/dsh-evals",
     "@local/dsh-compaction-v2": "link:/Users/marcus/.dsh/extensions/dsh-compaction-v2"
   },
@@ -22,6 +23,7 @@
         "@local/dsh-code-intelligence",
         "@local/dsh-cross-session",
         "@local/dsh-frontend-qa",
+        "@local/dsh-goal-first-state-machine",
         "@local/dsh-evals"
       ]
     }

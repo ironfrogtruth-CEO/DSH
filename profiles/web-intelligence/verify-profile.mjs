@@ -23,6 +23,7 @@ const EXPECTED_BUNDLES = [
   '@local/dsh-code-intelligence',
   '@local/dsh-cross-session',
   '@local/dsh-frontend-qa',
+  '@local/dsh-goal-first-state-machine',
   '@local/dsh-evals',
 ]
 const HOST_ROWS = [
@@ -32,6 +33,7 @@ const HOST_ROWS = [
   '@local/dsh-code-intelligence',
   '@local/dsh-cross-session',
   '@local/dsh-frontend-qa',
+  '@local/dsh-goal-first-state-machine',
   '@local/dsh-evals',
 ]
 

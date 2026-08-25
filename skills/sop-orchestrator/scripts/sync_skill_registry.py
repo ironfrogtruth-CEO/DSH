@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import json
+import os
 import re
+import sys
 from pathlib import Path
 
 
-ROOT = Path.home() / ".codex" / "skills"
+ROOT = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else Path(os.environ.get("DSH_HOME", Path.home() / ".dsh")) / "skills"
 REGISTRY = ROOT / "sop-orchestrator" / "references" / "skill_registry.json"
 
 
@@ -152,7 +154,7 @@ def main():
     skills = sorted(skills, key=lambda item: (item["selection_priority"], item["skill_id"]))
     data = {
         "schema_version": "1.1.0",
-        "registry_policy": "Registry-backed skill selection. Master-control may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
+        "registry_policy": "Registry-backed skill selection. goal-first-control is the default entrypoint for complex work and may orchestrate any installed skill, but must select the workflow-fit skill by goal, artifact, source-truth, format, and validation needs.",
         "selection_policy_ref": "skill_selection_policy.md",
         "skills": skills,
     }

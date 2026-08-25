@@ -1,7 +1,8 @@
 # Web Intelligence candidate profile
 
 This profile reuses the current Web/App bundles and adds only Host intelligence
-modules. It is a staging target, not the default `web` profile.
+modules, including the goal-first state machine. It is a staging target, not
+the default `web` profile.
 
 Validation order:
 

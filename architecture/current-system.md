@@ -10,7 +10,7 @@
 | Profile | `profiles/web/package.json` 及其 bundle 路径 | bundle 只从声明的 link、profile 依赖或固定 install 目录解析 |
 | Host 扩展 | `extensions/*/index.js` 及工具实现 | 依赖的 `@deepseek-ai/dsh-*` 必须与 rc.8 对齐；新 Host 扩展不携带客户端/UI/CSS |
 | UI 边界 | `apps/*.swift`、`extensions/**/client.js`、`custom-ui-patches` 中的前端资源 | 只记录和校验哈希，能力建设不得直接改动这些文件 |
-| 数据与记忆 | sessions、storages、memories 等运行数据 | 原始事件追加写入；派生索引可以重建，不能反向覆盖真源 |
+| 数据与记忆 | sessions、storages、memories、goal-first-state 等运行数据 | 原始事件追加写入；派生索引可以重建，不能反向覆盖真源 |
 
 ## UI 零改动边界
 
@@ -38,7 +38,7 @@
 
 ## 当前正式 Host 智能能力
 
-默认 `profiles/web` 已启用 `dsh-tool-policy`（observe）、`dsh-intelligence`、`dsh-memory`、`dsh-code-intelligence`、`dsh-cross-session`、`dsh-frontend-qa` 与 `dsh-evals`。可靠开发 preset 在隔离的 Agent realm 中使用 `dsh-compaction-v2`，并同时隔离 `compaction`、`toolResultPruner` 与 `dshCompactionV2`。这些模块没有 client/UI 半部，不自动把派生状态注入模型；所有管理和检索通过显式工具调用。
+默认 `profiles/web` 已启用 `dsh-tool-policy`（observe）、`dsh-intelligence`、`dsh-memory`、`dsh-code-intelligence`、`dsh-cross-session`、`dsh-frontend-qa`、`dsh-evals` 与 `dsh-goal-first-state-machine`。可靠开发 preset 在隔离的 Agent realm 中使用 `dsh-compaction-v2`，并同时隔离 `compaction`、`toolResultPruner` 与 `dshCompactionV2`。除 `dsh-goal-first-state-machine` 会在 Host 的 `agent/pre-step` 注入有界目标状态、在导出工具前执行 QA Gate，并对明确的单句结果合同做窄输出收敛外，其余智能模块仍只通过显式工具管理或检索，不自动改变模型上下文。
 
 ## 上游升级边界
 

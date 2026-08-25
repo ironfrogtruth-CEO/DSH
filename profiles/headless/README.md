@@ -10,7 +10,8 @@
 6. `@local/dsh-code-intelligence`
 7. `@local/dsh-cross-session`
 8. `@local/dsh-frontend-qa`
-9. `@local/dsh-evals`
+9. `@local/dsh-goal-first-state-machine`
+10. `@local/dsh-evals`
 
 `@local/dsh-compaction-v2` 只作为 profile dependency，由 `cordis.patch.yml` 替换原 `compaction-basic` provider；它不作为独立 bundle 再挂载。rc.8 Loader 不允许用 id patch 直接改 entry name，因此该 patch 会禁用原 `compaction-basic` row，再插入一个 enabled 的本地 replacement row，避免 duplicate loader id。原 provider 不会作为 enabled service 启动。
 

@@ -1,0 +1,8 @@
+# Host-only goal-first state machine. It has no client/UI half.
+- insert:
+    - id: dsh-goal-first-state-machine
+      name: '@local/dsh-goal-first-state-machine'
+      config:
+        mode: enforce
+        maxBufferChars: 65536
+        maxRepairAttempts: 1

@@ -17,6 +17,7 @@ const EXPECTED_BUNDLES = [
   '@local/dsh-code-intelligence',
   '@local/dsh-cross-session',
   '@local/dsh-frontend-qa',
+  '@local/dsh-goal-first-state-machine',
   '@local/dsh-evals',
 ]
 const EXPECTED_LINKS = [
@@ -26,6 +27,7 @@ const EXPECTED_LINKS = [
   '@local/dsh-code-intelligence',
   '@local/dsh-cross-session',
   '@local/dsh-frontend-qa',
+  '@local/dsh-goal-first-state-machine',
   '@local/dsh-evals',
   '@local/dsh-compaction-v2',
 ]

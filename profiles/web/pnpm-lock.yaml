@@ -32,6 +32,9 @@ importers:
       '@local/dsh-frontend-qa':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-frontend-qa
         version: link:../../extensions/dsh-frontend-qa
+      '@local/dsh-goal-first-state-machine':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine
+        version: link:../../extensions/dsh-goal-first-state-machine
       '@local/dsh-git':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-git
         version: link:../../extensions/dsh-git

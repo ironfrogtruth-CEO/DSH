@@ -1,0 +1,218 @@
+import { createHash, randomUUID } from 'node:crypto'
+
+export const SOP_NODES = Object.freeze(['route', 'parse', 'structure', 'generate', 'validate', 'export', 'review'])
+const SIMPLE_WORDING = /(?:只给一句|只用一句话|仅用一句话|只(?:给|写|输出|回复)(?:出)?(?:改写后的)?(?:一|1)句|翻译成|改写(?:这|下列|以下)?(?:句子)?)/i
+const COMPLEX_WORDING = /(?:复杂|多步骤|可回滚|状态机|工作流|流水线|方案|规划|架构|实施|验收|回归|部署|升级|迁移|重构|开发|实现|修复|调试|排查|审计|报告|PPT|HTML|PDF|插件|代码|仓库|项目|文件)/i
+const RISK_WORDING = /(?:真源|证据|来源|QA|质量|渲染|导出|发布|提交|权限|确认|回滚|恢复|失败|风险|约束)/i
+
+function boundedText(value, max = 1_000) {
+  const text = String(value ?? '').trim()
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`
+}
+
+function contentText(message) {
+  return (message?.content ?? []).filter((block) => block?.type === 'text').map((block) => block.text).join('\n').trim()
+}
+
+export function userText(messages = []) {
+  return messages.filter((message) => message?.source?.kind === 'user').map(contentText).filter(Boolean).join('\n')
+}
+
+export function fingerprint(text) {
+  return createHash('sha256').update(String(text || '')).digest('hex')
+}
+
+function parseChineseNumber(value) {
+  const normalized = String(value || '').trim()
+  if (/^\d+$/.test(normalized)) return Number(normalized)
+  return ({ 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 })[normalized] ?? null
+}
+
+export function extractOutputContract(text) {
+  const source = String(text || '')
+  const sentenceMatch = source.match(/(?:只|仅)(?:给|写|用|输出|回复)?(?:出)?(?:改写后的)?([一二两三四五六七八九十\d]+)(?:个)?句(?:话)?/i)
+  const maxCharsMatch = source.match(/(?:不超过|最多|控制在)\s*(\d+)\s*(?:个)?字|(?:在)?\s*(\d+)\s*字以内/i)
+  const forbidden = []
+  for (const match of source.matchAll(/不要(?:出现|包含|写|使用)?[“"']?([^，。；;\n]{1,40})[”"']?/g)) forbidden.push(boundedText(match[1], 40))
+  let format = null
+  if (/\bJSON\b/i.test(source)) format = 'json'
+  else if (/Markdown/i.test(source)) format = 'markdown'
+  else if (/表格/.test(source)) format = 'table'
+  else if (/代码块/.test(source)) format = 'code_block'
+  const language = /(?:用|使用|请用)英文|in English/i.test(source) ? 'en' : (/(?:用|使用|请用)中文|汉语/.test(source) ? 'zh' : null)
+  const impliedSingleSentence = /(?:只|仅)(?:给|输出|回复)(?:出)?(?:改写后的)?句子/i.test(source)
+  const exactSentences = sentenceMatch ? parseChineseNumber(sentenceMatch[1]) : (impliedSingleSentence ? 1 : null)
+  return {
+    exactSentences: Number.isSafeInteger(exactSentences) && exactSentences > 0 ? exactSentences : null,
+    resultOnly: /(?:只|仅)(?:给|要|输出|回复)(?:出)?(?:改写后的)?(?:结果|答案|句子|一句|一段)|不要解释|无需解释|不加前言|不要前言/i.test(source),
+    format,
+    language,
+    maxChars: Number(maxCharsMatch?.[1] || maxCharsMatch?.[2]) || null,
+    forbidden: [...new Set(forbidden)].slice(0, 10),
+  }
+}
+
+export function classifyTask(text) {
+  const source = String(text || '').trim()
+  const numberedRequirements = (source.match(/(?:^|\n)\s*\d+[.)、]/g) || []).length
+  const explicitSimple = SIMPLE_WORDING.test(source) && !/(?:代码|仓库|文件|插件|实现|修复|升级|部署|状态机)/i.test(source)
+  const complexSignals = [COMPLEX_WORDING.test(source), RISK_WORDING.test(source), numberedRequirements >= 2, source.length > 260].filter(Boolean).length
+  const classification = explicitSimple || complexSignals < 2 ? 'simple_direct' : 'sop_required'
+  return {
+    classification,
+    reasons: classification === 'sop_required'
+      ? ['multiple steps, durable artifacts, source/QA risk, or rollback are present'].filter(Boolean)
+      : ['one-step request with low durable-artifact and rollback risk'],
+  }
+}
+
+function nodeMap(classification) {
+  if (classification === 'simple_direct') return { direct: 'in_progress' }
+  return Object.fromEntries(SOP_NODES.map((node, index) => [node, index === 0 ? 'in_progress' : 'pending']))
+}
+
+export function createInitialState({ sessionId, text, sourceEventSeq = 0, turn = 1 }) {
+  const route = classifyTask(text)
+  return {
+    schemaVersion: 1,
+    sessionId,
+    runId: `goal-first-${randomUUID()}`,
+    taskFingerprint: fingerprint(text),
+    classification: route.classification,
+    classificationReasons: route.reasons,
+    phase: 'active',
+    goalContract: null,
+    outputContract: extractOutputContract(text),
+    currentNode: route.classification === 'simple_direct' ? 'direct' : 'route',
+    nodes: nodeMap(route.classification),
+    qa: { status: 'not_run', checks: [], evidence: [] },
+    rollbackTarget: null,
+    failure: null,
+    repair: { turn, attempts: 0 },
+    lastModelTransitionTurn: 0,
+    sourceEventSeq,
+    revision: 1,
+    updatedAt: Date.now(),
+  }
+}
+
+function list(value, max = 40) { return Array.isArray(value) ? value.slice(0, max).map((item) => boundedText(item, 1_000)) : [] }
+
+export function normalizeGoalContract(value) {
+  const input = value && typeof value === 'object' ? value : {}
+  const result = {
+    problem: boundedText(input.problem),
+    audienceAction: boundedText(input.audienceAction ?? input.audience_action),
+    deliverables: list(input.deliverables),
+    truthSources: list(input.truthSources ?? input.truth_sources),
+    constraints: list(input.constraints),
+    successCriteria: list(input.successCriteria ?? input.success_criteria),
+    minimumDeliverable: boundedText(input.minimumDeliverable ?? input.minimum_deliverable),
+    validation: list(input.validation),
+    rollbackPoints: list(input.rollbackPoints ?? input.rollback_points),
+  }
+  for (const key of ['problem', 'audienceAction', 'minimumDeliverable']) if (!result[key]) throw new Error(`goalContract.${key} is required`)
+  for (const key of ['deliverables', 'constraints', 'successCriteria', 'validation', 'rollbackPoints']) if (result[key].length === 0) throw new Error(`goalContract.${key} must not be empty`)
+  return result
+}
+
+function nextNode(node) {
+  const index = SOP_NODES.indexOf(node)
+  return index >= 0 ? SOP_NODES[index + 1] ?? null : null
+}
+
+function evidence(value) { return list(value, 30) }
+
+export function transitionState(state, input, { turn, sourceEventSeq }) {
+  if (!state || state.classification !== 'sop_required') throw new Error('state transition is available only for sop_required tasks')
+  const action = String(input?.action || '')
+  const next = structuredClone(state)
+  next.updatedAt = Date.now()
+  next.sourceEventSeq = Math.max(Number(sourceEventSeq || 0), state.sourceEventSeq)
+  next.lastModelTransitionTurn = turn
+  next.repair = { turn, attempts: 0 }
+
+  if (action === 'record_goal') {
+    if (state.phase !== 'active' || state.currentNode !== 'route') throw new Error('record_goal requires active route node')
+    next.goalContract = normalizeGoalContract(input.goalContract)
+    next.nodes.route = 'completed'
+    next.nodes.parse = 'in_progress'
+    next.currentNode = 'parse'
+    return next
+  }
+
+  if (action === 'complete_node') {
+    const node = String(input.node || '')
+    if (state.phase !== 'active' || node !== state.currentNode || state.nodes[node] !== 'in_progress') throw new Error(`cannot complete node ${node || '<missing>'} from ${state.currentNode}`)
+    if (node === 'route') throw new Error('route must use record_goal')
+    const proof = evidence(input.evidence)
+    if (proof.length === 0) throw new Error('node completion requires evidence')
+    if (node === 'validate') {
+      if (!['passed', 'failed'].includes(input.qaStatus)) throw new Error('validate completion requires qaStatus passed or failed')
+      next.qa = { status: input.qaStatus, checks: list(input.qaChecks), evidence: proof }
+      if (input.qaStatus === 'failed') {
+        const rollbackTo = String(input.rollbackTo || '')
+        if (!SOP_NODES.slice(0, SOP_NODES.indexOf('validate')).includes(rollbackTo)) throw new Error('failed validation requires an earlier rollbackTo node')
+        next.nodes.validate = 'blocked'
+        next.phase = 'blocked'
+        next.rollbackTarget = rollbackTo
+        next.failure = { code: 'QA_FAILED', message: boundedText(input.reason || 'validation failed') }
+        return next
+      }
+    }
+    if (node === 'export' && state.qa.status !== 'passed') throw new Error('export requires passed QA')
+    next.nodes[node] = 'completed'
+    const following = nextNode(node)
+    if (following) {
+      next.nodes[following] = 'in_progress'
+      next.currentNode = following
+    } else {
+      next.phase = 'complete'
+      next.currentNode = 'review'
+    }
+    return next
+  }
+
+  if (action === 'pause') {
+    if (state.phase !== 'active') throw new Error('pause requires active state')
+    if (!String(input.reason || '').trim()) throw new Error('pause requires reason')
+    next.phase = 'paused'
+    next.failure = { code: 'AWAITING_CONFIRMATION', message: boundedText(input.reason) }
+    return next
+  }
+
+  if (action === 'block') {
+    const rollbackTo = String(input.rollbackTo || '')
+    if (!SOP_NODES.includes(rollbackTo)) throw new Error('block requires rollbackTo')
+    next.phase = 'blocked'
+    next.nodes[state.currentNode] = 'blocked'
+    next.rollbackTarget = rollbackTo
+    next.failure = { code: boundedText(input.code || 'BLOCKED', 80), message: boundedText(input.reason || 'blocked') }
+    return next
+  }
+
+  if (action === 'resume') {
+    if (!['paused', 'blocked'].includes(state.phase)) throw new Error('resume requires paused or blocked state')
+    const target = state.rollbackTarget || state.currentNode
+    const index = SOP_NODES.indexOf(target)
+    for (let position = 0; position < SOP_NODES.length; position += 1) {
+      if (position < index && next.nodes[SOP_NODES[position]] === 'completed') continue
+      next.nodes[SOP_NODES[position]] = position === index ? 'in_progress' : 'pending'
+    }
+    next.phase = 'active'
+    next.currentNode = target
+    next.rollbackTarget = null
+    next.failure = null
+    return next
+  }
+
+  throw new Error(`unknown transition action: ${action || '<missing>'}`)
+}
+
+export function renderStateContext(state, currentTurn = null) {
+  const contract = JSON.stringify(state.outputContract)
+  if (state.classification === 'simple_direct') return `<goal_first_host_state version="1">route=simple_direct; output_contract=${contract}; answer directly and satisfy every populated output constraint.</goal_first_host_state>`
+  if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; qa=${state.qa.status}; output_contract=${contract}. A legal Host state transition has already been recorded in this turn. Do not advance another node unless the user explicitly asked this turn to execute multiple nodes; otherwise finish the response now and report the recorded current node.</goal_first_host_state>`
+  const routeSchema = state.currentNode === 'route' ? ' For record_goal, goalContract must contain non-empty problem:string, audienceAction:string, deliverables:string[], constraints:string[], successCriteria:string[], minimumDeliverable:string, validation:string[], rollbackPoints:string[]; truthSources is string[] and may be empty only when explicitly marked pending.' : ''
+  return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; qa=${state.qa.status}; output_contract=${contract}. This Host state is authoritative. Call goal_first_state_transition with expectedRevision=${state.revision} before the turn ends.${routeSchema} Nodes must advance in order and export is forbidden until QA passes.</goal_first_host_state>`
+}

@@ -40,6 +40,7 @@
       "extensions/dsh-frontend-qa",
       "extensions/dsh-evals",
       "extensions/dsh-tool-policy",
+      "extensions/dsh-goal-first-state-machine",
       "extensions/shrimp-shell"
     ],
     "requiredBehaviors": [
@@ -50,6 +51,8 @@
       "memory-candidate-review",
       "cross-session-project-isolation",
       "taskgraph-evidence-gates",
+      "goal-first-session-state-machine",
+      "goal-first-output-contract-gate",
       "code-index-candidate-labels",
       "ui-read-only-qa"
     ]
@@ -80,6 +83,10 @@
       "command": "node skills/reliable-development/scripts/verify_reliable_preset.mjs"
     },
     {
+      "id": "goal-first-state-machine",
+      "command": "node --test extensions/dsh-goal-first-state-machine/goal-first-state-machine.test.mjs"
+    },
+    {
       "id": "upgrade-readiness",
       "command": "node scripts/verify-upgrade-readiness.mjs --mode candidate --staging-root <candidate-root> --json"
     }
@@ -88,12 +95,14 @@
     "canonicalState": [
       "sessions",
       "memories",
-      "storages"
+      "storages",
+      "goal-first-state"
     ],
     "mustRemainAppendOnly": [
       "session event logs",
       "compaction source events",
-      "memory provenance events"
+      "memory provenance events",
+      "goal-first state events"
     ],
     "derivedIndexesMustBeRebuildable": true,
     "migrationOnCopyFirst": true,

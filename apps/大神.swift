@@ -9,6 +9,7 @@ import AVFoundation
 let PORT = 3080
 let UI_URL = "http://127.0.0.1:\(PORT)"
 let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/ensure-web"
+let STOP_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/stop"
 
 // WKWebView 会吃掉无边框标题栏的鼠标事件。用一条完全透明的原生视图
 // 接管顶部空白区域的按下事件，恢复系统窗口拖动，同时避开左侧红绿灯和右侧工具按钮。
@@ -24,10 +25,11 @@ final class WindowDragRegionView: NSView {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     var window: NSWindow!
     var webView: WKWebView!
     var loadInFlight = false
+    var isTerminating = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
@@ -46,6 +48,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         window.titleVisibility = .hidden
         window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
+        window.delegate = self
         window.minSize = NSSize(width: 960, height: 600)
         window.center()
 
@@ -93,9 +97,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         }
     }
 
-    // 关闭窗口即退出 app;dsh 服务保持后台运行,下次双击秒开
+    // 红色关闭按钮只隐藏窗口，保留 App、WebView 和 3080 Host。
+    // Dock 点击图标可恢复原窗口；只有显式“退出大神”才终止 App 和服务。
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if isTerminating { return true }
+        sender.orderOut(nil)
+        return false
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            window.makeKeyAndOrderFront(nil)
+            sender.activate(ignoringOtherApps: true)
+        }
         return true
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        isTerminating = true
+        return .terminateNow
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if audioEngine.isRunning || recognitionRequest != nil || recognitionTask != nil {
+            cleanupRecording()
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [STOP_SCRIPT]
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            // App 仍应退出；下次启动会通过 ensure-web 校正 Host 状态。
+        }
     }
 
     // 标准编辑菜单: 程序化 app 没有 mainMenu 时 Cmd+C/V/X/A 等编辑快捷键
@@ -211,8 +250,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
 
     func cleanupRecording() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
         recognitionRequest = nil
         recognitionTask = nil
         notifyVoiceState("idle")
