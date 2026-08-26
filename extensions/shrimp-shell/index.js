@@ -39,8 +39,10 @@ const VISION_MEDIA_ROOT = join(homedir(), '.dsh', 'vision-media')
 const VISION_NOTES_ROOT = join(homedir(), '.dsh', 'vision-results')
 const OLLAMA_URL = process.env.SHRIMP_VISION_OLLAMA_URL || 'http://127.0.0.1:11434'
 const VISION_MODEL = process.env.SHRIMP_VISION_MODEL || 'gemma4:26b-a4b-it-qat'
-// Host 视觉桥固定优先走智谱免费 GLM 视觉链。保留旧环境变量读取仅为
-// 兼容已有启动参数，但不允许它把识图路由切到本地或其他云端线路。
+const DEEPSEEK_VISION_PROVIDER = 'deepseek-official'
+const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp'
+// Host 视觉桥固定走 DeepSeek Vision → 智谱免费 GLM → 本地 Gemma。
+// 保留旧环境变量读取仅为兼容已有启动参数，不能改写这条优先级。
 const VISION_PROVIDER = process.env.SHRIMP_VISION_PROVIDER || 'zhipu-mcp'
 const MODELSCOPE_TOKEN = process.env.SHRIMP_VISION_MODELSCOPE_TOKEN
   || process.env.MODELSCOPE_ACCESS_TOKEN
@@ -425,7 +427,7 @@ const sendJson = (res, code, body) => {
 }
 
 // ── 统一视觉路由：所有会话模型（包括本地/native-capable 模型）都先走
-// ── Host 视觉桥。桥内优先智谱免费 GLM，智谱不可用、限流或无网时才回退
+// ── Host 视觉桥。桥内顺序固定为 DeepSeek V4 Flash Vision、智谱免费 GLM、
 // ── 本地 Gemma。Host 只替换发给最终模型的临时请求视图，durable 用户消息
 // ── 仍保留原图和文字；模型能力元数据不得绕过这条固定链。
 // ── SHRIMP_VISION_MODE=native 已废弃并会被忽略；bridge 仅作兼容性标记。
@@ -440,18 +442,22 @@ export async function visionPolicy(ctx) {
       mode: 'bridge',
       provider: selection.provider,
       model: selection.model,
+      primaryVisionProvider: DEEPSEEK_VISION_PROVIDER,
+      primaryVisionModel: DEEPSEEK_VISION_MODEL,
       visionProvider: 'zhipu-mcp',
       fallbackProvider: 'ollama',
       fallbackModel: VISION_MODEL,
-      reason: `统一视觉桥：先调用智谱免费 GLM，失败后回退本地 Gemma；原图保留在会话历史，模型请求仅使用临时识图投影${forcedNote}`,
+      reason: `统一视觉桥：先调用 DeepSeek V4 Flash Vision，再调用智谱免费 GLM，最后回退本地 Gemma；原图保留在会话历史，主模型请求仅使用临时识图投影${forcedNote}`,
     }
   } catch (error) {
     return {
       mode: 'bridge',
+      primaryVisionProvider: DEEPSEEK_VISION_PROVIDER,
+      primaryVisionModel: DEEPSEEK_VISION_MODEL,
       visionProvider: 'zhipu-mcp',
       fallbackProvider: 'ollama',
       fallbackModel: VISION_MODEL,
-      reason: `无法读取当前模型，仍使用统一视觉桥：先调用智谱免费 GLM，失败后回退本地 Gemma；${errorText(error)}`,
+      reason: `无法读取当前模型，仍使用统一视觉桥：DeepSeek V4 Flash Vision → 智谱免费 GLM → 本地 Gemma；${errorText(error)}`,
     }
   }
 }
@@ -731,6 +737,40 @@ async function recognizeWithZhipuMcp({ imageBase64, mimeType, prompt = VISION_PR
   return { provider: 'zhipu-mcp', model: result.model, content: result.content }
 }
 
+export async function recognizeWithDeepSeekVision({ ctx, attachment, prompt = VISION_PROMPT, signal } = {}) {
+  if (!ctx || !ctx.llm || typeof ctx.llm.adapterStream !== 'function') {
+    throw new Error('DeepSeek Vision adapterStream 不可用')
+  }
+  if (!attachment || !attachment.attachmentId) {
+    throw new Error('DeepSeek Vision 需要 durable 图片附件')
+  }
+  const stream = ctx.llm.adapterStream({
+    provider: DEEPSEEK_VISION_PROVIDER,
+    model: DEEPSEEK_VISION_MODEL,
+    reasoningEffort: 'off',
+    signal,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image', attachment },
+      ],
+    }],
+  })
+  let content = ''
+  let completedText = ''
+  for await (const chunk of stream) {
+    if (chunk && chunk.type === 'text-delta' && typeof chunk.text === 'string') content += chunk.text
+    else if (chunk && chunk.type === 'block-end' && chunk.block && chunk.block.type === 'text' && typeof chunk.block.text === 'string') completedText = chunk.block.text
+    else if (chunk && chunk.type === 'finish' && chunk.reason && chunk.reason.kind === 'error') {
+      throw new Error(chunk.reason.message || 'DeepSeek Vision 返回错误终态')
+    }
+  }
+  const normalized = (content || completedText).trim()
+  if (!normalized) throw new Error('DeepSeek V4 Flash Vision 没有返回内容')
+  return { provider: DEEPSEEK_VISION_PROVIDER, model: DEEPSEEK_VISION_MODEL, content: normalized }
+}
+
 export function compactVisionSummary(content, limit = 240) {
   const text = String(content || '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -793,16 +833,31 @@ export async function recognizeImage({
   modelScopeApiBase = MODELSCOPE_API_BASE,
   ollamaUrl = OLLAMA_URL,
   ollamaModel = VISION_MODEL,
+  ctx,
+  attachment,
+  signal,
+  deepseekRecognizer = recognizeWithDeepSeekVision,
   zhipuRecognizer = recognizeWithZhipuMcp,
 }) {
-  let fallbackReason = ''
-  // 所有调用方（包括旧的 auto/modelscope 配置和本地 native-capable 模型）
-  // 统一先走智谱免费 GLM 视觉链。旧 provider 参数只保留兼容读取，不能
-  // 把识图优先级切换到其他云端或本地线路。
+  let deepseekFailure = ''
+  let zhipuFailure = ''
+  // Durable 会话附件先交给 DeepSeek V4 Flash Vision；兼容旧 HTTP/base64
+  // 入口时没有 attachment，直接从智谱开始。旧 provider 参数只保留兼容
+  // 读取，不能把优先级切到本地或其他云端线路。
+  if (ctx && attachment && attachment.attachmentId) {
+    try {
+      return await deepseekRecognizer({ ctx, attachment, prompt: VISION_PROMPT, signal })
+    } catch (error) {
+      deepseekFailure = errorText(error)
+    }
+  }
   try {
-    return await zhipuRecognizer({ imageBase64, mimeType, prompt: VISION_PROMPT })
+    const zhipu = await zhipuRecognizer({ imageBase64, mimeType, prompt: VISION_PROMPT })
+    return deepseekFailure
+      ? { ...zhipu, fallbackFrom: DEEPSEEK_VISION_MODEL, fallbackReason: deepseekFailure }
+      : zhipu
   } catch (error) {
-    fallbackReason = errorText(error)
+    zhipuFailure = errorText(error)
   }
 
   const local = await recognizeWithOllama({
@@ -811,7 +866,15 @@ export async function recognizeImage({
     ollamaUrl,
     model: ollamaModel,
   })
-  return fallbackReason ? { ...local, fallbackFrom: 'zhipu-mcp', fallbackReason } : local
+  return {
+    ...local,
+    fallbackFrom: 'zhipu-mcp',
+    fallbackReason: zhipuFailure,
+    fallbackChain: [
+      ...(deepseekFailure ? [{ provider: DEEPSEEK_VISION_PROVIDER, model: DEEPSEEK_VISION_MODEL, error: deepseekFailure }] : []),
+      { provider: 'zhipu-mcp', error: zhipuFailure },
+    ],
+  }
 }
 
 export function containsImageBlocks(blocks) {
@@ -836,7 +899,7 @@ function cacheVisionResult(cache, key, value) {
  * text-only model sees the request. The input array is never mutated; a failed
  * recognition therefore cannot leave a half-rewritten history behind.
  */
-export async function bridgeImageBlocks(blocks, { attachments, recognizer = recognizeImage, cache = VISION_RESULT_CACHE, signal } = {}) {
+export async function bridgeImageBlocks(blocks, { attachments, recognizer = recognizeImage, cache = VISION_RESULT_CACHE, signal, ctx } = {}) {
   if (!Array.isArray(blocks) || !containsImageBlocks(blocks)) return blocks
   if (!attachments || typeof attachments.readImage !== 'function') throw visionBridgeError('VISION_BRIDGE_UNAVAILABLE', '当前文本模型需要识图桥，但 durable attachment service 不可用')
   const output = []
@@ -846,7 +909,7 @@ export async function bridgeImageBlocks(blocks, { attachments, recognizer = reco
       continue
     }
     if (block.type === 'tool-result') {
-      output.push({ ...block, content: await bridgeImageBlocks(block.content, { attachments, recognizer, cache, signal }) })
+      output.push({ ...block, content: await bridgeImageBlocks(block.content, { attachments, recognizer, cache, signal, ctx }) })
       continue
     }
     if (block.type !== 'image') {
@@ -861,7 +924,7 @@ export async function bridgeImageBlocks(blocks, { attachments, recognizer = reco
     let result = cacheKey ? cache.get(cacheKey) : null
     if (!result) {
       try {
-        result = await recognizer({ imageBase64, mimeType })
+        result = await recognizer({ imageBase64, mimeType, attachment: block.attachment, ctx, signal })
       } catch (error) {
         throw visionBridgeError('VISION_BRIDGE_FAILED', `图片识图失败，原始图片不会发送给当前文本模型：${errorText(error)}`, error)
       }
@@ -899,7 +962,7 @@ export async function bridgeLlmOptions(options, ctx, { attachments, recognizer =
   const messages = []
   for (const message of options.messages) {
     if (!message || !containsImageBlocks(message.content)) messages.push(message)
-    else messages.push({ ...message, content: await bridgeImageBlocks(message.content, { attachments: store, recognizer, cache, signal }) })
+    else messages.push({ ...message, content: await bridgeImageBlocks(message.content, { attachments: store, recognizer, cache, signal, ctx }) })
   }
   // The LLM waterfall consumes this request object. Replacing messages here
   // prevents the adapter from ever receiving the raw image-bearing array.
@@ -1454,7 +1517,7 @@ export function apply(ctx) {
     },
   }), 'shrimp-shell: vision media')
 
-  // ---- 免费识图：优先智谱 MCP 视觉链，网络不可用时回退本地 Gemma；最终分析仍交给当前 DeepSeek ----
+  // ---- 识图：DeepSeek V4 Flash Vision → 智谱免费视觉 → 本地 Gemma；最终分析仍交给当前主模型 ----
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/api/shrimp/vision',

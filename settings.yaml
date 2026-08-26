@@ -12,6 +12,25 @@ ui-conversation:
   busyEnter: steer
 llm-deepseek:
   reasoningEffort: high
+  # 当前会话的 Flash/Pro 仍是文本主模型；这里声明 image 仅用于通过 Host
+  # durable 附件准入，随后由 shrimp-shell 固定视觉桥接管原图。桥内顺序：
+  # V4 Flash Vision → 智谱免费视觉 → 本地 Gemma。
+  models:
+    - id: deepseek-v4-flash
+      name: DeepSeek-V4-Flash
+      inputModalities:
+        - text
+        - image
+    - id: deepseek-v4-pro
+      name: DeepSeek-V4-Pro
+      inputModalities:
+        - text
+        - image
+    - id: deepseek-v4-flash-vision-exp
+      name: DeepSeek-V4-Flash-Vision-Exp
+      inputModalities:
+        - text
+        - image
 llm-pi-ai:
   providers:
     ollama-local:

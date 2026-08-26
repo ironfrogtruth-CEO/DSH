@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-import { bridgeImageBlocks, bridgeLlmOptions, compactVisionSummary, containsImageBlocks, createVisionStreamMiddleware, decodeCanonicalBase64, gitBackupLockState, MAX_IMAGE_BYTES, MAX_IMAGES_PER_MESSAGE, MAX_MESSAGE_IMAGE_BYTES, recognizeImage, shrimpTankPathAllowed, SCHEDULE_SCAN_CACHE_TTL_MS, scheduleScanCacheIsFresh, untrustedVisionProjection, validateVisionImageAdmission, visionPolicy, VISION_UNTRUSTED_CLOSE, VISION_UNTRUSTED_OPEN } from './index.js'
+import { bridgeImageBlocks, bridgeLlmOptions, compactVisionSummary, containsImageBlocks, createVisionStreamMiddleware, decodeCanonicalBase64, gitBackupLockState, MAX_IMAGE_BYTES, MAX_IMAGES_PER_MESSAGE, MAX_MESSAGE_IMAGE_BYTES, recognizeImage, recognizeWithDeepSeekVision, shrimpTankPathAllowed, SCHEDULE_SCAN_CACHE_TTL_MS, scheduleScanCacheIsFresh, untrustedVisionProjection, validateVisionImageAdmission, visionPolicy, VISION_UNTRUSTED_CLOSE, VISION_UNTRUSTED_OPEN } from './index.js'
 
 const imageBase64 = 'aW1hZ2UtYnl0ZXM='
 const mimeType = 'image/png'
@@ -15,6 +15,93 @@ function jsonResponse(body, status = 200) {
     async text() { return JSON.stringify(body) },
   }
 }
+
+test('durable 图片优先调用 DeepSeek V4 Flash Vision', async () => {
+  let zhipuCalls = 0
+  const attachment = { attachmentId: 'vision-primary-1' }
+  const result = await recognizeImage({
+    imageBase64,
+    mimeType,
+    ctx: { llm: {} },
+    attachment,
+    deepseekRecognizer: async (input) => {
+      assert.equal(input.attachment, attachment)
+      assert.match(input.prompt, /图像信息提取器/)
+      return { provider: 'deepseek-official', model: 'deepseek-v4-flash-vision-exp', content: 'DeepSeek 识图结果' }
+    },
+    zhipuRecognizer: async () => { zhipuCalls += 1; throw new Error('不应调用智谱') },
+    fetchImpl: async () => { throw new Error('不应调用本地') },
+  })
+
+  assert.equal(result.provider, 'deepseek-official')
+  assert.equal(result.model, 'deepseek-v4-flash-vision-exp')
+  assert.equal(result.content, 'DeepSeek 识图结果')
+  assert.equal(zhipuCalls, 0)
+})
+
+test('DeepSeek Vision 不可用时回退智谱免费视觉', async () => {
+  const result = await recognizeImage({
+    imageBase64,
+    mimeType,
+    ctx: { llm: {} },
+    attachment: { attachmentId: 'vision-fallback-1' },
+    deepseekRecognizer: async () => { throw new Error('vision unavailable') },
+    zhipuRecognizer: async () => ({ provider: 'zhipu-mcp', model: 'glm-4v-flash', content: '智谱识图结果' }),
+    fetchImpl: async () => { throw new Error('不应调用本地') },
+  })
+
+  assert.equal(result.provider, 'zhipu-mcp')
+  assert.equal(result.fallbackFrom, 'deepseek-v4-flash-vision-exp')
+  assert.match(result.fallbackReason, /vision unavailable/)
+})
+
+test('DeepSeek 与智谱都不可用时才回退本地 Gemma', async () => {
+  const calls = []
+  const result = await recognizeImage({
+    imageBase64,
+    mimeType,
+    ctx: { llm: {} },
+    attachment: { attachmentId: 'vision-local-fallback-1' },
+    deepseekRecognizer: async () => { throw new Error('deepseek vision unavailable') },
+    zhipuRecognizer: async () => { throw new Error('zhipu unavailable') },
+    fetchImpl: async (url) => {
+      calls.push(url)
+      return jsonResponse({ message: { content: '本地 Gemma 识图结果' } })
+    },
+  })
+
+  assert.equal(result.provider, 'ollama')
+  assert.equal(result.model, 'gemma4:26b-a4b-it-qat')
+  assert.equal(result.fallbackChain.length, 2)
+  assert.equal(result.fallbackChain[0].model, 'deepseek-v4-flash-vision-exp')
+  assert.equal(result.fallbackChain[1].provider, 'zhipu-mcp')
+  assert.equal(calls.length, 1)
+})
+
+test('DeepSeek Vision adapter 使用视觉模型和原始 durable 附件', async () => {
+  let request
+  const result = await recognizeWithDeepSeekVision({
+    ctx: {
+      llm: {
+        adapterStream(options) {
+          request = options
+          return (async function* () {
+            yield { type: 'text-delta', index: 0, text: '截图显示' }
+            yield { type: 'text-delta', index: 0, text: '模型提示。' }
+            yield { type: 'finish', reason: { kind: 'stop' } }
+          }())
+        },
+      },
+    },
+    attachment: { attachmentId: 'durable-vision-1' },
+  })
+
+  assert.equal(request.provider, 'deepseek-official')
+  assert.equal(request.model, 'deepseek-v4-flash-vision-exp')
+  assert.equal(request.reasoningEffort, 'off')
+  assert.equal(request.messages[0].content[1].attachment.attachmentId, 'durable-vision-1')
+  assert.equal(result.content, '截图显示模型提示。')
+})
 
 test('自动模式优先调用智谱免费 MCP 视觉链', async () => {
   const result = await recognizeImage({
@@ -175,6 +262,8 @@ test('DeepSeek 即使误报图片能力也固定走识图桥', async () => {
   })
 
   assert.equal(result.mode, 'bridge')
+  assert.equal(result.primaryVisionProvider, 'deepseek-official')
+  assert.equal(result.primaryVisionModel, 'deepseek-v4-flash-vision-exp')
   assert.equal(resolved, false)
   assert.match(result.reason, /原图保留在会话历史/)
 })
@@ -200,6 +289,7 @@ test('本地模型即使声明原生图片能力也固定走统一视觉桥', as
   })
 
   assert.equal(result.mode, 'bridge')
+  assert.equal(result.primaryVisionModel, 'deepseek-v4-flash-vision-exp')
   assert.equal(result.visionProvider, 'zhipu-mcp')
   assert.equal(result.fallbackProvider, 'ollama')
   assert.equal(resolved, false)
@@ -331,6 +421,7 @@ test('rc.8 stream middleware keeps frozen input intact, lets invariant see raw r
 
 test('图片入口一次提交 durable 原图，识图桥不回填输入框', () => {
   const client = readFileSync(new URL('./client.js', import.meta.url), 'utf8')
+  const settings = readFileSync(new URL('../../settings.yaml', import.meta.url), 'utf8')
   assert.match(client, /createDraftImages\(files\)/)
   assert.match(client, /input\.addImages\(attachments\.map\(\(attachment\) => attachment\.id\)\)/)
   assert.match(client, /单张图片不能超过 20 MiB/)
@@ -340,6 +431,9 @@ test('图片入口一次提交 durable 原图，识图桥不回填输入框', ()
   assert.match(client, /原图先进入官方草稿附件/)
   assert.doesNotMatch(client, /startRecognizeAndSend|fetch\('\/api\/shrimp\/vision'/)
   assert.doesNotMatch(client, /sendMergedMessage|textarea\.value.*merged/)
+  assert.match(settings, /id: deepseek-v4-flash[\s\S]*?inputModalities:[\s\S]*?- image/)
+  assert.match(settings, /id: deepseek-v4-pro[\s\S]*?inputModalities:[\s\S]*?- image/)
+  assert.match(settings, /id: deepseek-v4-flash-vision-exp[\s\S]*?inputModalities:[\s\S]*?- image/)
 })
 
 test('虾缸代理允许编码冒号的运行产物路径，但拒绝任意外部路径', () => {

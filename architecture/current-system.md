@@ -54,7 +54,7 @@ Host 长期存活由原生大神 App 自身维护：App 在窗口隐藏后仍保
 
 本地 LLM 选择器由 `settings.yaml` 的 `llm-pi-ai.providers.ollama-local` 提供方负责，提供方内部 ID 保持 `ollama-local`，界面显示名为“本地模型”。用户可主动选择的模型只有 `cybermarcus:latest`（显示名“CyberMarcus 本地开发”）和 `qwen3.6:27b`（显示名“Qwen3.6 27B”），两者均声明 32768 上下文、4096 最大输出，以及 text/image 输入。`cybermarcus-codex:latest` 不再作为选择器或 Cyber 压缩策略入口。
 
-Gemma4 (`gemma4:26b-a4b-it-qat`) 只作为虾缸视觉离线回退保留，FLUX (`x/flux2-klein:4b`) 作为本地生图模型保留，EmbeddingGemma (`embeddinggemma:latest`) 作为后台向量检索模型保留；三者由后台适配器按能力静默调用，不进入对话模型选择器，也不承担普通对话压缩策略。所有用户图片无论当前对话模型是否声明 vision，都先经智谱免费 GLM 视觉链识别；只有智谱不可用、限流或无网时才回退 Gemma。原图与用户文字一次提交并保留在 durable 会话，Host 仅把发给最终对话模型的临时请求投影为带 untrusted-data 边界的精简识图结果。TTS/STT 同样不是 LLM 模型：通过固定 `/Users/marcus/.dsh/bin/dsh-local-ai` 的 `tts`/`stt` 子命令，经 bash 或注册工具路由调用。对本地模型隐藏专业工具 schema 只为控制上下文大小，顶层 CyberMarcus 仍可通过后台适配器、`execute_flash` 或具名 Marvel 子智能体调度完整能力。
+Gemma4 (`gemma4:26b-a4b-it-qat`) 只作为虾缸视觉离线回退保留，FLUX (`x/flux2-klein:4b`) 作为本地生图模型保留，EmbeddingGemma (`embeddinggemma:latest`) 作为后台向量检索模型保留；三者由后台适配器按能力静默调用，不进入对话模型选择器，也不承担普通对话压缩策略。所有用户图片都由 Host 自动接管，不要求用户切换当前主模型：durable 附件先交给 `deepseek-v4-flash-vision-exp`，失败后调用智谱免费 GLM 视觉链，二者都不可用时才回退 Gemma。为让图片到达视觉桥，`deepseek-v4-flash` 与 `deepseek-v4-pro` 在 Host 能力目录中声明 image 准入，但原图不会发送给这两个文本主模型；视觉桥只把带 untrusted-data 边界的精简识图结果投影给当前主模型继续回答。原图与用户文字仍一次提交并保留在 durable 会话。TTS/STT 同样不是 LLM 模型：通过固定 `/Users/marcus/.dsh/bin/dsh-local-ai` 的 `tts`/`stt` 子命令，经 bash 或注册工具路由调用。对本地模型隐藏专业工具 schema 只为控制上下文大小，顶层 CyberMarcus 仍可通过后台适配器、`execute_flash` 或具名 Marvel 子智能体调度完整能力。
 
 ## 上游升级边界
 
