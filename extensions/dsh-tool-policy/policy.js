@@ -198,7 +198,7 @@ export class ToolPolicy {
     this.recent = []
   }
 
-  evaluate(toolName, args = {}) {
+  evaluate(toolName, args = {}, hardGate = undefined) {
     const classification = classifyToolCall(toolName, args, { workspaceRoots: this.config.workspaceRoots, baseCwd: this.config.baseCwd })
     let would = defaultDecision(classification, this.config.operationMode)
     const matched = { deny: patternList(this.config.deny).filter((pattern) => patternMatches(pattern, toolName, classification)), ask: patternList(this.config.ask).filter((pattern) => patternMatches(pattern, toolName, classification)), allow: patternList(this.config.allow).filter((pattern) => patternMatches(pattern, toolName, classification)) }
@@ -206,8 +206,12 @@ export class ToolPolicy {
     else if (matched.deny.length) would = { kind: 'deny', reason: 'tool matches configured deny pattern' }
     else if (matched.ask.length) would = { kind: 'ask', reason: 'tool matches configured ask pattern' }
     else if (matched.allow.length) would = { kind: 'allow', reason: 'tool matches configured allow pattern' }
-    const applied = this.config.mode === 'observe' ? { kind: 'allow', reason: 'observe mode never blocks execution' } : would
-    const result = { toolName: text(toolName), args, classification, decision: would, appliedDecision: applied, matchedPatterns: matched, mode: this.config.mode, operationMode: this.config.operationMode, observed: this.config.mode === 'observe' }
+    let applied = this.config.mode === 'observe' ? { kind: 'allow', reason: 'observe mode never blocks execution' } : would
+    if (hardGate?.decision) {
+      would = hardGate.decision
+      applied = hardGate.decision
+    }
+    const result = { toolName: text(toolName), args, classification, decision: would, appliedDecision: applied, hardGate: hardGate?.id, matchedPatterns: matched, mode: this.config.mode, operationMode: this.config.operationMode, observed: this.config.mode === 'observe' }
     this.record(result)
     return result
   }
@@ -219,7 +223,7 @@ export class ToolPolicy {
     this.metrics.byDecision[decision] = (this.metrics.byDecision[decision] || 0) + 1
     this.metrics.byCategory[category] = (this.metrics.byCategory[category] || 0) + 1
     this.metrics.byTool[result.toolName] = (this.metrics.byTool[result.toolName] || 0) + 1
-    this.recent.push({ at: new Date().toISOString(), toolName: result.toolName, category, decision, appliedDecision: result.appliedDecision.kind, mode: result.mode, operationMode: result.operationMode, pathBoundary: result.classification.pathBoundary })
+    this.recent.push({ at: new Date().toISOString(), toolName: result.toolName, category, decision, appliedDecision: result.appliedDecision.kind, hardGate: result.hardGate, mode: result.mode, operationMode: result.operationMode, pathBoundary: result.classification.pathBoundary })
     if (this.recent.length > this.config.maxRecent) this.recent.splice(0, this.recent.length - this.config.maxRecent)
   }
 

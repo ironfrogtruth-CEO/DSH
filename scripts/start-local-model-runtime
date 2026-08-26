@@ -1,0 +1,61 @@
+#!/bin/bash
+set -u
+
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+MODEL_ROOT="/Users/marcus/Desktop/虾缸/MODEL"
+OLLAMA_MODELS_ROOT="$MODEL_ROOT/ollama/models"
+OLLAMA_URL="http://127.0.0.1:11434/api/tags"
+PLIST="/Users/marcus/Library/LaunchAgents/com.shrimptank.ollama-local.plist"
+LABEL="com.shrimptank.ollama-local"
+DOMAIN="gui/$(id -u)"
+
+set_model_environment() {
+  /bin/launchctl setenv OLLAMA_MODELS "$OLLAMA_MODELS_ROOT"
+  /bin/launchctl setenv OLLAMA_CONTEXT_LENGTH 32768
+  /bin/launchctl setenv OLLAMA_KEEP_ALIVE 10m
+  /bin/launchctl setenv OLLAMA_NUM_PARALLEL 1
+  /bin/launchctl setenv OLLAMA_MAX_LOADED_MODELS 1
+  /bin/launchctl setenv OLLAMA_NO_CLOUD 1
+  /bin/launchctl setenv HF_HOME "$MODEL_ROOT/cache/huggingface"
+  /bin/launchctl setenv MODELSCOPE_CACHE "$MODEL_ROOT/cache/modelscope"
+}
+
+catalog_ready() {
+  local catalog
+  catalog=$(/usr/bin/curl -fsS --max-time 2 "$OLLAMA_URL" 2>/dev/null) || return 1
+  [[ "$catalog" == *'cybermarcus:latest'* && "$catalog" == *'glm-marcus:latest'* ]]
+}
+
+set_model_environment
+if catalog_ready; then
+  exit 0
+fi
+
+# A running App server ignores the external OLLAMA_MODELS value and forces
+# ~/.ollama/models. Stop the bundle processes and let the dedicated LaunchAgent
+# own the server with an explicit project model root.
+/usr/bin/osascript -e 'tell application "Ollama" to quit' >/dev/null 2>&1 || true
+/usr/bin/pkill -TERM -f '^/Applications/Ollama.app/Contents/Resources/ollama serve$' >/dev/null 2>&1 || true
+/usr/bin/pkill -TERM -f '^/Applications/Ollama.app/Contents/MacOS/Ollama( hidden)?$' >/dev/null 2>&1 || true
+for _ in {1..40}; do
+  /usr/bin/pgrep -f '^/Applications/Ollama.app/Contents/Resources/ollama serve$' >/dev/null 2>&1 || break
+  sleep 0.25
+done
+
+test -f "$PLIST" || {
+  echo "缺少本地模型 LaunchAgent: $PLIST" >&2
+  exit 1
+}
+mkdir -p "$MODEL_ROOT/runtime"
+/bin/launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+/bin/launchctl bootstrap "$DOMAIN" "$PLIST" || exit 1
+/bin/launchctl kickstart -k "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+for _ in {1..120}; do
+  if catalog_ready; then
+    exit 0
+  fi
+  sleep 0.25
+done
+
+echo "本地模型运行时未能从 $OLLAMA_MODELS_ROOT 加载 CyberMarcus 与 GLM-Marcus" >&2
+exit 1

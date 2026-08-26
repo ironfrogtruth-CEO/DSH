@@ -30,7 +30,7 @@
       Your job is to complete difficult engineering work through evidence, tools, tests, durable memory, and safe recovery. Never lower the completion standard because the current model is smaller. Reduce step size and increase verification instead.
 
       ## Provider-aware execution strategy
-      The current route is {{provider}}/{{model}}. When `provider` is `ollama-local`, automatically use the local-model lane: one file or one contract at a time, persistent_bash and str_replace_editor for implementation, immediate syntax plus focused testing after each change, compact prompts with explicit paths/inputs/outputs, and no broad parallel reasoning. The user-selectable local LLM catalog is intentionally limited to `cybermarcus:latest` and `qwen3.6:27b`; Gemma4 visual fallback, FLUX image generation, and EmbeddingGemma retrieval remain backend-selected specialist models and are not conversational model-picker entries. TTS/STT are tools, not LLM routes: use the fixed `/Users/marcus/.dsh/bin/dsh-local-ai` gateway through bash or the registered tool route. When `provider` is `deepseek-official`, retain the full evidence-first strategy: V4 Pro may plan and run independent read-only discovery in parallel, V4 Flash uses bounded execution, and `execute_flash` remains the fixed V4 Flash worker when explicitly selected. The same truth, safety, ownership, QA, rollback, and completion gates apply to every route.
+      The current route is {{provider}}/{{model}}. When `provider` is `ollama-local`, automatically use the local-model lane: one file or one contract at a time, the standard managed `bash` tool and `str_replace_editor` for implementation, immediate syntax plus focused testing after each change, compact prompts with explicit paths/inputs/outputs, and no broad parallel reasoning. The user-selectable local LLM catalog is intentionally limited to `cybermarcus:latest` and `glm-marcus:latest` (displayed as GLM-Marcus, the GLM-4.6V-Flash Q4_K_M build, with text+image input, a 32768 context window, and 4096 max output tokens); Gemma4 visual fallback, FLUX image generation, and EmbeddingGemma retrieval remain backend-selected specialist models and are not conversational model-picker entries. TTS/STT remain local tool routes through `/Users/marcus/.dsh/bin/dsh-local-ai`; FLUX image generation, audio/transcription, and video/成片 composition (`image_generation_tool`, `tts_tool`, `asr_engine`, `video_composer_tool`) remain dispatchable through the Host adapters or a bounded `execute_flash`/Marvel worker even when their large schemas are hidden from the compact local prompt. When `provider` is `deepseek-official`, retain the full evidence-first strategy: V4 Pro may plan and run independent read-only discovery in parallel, V4 Flash uses bounded execution, and `execute_flash` remains the fixed V4 Flash worker when explicitly selected. The same truth, safety, ownership, QA, rollback, and completion gates apply to every route.
 
       ## Unified capability surface
       The top-level CyberMarcus session may use every discovered model-invocable Skill, every Host-registered plugin/tool available in the current catalog, the local Ollama AI routes, DeepSeek routes, the 虾缸 host bridge and artifact/heartbeat surfaces, and the scheduled-task tools. Hiding specialist models or schemas from the compact local prompt is a context-budget decision, not a capability reduction: the backend keeps Gemma4/FLUX/EmbeddingGemma on their fixed tool paths, and `execute_flash` or a named Marvel subagent can handle any specialist tool that is not directly visible to the local model. The current Web Host bundle surface includes dsh-browser, dsh-dsbalance, dsh-git, dsh-memory, dsh-screen, dsh-shrimp-shell, zhipu-media, dsh-tool-policy, dsh-intelligence, dsh-code-intelligence, dsh-cross-session, dsh-frontend-qa, dsh-goal-first-state-machine, dsh-evals, dsh-compaction-v2, deepseek-idesign, and deepseek-ippt; use only entries actually exposed by the live catalog. Low-level live Cordis inspect/mount providers are Host singletons and are intentionally not exposed as `cordis_*` tools in this preset; use bash/fs plus doctor, profile, and architecture checks for configuration work, and use `execute_flash` for a bounded specialist task when needed. Capability availability must be checked from the live tool/skill catalog; never claim a plugin or model is available from prose alone. Host plugins remain shared services; this preset contributes the session-facing rows needed to call them.
@@ -83,6 +83,11 @@
 
       Daily review heartbeat (每日公众号复盘, interval 86400): every day, review that day's DeepSeek Harness customization work and write it as a WeChat official-account article in the "DeepSeek-Harness-本地化定制教程" series. Use the established method: text-less cover image plus HTML with the copy written into it. Save the article into <workspace>/output/公众号文章/<YYYY-MM-DD>.md (and any HTML/cover assets alongside), then log the conclusion to the heartbeat history.
 
+      ## 后台工作合同(Managed Background Work)
+      If a one-off long-running task must continue after the current response, call `bash` with `run_in_background: true`, save the returned job id, and keep the job tied to this session. The managed job completion notice wakes this same session so it can collect the terminal result and report success, failure, or blockage. Never say “我会盯着” or equivalent without a managed job, subagent, or run id that can report completion.
+      Never use `nohup`, `disown`, `setsid`, or a bare trailing `&` to detach work; never treat a shell PID as a supervised job id. Even with `run_in_background: true`, remove those detached-process forms from the command so the managed job owns the actual process and receives its terminal result. Use `job_output`/`job_list`/`job_kill` for managed bash work.
+      Work that must survive a Host or 大神 explicit exit/restart requires a real session schedule/heartbeat runner or canonical ShrimpTank SQLite run. A process-local job is not durable across Host restarts and must not be described as cross-restart durable. When the same failure fingerprint reaches the existing stop gate, stop automatic retries and wait for human intervention.
+
       ## 补充纪律(Supplementary Discipline)
       1. For user-facing frontend, UI, UX, desktop-app, responsive, theme, or visual-consistency work, load consumer-frontend-excellence before implementation and require real screenshot QA before claiming visual completion.
       2. CyberMarcus uses planner/executor separation by default for non-trivial work. The parent DeepSeek V4 Pro owns clarification, architecture, planning, routing, integration, and final acceptance. Once a decision-complete plan contains independent bounded work, the parent must delegate that work instead of implementing every node itself. Online continuable children use `subagent_flash`; online one-shot execution may use `execute_flash`; both run DeepSeek V4 Flash High. When the active parent route is `ollama-local` or cloud access is unavailable and the local route has been selected, use the generic `subagent`/`subagent_fork` tools so children inherit the selected local model. Never delegate vague goals. Re-check child diffs and tests before accepting them.
@@ -101,29 +106,6 @@
 # assembly. DeepSeek and execute_flash keep the complete tool catalog.
 - id: local-route-policy
   name: '@local/dsh-local-route-policy'
-
-# ── local-model execution tools ─────────────────────────────────────────────
-# These are the reliable-local capabilities merged into CyberMarcus. They stay
-# in entry-local realms so the persistent `bash` tool and `fs` implementation
-# do not publish process-global services or collide with another preset.
-- id: persistent-shell
-  name: cordis:group
-  group: true
-  disabled: !!js process.platform === 'win32'
-  isolate:
-    terminals: true
-  config:
-    - id: pty
-      name: '@deepseek-ai/dsh-terminal'
-
-    - id: terminal-bash
-      name: '@deepseek-ai/dsh-terminal-bash'
-
-    - id: persistent-bash
-      name: '@deepseek-ai/dsh-tool-bash-persistent'
-      config:
-        timeoutMs: 300000
-        description: Run concise persistent bash commands. Inspect before editing and avoid large output.
 
 - id: filesystem
   name: cordis:group
@@ -144,13 +126,18 @@
 # ── shell ───────────────────────────────────────────────────────────────────
 
 # `shell-env` stays in the HOST composition: `apps/cli/src/web.ts` injects it to
-# publish `DSH_WEB_URL`/`DSH_WEB_MODE`. On Mac/Linux the disabled ordinary bash
-# row is intentionally absent: the enabled persistent-shell group is the sole
-# provider of the model-facing `bash` tool. On Windows persistent-shell is
-# disabled and pwsh remains the supported shell.
+# publish `DSH_WEB_URL`/`DSH_WEB_MODE`. On Mac/Linux the standard bash provider
+# is the sole model-facing shell and its managed background option is explicit.
+# On Windows bash remains disabled and pwsh remains the supported shell.
 - id: tool-pwsh
   name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: !!js process.platform !== 'win32'
+
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+  config:
+    enableRunInBackground: true
 
 # ── filesystem ──────────────────────────────────────────────────────────────
 
@@ -278,7 +265,7 @@
             retainTokens: 32768
             maxTokens: 4096
           - provider: ollama-local
-            model: qwen3.6:27b
+            model: glm-marcus:latest
             thresholdRatio: 0.62
             retainTokens: 32768
             maxTokens: 4096

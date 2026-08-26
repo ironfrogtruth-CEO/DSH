@@ -38,6 +38,229 @@ async function resolveDefineTool() {
 function errorText(error) { return String(error?.message || error || 'unknown error').slice(0, 1_000) }
 
 const RENDER_LIMIT = 12_000
+const DETACHED_BACKGROUND_MESSAGE = '后台任务必须移除脱管语法并使用 run_in_background: true；跨重启请使用 schedule/heartbeat/canonical run'
+const SHELL_TOOL_NAMES = new Set([
+  'bash',
+  'shell',
+  'sh',
+  'tool-bash',
+  'dsh-tool-bash',
+  '@deepseek-ai/dsh-tool-bash',
+])
+const COMMAND_KEYS = new Set(['command', 'cmd', 'shell', 'script', 'argv', 'args'])
+
+function shellToolName(toolName) {
+  const value = String(toolName ?? '').trim().toLowerCase()
+  return SHELL_TOOL_NAMES.has(value) || /(?:^|[-_:])(?:bash|shell)(?:$|[-_:])/.test(value)
+}
+
+// For ampersand detection, replace quoted and escaped text with spaces while
+// retaining shell operators. Utility names are checked separately against raw
+// command text so nested `bash -lc "nohup ..."` cannot hide from the gate.
+function maskShellLiterals(value) {
+  const source = String(value ?? '')
+  let result = ''
+  let quote = ''
+  let escaped = false
+  let comment = false
+  for (const character of source) {
+    if (comment) {
+      if (character === '\n') comment = false
+      result += character === '\n' ? '\n' : ' '
+      continue
+    }
+    if (escaped) {
+      result += ' '
+      escaped = false
+      continue
+    }
+    if (quote === "'") {
+      result += character === "'" ? ' ' : ' '
+      if (character === "'") quote = ''
+      continue
+    }
+    if (quote === '"') {
+      if (character === '\\') {
+        result += ' '
+        escaped = true
+      } else {
+        result += ' '
+        if (character === '"') quote = ''
+      }
+      continue
+    }
+    if (character === '\\') {
+      result += ' '
+      escaped = true
+    } else if (character === "'" || character === '"') {
+      result += ' '
+      quote = character
+    } else if (character === '#') {
+      result += ' '
+      comment = true
+    } else {
+      result += character
+    }
+  }
+  return result
+}
+
+function commandValues(value, fieldName = '', depth = 0) {
+  if (depth > 4 || value === null || value === undefined) return []
+  if (typeof value === 'string') return COMMAND_KEYS.has(fieldName.toLowerCase()) ? [value] : []
+  if (Array.isArray(value)) {
+    if (!COMMAND_KEYS.has(fieldName.toLowerCase())) return []
+    return value.flatMap((item) => typeof item === 'string' ? [item] : commandValues(item, fieldName, depth + 1))
+  }
+  if (typeof value !== 'object') return []
+  return Object.entries(value).flatMap(([key, child]) => commandValues(child, key, depth + 1))
+}
+
+function hasStandaloneAmpersand(value) {
+  const masked = maskShellLiterals(value)
+  for (let index = 0; index < masked.length; index += 1) {
+    if (masked[index] !== '&') continue
+    const previous = masked[index - 1] || ''
+    const next = masked[index + 1] || ''
+    // Keep compound conditionals and redirections (`&&`, `&>`, `>&`, `|&`)
+    // out of the detached-process gate.
+    if (previous === '&' || next === '&' || previous === '>' || next === '>' || previous === '|' || next === '|') continue
+    return true
+  }
+  return false
+}
+
+function shellTokens(value) {
+  const source = String(value ?? '')
+  const tokens = []
+  let current = ''
+  let quote = ''
+  let quoted = false
+  let escaped = false
+  const flush = () => {
+    if (current || quoted) tokens.push({ value: current, quoted })
+    current = ''
+    quoted = false
+  }
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]
+    if (escaped) {
+      current += character
+      escaped = false
+      continue
+    }
+    if (quote) {
+      if (character === quote) {
+        quote = ''
+        quoted = true
+      } else if (quote === '"' && character === '\\') escaped = true
+      else current += character
+      continue
+    }
+    if (character === '\\') {
+      escaped = true
+      continue
+    }
+    if (character === "'" || character === '"') {
+      quote = character
+      quoted = true
+      continue
+    }
+    if (character === '#') {
+      if (!current) {
+        while (index < source.length && source[index] !== '\n') index += 1
+        flush()
+        if (index < source.length) tokens.push({ operator: '\n' })
+        continue
+      }
+    }
+    if (/\s/.test(character)) {
+      flush()
+      if (character === '\n') tokens.push({ operator: '\n' })
+      continue
+    }
+    if (';&|()'.includes(character)) {
+      flush()
+      const pair = source.slice(index, index + 2)
+      if (pair === '&&' || pair === '||' || pair === '|&' || pair === '&>') {
+        tokens.push({ operator: pair })
+        index += 1
+      } else tokens.push({ operator: character })
+      continue
+    }
+    current += character
+  }
+  if (escaped) current += '\\'
+  flush()
+  return tokens
+}
+
+const COMMAND_SEPARATORS = new Set(['\n', ';', '&&', '||', '|', '|&', '&', '('])
+const CONTROL_WORDS = new Set(['if', 'then', 'else', 'elif', 'while', 'until', 'do', 'time'])
+const COMMAND_PREFIXES = new Set(['command', 'builtin', 'exec', 'sudo', 'env'])
+const DETACHED_UTILITIES = new Set(['nohup', 'disown', 'setsid'])
+
+function commandName(value) {
+  return String(value ?? '').split('/').filter(Boolean).pop()?.toLowerCase() || ''
+}
+
+function hasDetachedUtility(value, depth = 0) {
+  if (depth > 4) return null
+  // Re-run the operator check for recursive `shell -c` / `eval` payloads.
+  // Their quoted ampersand is literal to the parent, but active shell syntax
+  // once the child parses the payload.
+  if (hasStandaloneAmpersand(value)) return '&'
+  const tokens = shellTokens(value)
+  let commandPosition = true
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]
+    if (token.operator) {
+      if (COMMAND_SEPARATORS.has(token.operator) || token.operator === ')') commandPosition = true
+      continue
+    }
+    const lower = token.value.toLowerCase()
+    if (!commandPosition) continue
+    if (CONTROL_WORDS.has(lower)) continue
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token.value)) continue
+    let name = commandName(token.value)
+    while (COMMAND_PREFIXES.has(name)) {
+      index += 1
+      while (index < tokens.length && !tokens[index].operator && (/^-/.test(tokens[index].value) || /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index].value))) index += 1
+      if (index >= tokens.length || tokens[index].operator) break
+      name = commandName(tokens[index].value)
+    }
+    if (DETACHED_UTILITIES.has(name)) return name
+    if (['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(name)) {
+      for (let cursor = index + 1; cursor < tokens.length && !tokens[cursor].operator; cursor += 1) {
+        if (!/^-.*c/.test(tokens[cursor].value)) continue
+        const payload = tokens[cursor + 1]?.value
+        const nested = payload ? hasDetachedUtility(payload, depth + 1) : null
+        if (nested) return nested
+        break
+      }
+    } else if (name === 'eval') {
+      const payload = []
+      for (let cursor = index + 1; cursor < tokens.length && !tokens[cursor].operator; cursor += 1) payload.push(tokens[cursor].value)
+      const nested = payload.length ? hasDetachedUtility(payload.join(' '), depth + 1) : null
+      if (nested) return nested
+    }
+    commandPosition = false
+  }
+  return null
+}
+
+/**
+ * Pure hard-gate classifier for detached shell work. Returns the deny decision
+ * for high-confidence shell syntax and `undefined` for all other calls.
+ */
+export function detachedBackgroundReason(toolName, args = {}) {
+  if (!shellToolName(toolName)) return undefined
+  const values = typeof args === 'string' ? [args] : commandValues(args)
+  for (const value of values) {
+    if (hasStandaloneAmpersand(value) || hasDetachedUtility(value)) return { kind: 'deny', reason: DETACHED_BACKGROUND_MESSAGE }
+  }
+  return undefined
+}
 
 function redactPolicyValue(value, key = '') {
   if (value === null || typeof value === 'number' || typeof value === 'boolean') return value
@@ -67,6 +290,7 @@ function policyRenderValue(kind, value) {
         observed: result.observed,
         decision: result.decision,
         appliedDecision: result.appliedDecision,
+        hardGate: result.hardGate,
         classification: {
           category: result.classification?.category,
           categories: result.classification?.categories,
@@ -90,7 +314,7 @@ function boundedPolicyJson(kind, value) {
   let text = JSON.stringify(selected)
   if (text.length <= RENDER_LIMIT) return text
   const compact = { ok: value?.ok === true, truncated: true }
-  if (kind === 'evaluate') compact.result = { decision: value?.result?.decision, appliedDecision: value?.result?.appliedDecision, classification: { category: value?.result?.classification?.category, pathBoundary: value?.result?.classification?.pathBoundary, reasons: value?.result?.classification?.reasons } }
+  if (kind === 'evaluate') compact.result = { decision: value?.result?.decision, appliedDecision: value?.result?.appliedDecision, hardGate: value?.result?.hardGate, classification: { category: value?.result?.classification?.category, pathBoundary: value?.result?.classification?.pathBoundary, reasons: value?.result?.classification?.reasons } }
   if (kind === 'metrics') compact.metrics = { metrics: value?.metrics?.metrics, recentCount: value?.metrics?.recent?.length ?? 0 }
   if (kind === 'list') compact.policy = { mode: value?.policy?.mode, operationMode: value?.policy?.operationMode, workspaceRoots: value?.policy?.workspaceRoots }
   text = JSON.stringify(redactPolicyValue(compact))
@@ -118,7 +342,10 @@ function configFromContext(ctx, rowConfig) {
 
 export async function apply(ctx, config) {
   const defineTool = await resolveDefineTool()
-  const policy = new ToolPolicy(configFromContext(ctx, config))
+  const suppliedConfig = configFromContext(ctx, config)
+  const policy = new ToolPolicy(suppliedConfig)
+  const blockDetachedBackground = suppliedConfig?.blockDetachedBackground !== false
+  policy.config.blockDetachedBackground = blockDetachedBackground
   const { tools } = ctx
   const register = (spec, renderKind) => tools.register(defineTool({
     ...spec,
@@ -138,7 +365,11 @@ export async function apply(ctx, config) {
     output: { schema: outputSchema(), render: (_a, value) => [{ type: 'text', text: value.ok ? JSON.stringify(value.result) : `失败: ${value.error}` }] },
     timeoutMs: 10_000,
     async execute(args) {
-      try { return { ok: true, result: policy.evaluate(args.toolName, args.arguments || {}) } } catch (error) { return { ok: false, code: 'POLICY_EVALUATE_ERROR', error: errorText(error) } }
+      try {
+        const detached = blockDetachedBackground ? detachedBackgroundReason(args.toolName, args.arguments || {}) : undefined
+        const result = policy.evaluate(args.toolName, args.arguments || {}, detached ? { id: 'detached-background', decision: detached } : undefined)
+        return { ok: true, result }
+      } catch (error) { return { ok: false, code: 'POLICY_EVALUATE_ERROR', error: errorText(error) } }
     },
     presentCall() { return { card: 'generic', title: 'Evaluate tool policy' } },
   }, 'evaluate')
@@ -171,7 +402,9 @@ export async function apply(ctx, config) {
   }, 'list')
 
   const listener = async (exec, next) => {
-    const result = policy.evaluate(exec?.name || '', exec?.arguments || {})
+    const detached = blockDetachedBackground ? detachedBackgroundReason(exec?.name || '', exec?.arguments || {}) : undefined
+    const result = policy.evaluate(exec?.name || '', exec?.arguments || {}, detached ? { id: 'detached-background', decision: detached } : undefined)
+    if (detached) return detached
     if (policy.config.mode === 'observe' || result.appliedDecision.kind === 'allow') return next()
     return result.appliedDecision
   }
@@ -180,7 +413,12 @@ export async function apply(ctx, config) {
   } else if (typeof ctx.on === 'function') {
     ctx.on('tools/pre-execute', listener)
   }
-  if (typeof ctx.provide === 'function') ctx.provide('dshToolPolicy', { policy, classifyToolCall, config: normalizePolicyConfig(policy.config) })
+  if (typeof ctx.provide === 'function') ctx.provide('dshToolPolicy', {
+    policy,
+    classifyToolCall,
+    detachedBackgroundReason,
+    config: { ...normalizePolicyConfig(policy.config), blockDetachedBackground },
+  })
   return undefined
 }
 

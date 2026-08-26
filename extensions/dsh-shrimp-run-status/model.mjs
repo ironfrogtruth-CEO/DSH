@@ -11,6 +11,14 @@ export const ACTIVE_RUN_STATUSES = new Set([
   'cancel_requested',
 ])
 
+// The closed-card watcher is deliberately much slower than the open card's
+// summary refresh. It is a discovery signal, not a second runtime source.
+export const AUTO_DISCOVERY_INTERVAL_MS = 12_000
+export const HIDDEN_AUTO_DISCOVERY_INTERVAL_MS = 30_000
+export const FULL_SUMMARY_REFRESH_INTERVAL_MS = 4_000
+
+export const SHRIMP_TANK_DISMISSED_STORAGE_PREFIX = 'dsh-shrimp-tank-dismissed:'
+
 export const activeStatuses = ACTIVE_RUN_STATUSES
 
 const STATUS_ALIASES = new Map([
@@ -279,7 +287,7 @@ export function refsMatch(left, right) {
 
 export const shrimpRefsMatch = refsMatch
 
-function runIdOf(run) {
+export function runIdOf(run) {
   return firstNonEmpty(run?.id, run?.run_id, run?.runId)
 }
 
@@ -376,6 +384,58 @@ export function groupLatestActiveRuns(items, runs = []) {
 }
 
 export const groupActiveRuns = groupLatestActiveRuns
+
+/**
+ * Stable identity for the set of active canonical runs. Display names and
+ * ordering are intentionally excluded so a poll cannot reopen a dismissed
+ * card merely because a label or sort order changed.
+ */
+export function activeRunSignature(groups) {
+  const entries = []
+  for (const group of Array.isArray(groups) ? groups : []) {
+    const pipelineRef = firstNonEmpty(
+      pipelineRefsOf(group?.run)[0],
+      group?.pipelineRef,
+      group?.pipeline_ref,
+      group?.ref,
+      pipelineRefsOf(group)[0],
+      pipelineRefsOf(group?.item)[0],
+    )
+    const runId = firstNonEmpty(group?.runId, group?.run_id, runIdOf(group?.run), runIdOf(group))
+    if (pipelineRef && runId) entries.push(`${pipelineRef}:${runId}`)
+  }
+  return [...new Set(entries)].sort().join('|')
+}
+
+export const activeSignature = activeRunSignature
+
+export function autoDiscoveryDelayMs(hidden = false) {
+  return hidden ? HIDDEN_AUTO_DISCOVERY_INTERVAL_MS : AUTO_DISCOVERY_INTERVAL_MS
+}
+
+export const autoPollDelayMs = autoDiscoveryDelayMs
+
+export function shrimpTankDismissedStorageKey(sessionId) {
+  const id = firstNonEmpty(sessionId)
+  return id ? `${SHRIMP_TANK_DISMISSED_STORAGE_PREFIX}${encodeURIComponent(id)}` : ''
+}
+
+export const dismissalStorageKey = shrimpTankDismissedStorageKey
+
+export function runSignatureEntries(signature) {
+  return [...new Set(textOf(signature).split('|').map((entry) => entry.trim()).filter(Boolean))].sort()
+}
+
+export function mergeRunSignatures(...signatures) {
+  return [...new Set(signatures.flatMap(runSignatureEntries))].sort().join('|')
+}
+
+export function shouldAutoOpen(signature, dismissedSignature = '') {
+  const active = runSignatureEntries(signature)
+  if (active.length === 0) return false
+  const dismissed = new Set(runSignatureEntries(dismissedSignature))
+  return active.some((entry) => !dismissed.has(entry))
+}
 
 export function visibleNodes(nodes, limit = 6, current = undefined) {
   const source = Array.isArray(nodes) ? nodes : []

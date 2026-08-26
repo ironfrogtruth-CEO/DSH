@@ -2,7 +2,7 @@ ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
   provider: deepseek-official
-  model: deepseek-v4-pro
+  model: deepseek-v4-flash
   reasoningEffort: high
 agent-presets:
   default: reliable-development
@@ -47,8 +47,8 @@ llm-pi-ai:
           input:
             - text
             - image
-        - id: qwen3.6:27b
-          name: Qwen3.6 27B
+        - id: glm-marcus:latest
+          name: GLM-Marcus
           contextWindow: 32768
           maxTokens: 4096
           input:

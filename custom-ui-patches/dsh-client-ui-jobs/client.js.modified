@@ -209,139 +209,6 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region [local-mod] lib/types/client/JobListView.js
-		/** [local-mod] 后台任务全视图:作为 conversation.view 的 tab 渲染,替代原"轨迹"tab。 */
-		const JOB_VIEW_CONTAINER_STYLE = {
-			boxSizing: "border-box",
-			width: "100%",
-			maxWidth: 960,
-			margin: "0 auto",
-			padding: "16px 24px 40px"
-		};
-		const JOB_VIEW_EMPTY_STYLE = {
-			color: "var(--dsw-alias-label-tertiary)",
-			fontSize: 13,
-			lineHeight: "22px",
-			padding: "16px 0"
-		};
-		const JOB_VIEW_ROW_STYLE = {
-			display: "flex",
-			alignItems: "center",
-			gap: 8,
-			minWidth: 0,
-			minHeight: 34,
-			boxSizing: "border-box",
-			padding: "4px 8px 4px 10px",
-			borderRadius: 8,
-			fontSize: 13,
-			lineHeight: "18px"
-		};
-		const JOB_VIEW_KIND_STYLE = {
-			flex: "none",
-			color: "var(--dsw-alias-label-secondary)",
-			fontSize: 12,
-			fontWeight: 500
-		};
-		const JOB_VIEW_LABEL_STYLE = {
-			flex: "1 1 auto",
-			minWidth: 0,
-			color: "var(--dsw-alias-label-primary)",
-			textOverflow: "ellipsis",
-			overflow: "hidden",
-			whiteSpace: "nowrap"
-		};
-		const JOB_VIEW_META_STYLE = {
-			flex: "none",
-			color: "var(--dsw-alias-label-tertiary)",
-			fontSize: 11,
-			lineHeight: "16px",
-			fontVariantNumeric: "tabular-nums"
-		};
-		/**
-		* 渲染当前会话的后台任务完整列表(视图,非下拉)。
-		* @param props - 框架 session kit 与 locale。
-		*/
-		function JobListView({ sessionId, useSessions, t }) {
-			const jobs = useSessions((state) => state.jobsBySession[sessionId]) ?? NO_TASKS;
-			const [now, setNow] = (0, react.useState)(() => Date.now());
-			const rows = (0, react.useMemo)(() => ordered(jobs), [jobs]);
-			const liveCount = (0, react.useMemo)(() => jobs.filter(isLive).length, [jobs]);
-			(0, react.useEffect)(() => {
-				if (liveCount === 0) return;
-				setNow(Date.now());
-				const timer = setInterval(() => {
-					setNow(Date.now());
-				}, 1e3);
-				return () => {
-					clearInterval(timer);
-				};
-			}, [liveCount]);
-			return (0, react_jsx_runtime.jsx)("div", {
-				style: JOB_VIEW_CONTAINER_STYLE,
-				children: rows.length === 0 ? (0, react_jsx_runtime.jsx)("div", {
-					style: JOB_VIEW_EMPTY_STYLE,
-					children: "暂无后台任务"
-				}) : (0, react_jsx_runtime.jsx)("div", {
-					children: rows.map((job) => {
-						const live = isLive(job);
-						const duration = formatDuration(live ? now - job.startedAt : (job.finishedAt ?? job.startedAt) - job.startedAt, t);
-						const status = statusLabel(job.status, t);
-						return (0, react_jsx_runtime.jsxs)("div", {
-							style: JOB_VIEW_ROW_STYLE,
-							children: [
-								(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, {
-									state: dotState(job.status)
-								}),
-								(0, react_jsx_runtime.jsx)("span", {
-									style: JOB_VIEW_KIND_STYLE,
-									children: job.kind
-								}),
-								(0, react_jsx_runtime.jsx)("span", {
-									style: JOB_VIEW_LABEL_STYLE,
-									title: job.label,
-									children: job.label
-								}),
-								(0, react_jsx_runtime.jsx)("span", {
-									style: JOB_VIEW_META_STYLE,
-									title: job.detail ?? status,
-									children: job.detail ?? status
-								}),
-								(0, react_jsx_runtime.jsx)("span", {
-									style: JOB_VIEW_META_STYLE,
-									title: t(live ? "duration.title.live" : "duration.title.done", { duration }),
-									children: duration
-								})
-							]
-						}, job.id);
-					})
-				})
-			});
-		}
-		//#endregion
-		//#region [local-mod] lib/types/client/JobTabDot.js
-		/** [local-mod] 后台任务 tab 绿灯:有运行中的任务时在 tab 名后点亮。 */
-		const TAB_DOT_STYLE = {
-			width: 8,
-			height: 8,
-			borderRadius: "50%",
-			background: "var(--dsw-alias-state-success-primary)",
-			display: "inline-block",
-			marginLeft: 6,
-			flex: "none"
-		};
-		/**
-		* @param props - viewId 与 framework session kit。
-		*/
-		function JobTabDot({ sessionId, useSessions, viewId }) {
-			const jobs = useSessions((state) => state.jobsBySession[sessionId]) ?? NO_TASKS;
-			if (viewId !== "job-list") return null;
-			if (!jobs.some(isLive)) return null;
-			return (0, react_jsx_runtime.jsx)("span", {
-				style: TAB_DOT_STYLE,
-				"aria-hidden": true
-			});
-		}
-		//#endregion
 		//#region lib/types/client/locales.js
 		/** Simplified Chinese dictionary (the key-set source of truth). */
 		const zh = {
@@ -396,22 +263,12 @@ window.__ModuleLoader__.load({
 				zh,
 				en
 			}), "ui-job: dictionaries");
-			// [local-mod] 后台任务 tab:注册为 conversation.view(order 5),
-			// 与"会话""子代理"并列为视图 tab,替代原"轨迹"tab
-			const t = ctx.locale.bind("job");
-			ctx.slots.inject("conversation.view", () => ctx.slots.register({
-				name: "conversation.view",
+			ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
+				name: "conversation.session.header.actions",
 				id: "job-list",
-				order: 5,
-				locale: "job",
-				label: () => t("list.aria")
-			}, JobListView));
-			// [local-mod] 后台任务 tab 运行指示灯
-			ctx.slots.inject("conversation.view.tabIndicator", () => ctx.slots.register({
-				name: "conversation.view.tabIndicator",
-				id: "job-list-indicator",
+				order: 20,
 				locale: "job"
-			}, JobTabDot));
+			}, JobListAction));
 		}
 		//#endregion
 		exports.apply = apply;

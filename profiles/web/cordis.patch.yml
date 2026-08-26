@@ -1,5 +1,5 @@
 # 虾缸 profile 用户补丁层: 继承自 Codex/Claude 配置的"好用插件"接线
-# 1) 持久终端服务(PTY) — 供 tool-bash-persistent 使用
+# 1) Host 终端/PTY 服务
 # 2) MCP 客户端 — 只接免费 + 国内可用(无需翻墙) + 零配置即可用的服务器:
 #    - playwright : 本地 stdio, 免费开源, 可控制真实 Chrome(与内置浏览器工具互补)
 #    - sequential-thinking : 本地 stdio, 免费, 结构化推理辅助
@@ -85,14 +85,17 @@
         toolCallTimeoutMs: 700000
         failOnStartupError: false
 
-# First formal activation observes policy decisions without blocking existing
-# tools. Host intelligence bundles are explicit-tool only and have no client/UI
-# half; they do not auto-inject context into current sessions.
+# First formal activation observes ordinary policy decisions without blocking
+# existing tools. The detached-background hard gate remains active in observe
+# mode so a bare process cannot escape managed job ownership. Host intelligence
+# bundles are explicit-tool only and have no client/UI half; they do not
+# auto-inject context into current sessions.
 - id: dsh-tool-policy
   name: '@local/dsh-tool-policy'
   config:
     mode: observe
     operationMode: act
+    blockDetachedBackground: true
     workspaceRoots:
       - /Users/marcus/Desktop
       - /Users/marcus/.dsh

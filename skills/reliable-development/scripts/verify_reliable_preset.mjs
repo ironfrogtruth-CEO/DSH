@@ -21,6 +21,8 @@ const goalUi = await readFile(join(goalRoot, 'agents', 'openai.yaml'), 'utf8')
 const enterpriseOrchestrator = await readFile(join(dshHome, 'skills', 'enterprise-health-orchestrator', 'SKILL.md'), 'utf8')
 const modelCalibration = await readFile(join(skillRoot, 'references', 'model-calibration.md'), 'utf8')
 const subagentOrchestration = await readFile(join(skillRoot, 'references', 'subagent-orchestration.md'), 'utf8')
+const architecture = await readFile(join(dshHome, 'architecture', 'current-system.md'), 'utf8')
+const webCordisPatch = await readFile(join(dshHome, 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
 const webProfile = JSON.parse(await readFile(join(dshHome, 'profiles', 'web', 'package.json'), 'utf8'))
 const webBundles = new Set(webProfile.dsh?.profile?.bundles || [])
 const yaml = createRequire(join(dshHome, 'install', 'package.json'))('yaml')
@@ -53,22 +55,30 @@ const activeCompositionRows = activeRows(parsedComposition)
 const activeOrdinaryBash = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-bash')
 const activePersistentBash = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-bash-persistent')
 const activePwsh = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-pwsh')
+const activeJobs = activeCompositionRows.filter((row) => row.name === '@deepseek-ai/dsh-tool-jobs')
+assert.equal(activeJobs.length, 1, 'preset must expose exactly one tool-jobs controller')
 if (process.platform === 'win32') {
   assert.equal(activePersistentBash.length, 0, 'Windows must disable persistent-shell')
   assert.equal(activeOrdinaryBash.length, 0, 'Windows must not activate ordinary bash')
   assert.equal(activePwsh.length, 1, 'Windows must retain exactly one pwsh provider')
 } else {
-  assert.equal(activePersistentBash.length, 1, 'Mac/Linux must activate exactly one persistent bash provider')
-  assert.equal(activeOrdinaryBash.length, 0, 'Mac/Linux must not activate ordinary tool-bash')
+  assert.equal(activePersistentBash.length, 0, 'Mac/Linux must not activate the legacy persistent bash provider')
+  assert.equal(activeOrdinaryBash.length, 1, 'Mac/Linux must activate exactly one standard tool-bash provider')
   assert.equal(activePwsh.length, 0, 'Mac/Linux must not activate pwsh')
 }
 
+assert.equal((composition.match(/name:\s*'@deepseek-ai\/dsh-tool-bash'/g) || []).length, 1, 'composition must register one standard bash row')
+assert.equal((composition.match(/name:\s*'@deepseek-ai\/dsh-tool-bash-persistent'/g) || []).length, 0, 'composition must not register the legacy persistent bash row')
+assert.match(composition, /- id: tool-bash[\s\S]*?name:\s*'@deepseek-ai\/dsh-tool-bash'[\s\S]*?enableRunInBackground:\s*true/)
+assert.doesNotMatch(composition, /persistent_bash|persistent bash|persistent-shell|tool-bash-persistent/i)
+const standardBashRow = parsedComposition.find((row) => row?.id === 'tool-bash')
+assert.equal(standardBashRow?.config?.enableRunInBackground, true, 'standard bash must explicitly enable run_in_background')
+
 for (const required of [
+  '@deepseek-ai/dsh-tool-bash',
+  '@deepseek-ai/dsh-tool-jobs',
   '@deepseek-ai/dsh-tool-fs',
   '@deepseek-ai/dsh-tool-fs-search',
-  '@deepseek-ai/dsh-terminal',
-  '@deepseek-ai/dsh-terminal-bash',
-  '@deepseek-ai/dsh-tool-bash-persistent',
   '@deepseek-ai/dsh-fs-local',
   '@deepseek-ai/dsh-tool-str-replace-editor',
   '@deepseek-ai/dsh-skill-filesystem',
@@ -83,13 +93,27 @@ for (const required of [
 assert.match(composition, /model:\s*deepseek-v4-flash[\s\S]*retainTokens:\s*120000/)
 assert.match(composition, /model:\s*deepseek-v4-pro[\s\S]*retainTokens:\s*120000/)
 assert.match(composition, /provider:\s*ollama-local[\s\S]*model:\s*cybermarcus:latest[\s\S]*retainTokens:\s*32768/)
-assert.match(composition, /provider:\s*ollama-local[\s\S]*model:\s*qwen3\.6:27b[\s\S]*retainTokens:\s*32768/)
+assert.match(composition, /provider:\s*ollama-local[\s\S]*model:\s*glm-marcus:latest[\s\S]*retainTokens:\s*32768/)
 assert.doesNotMatch(composition, /model:\s*(?:cybermarcus-codex:latest|gemma4:26b-a4b-it-qat)/)
 assert.match(composition, /isolate:[\s\S]*compaction:\s*true[\s\S]*toolResultPruner:\s*true[\s\S]*dshCompactionV2:\s*true/)
 assert.match(composition, /\{\{provider\}\}\/\{\{model\}\}/)
 assert.match(composition, /provider.*ollama-local|provider.*deepseek-official/i)
-assert.match(composition, /persistent_bash|persistent bash/)
+assert.match(composition, /run_in_background/)
+assert.match(composition, /enableRunInBackground:\s*true/)
 assert.match(composition, /str_replace_editor/)
+
+for (const contract of [composition, skill]) {
+  assert.match(contract, /run_in_background:\s*true|run_in_background`\s*[:：]?\s*true/)
+  assert.match(contract, /job id/i)
+  assert.match(contract, /nohup/)
+  assert.match(contract, /disown/)
+  assert.match(contract, /setsid/)
+  assert.match(contract, /bare trailing `&`|尾随 `&`|trailing `&`/i)
+  assert.match(contract, /session schedule|heartbeat runner|canonical ShrimpTank SQLite run/i)
+  assert.match(contract, /process-local job.*(?:not|不).*(?:durable|持久|跨重启)/is)
+}
+assert.doesNotMatch(skill, /persistent_bash|persistent bash|persistent-shell|tool-bash-persistent/i)
+assert.match(webCordisPatch, /name:\s*'@local\/dsh-tool-policy'[\s\S]*?blockDetachedBackground:\s*true/)
 assert.equal(ollamaProfile?.displayName, '本地模型')
 assert.deepEqual(
   pickerModels.map((model) => ({
@@ -108,8 +132,8 @@ assert.deepEqual(
       input: ['text', 'image'],
     },
     {
-      id: 'qwen3.6:27b',
-      name: 'Qwen3.6 27B',
+      id: 'glm-marcus:latest',
+      name: 'GLM-Marcus',
       contextWindow: 32768,
       maxTokens: 4096,
       input: ['text', 'image'],
@@ -118,7 +142,7 @@ assert.deepEqual(
   'ollama-local picker must contain exactly the two user-selectable local models',
 )
 assert.equal(settings?.['agent-default-model']?.provider, 'deepseek-official')
-assert.equal(settings?.['agent-default-model']?.model, 'deepseek-v4-pro')
+assert.equal(settings?.['agent-default-model']?.model, 'deepseek-v4-flash')
 assert.equal(settings?.['agent-default-model']?.reasoningEffort, 'high')
 const pickerIds = new Set(pickerModels.map((model) => model.id))
 for (const hiddenModel of ['gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddinggemma:latest']) {
@@ -127,7 +151,7 @@ for (const hiddenModel of ['gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddi
 assert.equal(pickerModels.some((model) => /tts|stt|voice|speech|语音/i.test(`${model.id} ${model.name || ''}`)), false, 'TTS/STT must not enter the LLM picker')
 assert.deepEqual(
   containerManifest?.dependencies?.ollama?.models,
-  ['cybermarcus:latest', 'qwen3.6:27b', 'gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddinggemma:latest'],
+  ['cybermarcus:latest', 'glm-marcus:latest', 'gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddinggemma:latest'],
   'container must retain user models plus hidden backend models, without Codex',
 )
 assert.doesNotMatch(composition, /@deepseek-ai\/dsh-tool-cordis/)
@@ -209,12 +233,19 @@ assert.match(goalUi, /\$goal-first-control/)
 assert.match(enterpriseOrchestrator, /A00.*A01.*A11/)
 assert.match(metadata, /name:\s*CyberMarcus/)
 assert.match(modelCalibration, /cybermarcus:latest/)
-assert.match(modelCalibration, /qwen3\.6:27b/)
+assert.match(modelCalibration, /glm-marcus:latest/)
+assert.match(modelCalibration, /GLM-4\.6V-Flash Q4_K_M/)
 assert.doesNotMatch(modelCalibration, /cybermarcus-codex:latest/)
 assert.match(modelCalibration, /gemma4.*backend visual fallback|backend visual fallback.*gemma4/i)
 assert.match(modelCalibration, /x\/flux2-klein.*backend image route|backend image route.*x\/flux2-klein/i)
 assert.match(modelCalibration, /embeddinggemma.*backend retrieval|backend retrieval.*embeddinggemma/i)
 assert.match(modelCalibration, /dsh-local-ai.*tts.*stt|tts.*stt.*dsh-local-ai/i)
+assert.match(modelCalibration, /audio\/transcription.*video|video.*audio\/transcription/i)
+assert.match(skill, /FLUX image generation.*audio\/transcription.*video\/成片|audio\/transcription.*video\/成片.*FLUX image generation/i)
+assert.match(skill, /top-level.*(?:dispatch|worker)|(?:dispatch|worker).*top-level/i)
+assert.match(skill, /large schemas are hidden|hidden from the compact local prompt/i)
+assert.match(skill, /GLM-4\.6V-Flash Q4_K_M/)
+assert.match(architecture, /canonical.*本地模型根.*\/Users\/marcus\/Desktop\/虾缸\/MODEL|\/Users\/marcus\/Desktop\/虾缸\/MODEL.*canonical/i)
 assert.match(subagentOrchestration, /蜘蛛侠·前端-01/)
 assert.match(subagentOrchestration, /exclusive file\/module|exclusive.*ownership|独占.*文件/i)
 

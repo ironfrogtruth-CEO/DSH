@@ -6,6 +6,7 @@ REPAIR_SCRIPT="$WORKSPACE/运行脚本/ensure_hermes_arm64.sh"
 CONFIG_SCRIPT="$WORKSPACE/运行脚本/ensure_hermes_local_config.sh"
 SKILL_SYNC_SCRIPT="$WORKSPACE/运行脚本/sync_hermes_skills.sh"
 OLLAMA_URL="http://127.0.0.1:11434/api/tags"
+MODEL_RUNTIME="/Users/marcus/.dsh/scripts/start-local-model-runtime"
 MPL_CACHE="$WORKSPACE/离线依赖/matplotlib-cache"
 
 say_err() {
@@ -19,12 +20,16 @@ say_err() {
   /bin/rm -f "$tmp"
 }
 
-# 本机只有 24GB 统一内存。64K 是 Hermes 工具代理的最低可靠窗口；
+# 本机只有 24GB 统一内存。32K 覆盖现有 Hermes 会话，同时减少 KV 缓存和换页压力；
 # 单并发和有限驻留可避免模型长期占满内存。
-/bin/launchctl setenv OLLAMA_CONTEXT_LENGTH 64000
+/bin/launchctl setenv OLLAMA_CONTEXT_LENGTH 32768
 /bin/launchctl setenv OLLAMA_KEEP_ALIVE 10m
 /bin/launchctl setenv OLLAMA_NUM_PARALLEL 1
+/bin/launchctl setenv OLLAMA_MAX_LOADED_MODELS 1
+/bin/launchctl setenv OLLAMA_MODELS "/Users/marcus/Desktop/虾缸/MODEL/ollama/models"
 /bin/launchctl setenv OLLAMA_NO_CLOUD 1
+/bin/launchctl setenv HF_HOME "/Users/marcus/Desktop/虾缸/MODEL/cache/huggingface"
+/bin/launchctl setenv MODELSCOPE_CACHE "/Users/marcus/Desktop/虾缸/MODEL/cache/modelscope"
 /bin/mkdir -p "$MPL_CACHE"
 /bin/launchctl setenv MPLCONFIGDIR "$MPL_CACHE"
 
@@ -59,20 +64,10 @@ $SKILL_SYNC_SCRIPT"
   fi
 fi
 
-if ! /usr/bin/curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
-  /usr/bin/open -a Ollama
-  ollama_ready=0
-  for _ in {1..90}; do
-    if /usr/bin/curl -fsS "$OLLAMA_URL" >/dev/null 2>&1; then
-      ollama_ready=1
-      break
-    fi
-    sleep 1
-  done
-  if [[ "$ollama_ready" != "1" ]]; then
-    say_err "Ollama 启动超时（90 秒）。请打开 Ollama 后重试。"
-    exit 1
-  fi
+if [[ ! -x "$MODEL_RUNTIME" ]] || ! "$MODEL_RUNTIME"; then
+  say_err "本地模型运行时启动失败：
+$MODEL_RUNTIME"
+  exit 1
 fi
 
 if ! /usr/local/bin/ollama show cybermarcus:latest >/dev/null 2>&1; then

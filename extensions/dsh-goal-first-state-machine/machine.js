@@ -98,9 +98,13 @@ export function extractOutputContract(text) {
   const language = /(?:用|使用|请用)英文|in English/i.test(source) ? 'en' : (/(?:用|使用|请用)中文|汉语/.test(source) ? 'zh' : null)
   const impliedSingleSentence = /(?:只|仅)(?:给|输出|回复)(?:出)?(?:改写后的)?句子/i.test(source)
   const exactSentences = sentenceMatch ? parseChineseNumber(sentenceMatch[1]) : (impliedSingleSentence ? 1 : null)
+  const silentUntilTerminal = /(?:只在\s*)?最后\s*(?:再\s*)?(?:交付|告诉我|汇报)|(?:完成|跑通|跑完|全部完成|任务完成)\s*后\s*(?:再\s*)?(?:交付|告诉我|汇报)/i.test(source)
+  const continuousUntilTerminal = silentUntilTerminal || /不要\s*(?:在\s*)?(?:中途|半途|途中|中间)\s*(?:停|停下|停止|停下来)|一直(?:执行|运行|处理|做到|推进|跑)\s*(?:到|至)\s*完成|跑通后\s*再\s*(?:交付|告诉我|汇报)/i.test(source)
   return {
     exactSentences: Number.isSafeInteger(exactSentences) && exactSentences > 0 ? exactSentences : null,
     resultOnly: /(?:只|仅)(?:给|要|输出|回复)(?:出)?(?:改写后的)?(?:结果|答案|句子|一句|一段)|不要解释|无需解释|不加前言|不要前言/i.test(source),
+    continuousUntilTerminal,
+    silentUntilTerminal,
     format,
     language,
     maxChars: Number(maxCharsMatch?.[1] || maxCharsMatch?.[2]) || null,
@@ -112,7 +116,8 @@ export function classifyTask(text) {
   const source = String(text || '').trim()
   const numberedRequirements = (source.match(/(?:^|\n)\s*\d+[.)、]/g) || []).length
   const explicitSimple = SIMPLE_WORDING.test(source) && !/(?:代码|仓库|文件|插件|实现|修复|升级|部署|状态机)/i.test(source)
-  const complexSignals = [COMPLEX_WORDING.test(source), RISK_WORDING.test(source), numberedRequirements >= 2, source.length > 260].filter(Boolean).length
+  const continuousExecution = extractOutputContract(source).continuousUntilTerminal === true
+  const complexSignals = [COMPLEX_WORDING.test(source), RISK_WORDING.test(source), continuousExecution, numberedRequirements >= 2, source.length > 260].filter(Boolean).length
   const classification = explicitSimple || complexSignals < 2 ? 'simple_direct' : 'sop_required'
   return {
     classification,
@@ -183,6 +188,9 @@ function evidence(value) { return list(value, 30) }
 
 export function transitionState(state, input, { turn, sourceEventSeq }) {
   if (!state || state.classification !== 'sop_required') throw new Error('state transition is available only for sop_required tasks')
+  if (state.outputContract?.continuousUntilTerminal !== true && state.lastModelTransitionTurn === turn) {
+    throw new Error('only one goal-first state transition is allowed per turn unless continuousUntilTerminal is enabled')
+  }
   const action = String(input?.action || '')
   const next = structuredClone(state)
   // Historical schemaVersion=1 snapshots predate governance. Rehydrate the
@@ -281,7 +289,19 @@ export function renderStateContext(state, currentTurn = null) {
   const ministries = governance?.ministries?.join('+') || '未映射'
   const gate = governance?.gate || '当前节点 Gate 未定义'
   const overlay = `province=${provinces}; ministry=${ministries}; gate=${gate}`
-  if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; ${overlay}; qa=${state.qa.status}; output_contract=${contract}. A legal Host state transition has already been recorded in this turn. Do not advance another node unless the user explicitly asked this turn to execute multiple nodes; otherwise finish the response now and report the recorded current node.</goal_first_host_state>`
+  const continuousUntilTerminal = state.outputContract?.continuousUntilTerminal === true
+  const silentUntilTerminal = state.outputContract?.silentUntilTerminal === true
+  if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) {
+    const sameTurnInstruction = state.phase === 'complete'
+      ? 'The task is terminal. Provide the final delivery and conclusion now.'
+      : continuousUntilTerminal
+        ? `A legal Host state transition has already been recorded in this turn. The user explicitly requires continuous execution until terminal${silentUntilTerminal ? ' and no progress report before terminal' : ''}. Continue executing the current node with available tools. After genuinely completing that node with evidence, you may call goal_first_state_transition again using the current revision for the next sequential node; never batch-jump or invent evidence. Do not end the response merely because this transition was recorded. Stop only for terminal completion, a user decision that changes the result, new permission, an external security block, or an unrecoverable failure.`
+        : 'A legal Host state transition has already been recorded in this turn. Do not advance another node in this turn; finish the response now and report the recorded current node.'
+    return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; ${overlay}; qa=${state.qa.status}; output_contract=${contract}. ${sameTurnInstruction}</goal_first_host_state>`
+  }
   const routeSchema = state.currentNode === 'route' ? ' For record_goal, goalContract must contain non-empty problem:string, audienceAction:string, deliverables:string[], constraints:string[], successCriteria:string[], minimumDeliverable:string, validation:string[], rollbackPoints:string[]; truthSources is string[] and may be empty only when explicitly marked pending.' : ''
-  return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; ${overlay}; qa=${state.qa.status}; output_contract=${contract}. This Host state is authoritative. Call goal_first_state_transition with expectedRevision=${state.revision} before the turn ends.${routeSchema} Nodes must advance in order and export is forbidden until QA passes.</goal_first_host_state>`
+  const continuousInstruction = continuousUntilTerminal
+    ? ` The user explicitly requires continuous execution until terminal${silentUntilTerminal ? ' and only a final delivery' : ''}. Continue node by node with available tools. After each real node completion with evidence, continue with the next sequential transition using the current revision; never batch-jump or invent evidence, and do not stop at a normal node boundary. Stop only for terminal completion, a user decision that changes the result, new permission, an external security block, or an unrecoverable failure.`
+    : ''
+  return `<goal_first_host_state version="1">route=sop_required; revision=${state.revision}; phase=${state.phase}; current_node=${state.currentNode}; ${overlay}; qa=${state.qa.status}; output_contract=${contract}. This Host state is authoritative. Call goal_first_state_transition with expectedRevision=${state.revision} before the turn ends.${routeSchema} Nodes must advance in order and export is forbidden until QA passes.${continuousInstruction}</goal_first_host_state>`
 }

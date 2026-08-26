@@ -94,7 +94,7 @@ dependencies:                        # 容器依赖的外部资源(不打包)
     note: 本地模型（用户可选模型与后台专用模型）
     models:
       - cybermarcus:latest
-      - qwen3.6:27b
+      - glm-marcus:latest
       # 后台静默模型：由视觉、生图、检索适配器按能力调用，不进入 LLM picker。
       - gemma4:26b-a4b-it-qat
       - x/flux2-klein:4b

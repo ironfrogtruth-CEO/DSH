@@ -4,8 +4,8 @@
 会话、任务、Skill、轨迹与 Session log 的 `client.js.original` /
 `client.js.modified` 已在 2026-08-24 迁移到 `0.1.1-rc.2`；升级前的
 rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版把入口从
-`header.actions` 改为 `header.lineage`，因此保留官方新版交互，不强行覆盖旧
-`conversation.view` 补丁。
+`header.actions` 改为 `header.lineage`，因此保留官方新版交互，不强行覆盖新版
+会话入口。
 
 ## 修改内容
 
@@ -21,7 +21,7 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
      `origin/parentId/running/completed/pendingInteraction` 与 `projectionValues.subagent`
      读取真实子代理身份和生命周期，点击通过正式 `sessions.openSubagent` 地址进入对应子会话；
      并行子代理各自独立更新，状态结束后保留在信息流
-3. **后台任务 tab**(dsh-client-ui-jobs):全视图任务列表,无标题、紧凑排版
+3. **按需出现的会话 header 后台任务入口**(dsh-client-ui-jobs):只在当前会话已有后台任务时出现，横向显示运行数、已运行/耗时和终态；不占主导航，也不把任务数据移出会话状态
 4. **子代理 tab**(dsh-client-ui-subagent):全视图子代理树,三色状态灯(绿=运行中/黄=等待中/灰=已完成),点击行不跳转
 5. **Skill tab**(dsh-client-ui-skill):全视图 skill 列表(名称+描述)
 6. **shrimp-shell 扩展**(~/.dsh/extensions/shrimp-shell/,升级不受影响):

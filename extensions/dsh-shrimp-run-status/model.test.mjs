@@ -2,14 +2,23 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   ACTIVE_RUN_STATUSES,
+  AUTO_DISCOVERY_INTERVAL_MS,
+  FULL_SUMMARY_REFRESH_INTERVAL_MS,
+  HIDDEN_AUTO_DISCOVERY_INTERVAL_MS,
+  activeRunSignature,
+  autoDiscoveryDelayMs,
   canonicalShrimpName,
   groupLatestActiveRuns,
   isActiveRunStatus,
+  mergeRunSignatures,
   normalizeRunPayload,
   pipelineRefsOf,
   projectPublishedShrimps,
   refsMatch,
   runBelongsToShrimp,
+  runSignatureEntries,
+  shouldAutoOpen,
+  shrimpTankDismissedStorageKey,
   visibleNodes,
 } from './model.mjs'
 
@@ -114,4 +123,32 @@ test('visibleNodes keeps first/current neighbors/last for long tracks', () => {
   assert.ok(visibleIds.includes('6'))
   assert.ok(visibleIds.includes('9'))
   assert.equal(visibleNodes([]).length, 0)
+})
+
+test('active run signature is stable, canonical, sorted, and name-independent', () => {
+  const groups = [
+    { ref: 'health', name: '旧名称', run: { id: 'run-2', pipeline_ref: 'health' } },
+    { ref: 'article', name: '文章', run: { run_id: 'run-1', pipeline_ref: 'article' } },
+  ]
+  assert.equal(activeRunSignature(groups), 'article:run-1|health:run-2')
+  assert.equal(activeRunSignature([...groups].reverse()), activeRunSignature(groups))
+  assert.equal(activeRunSignature([{ ref: 'health', name: '改名', run: { id: 'run-2', pipeline_ref: 'health' } }]), 'health:run-2')
+  assert.equal(activeRunSignature([{ run: { id: 'missing-pipeline' } }]), '')
+})
+
+test('closed-card discovery cadence and session dismissal key are explicit', () => {
+  assert.equal(autoDiscoveryDelayMs(false), AUTO_DISCOVERY_INTERVAL_MS)
+  assert.equal(autoDiscoveryDelayMs(true), HIDDEN_AUTO_DISCOVERY_INTERVAL_MS)
+  assert.equal(AUTO_DISCOVERY_INTERVAL_MS, 12_000)
+  assert.equal(HIDDEN_AUTO_DISCOVERY_INTERVAL_MS, 30_000)
+  assert.equal(FULL_SUMMARY_REFRESH_INTERVAL_MS, 4_000)
+  assert.equal(shrimpTankDismissedStorageKey('session/1'), 'dsh-shrimp-tank-dismissed:session%2F1')
+  assert.equal(shrimpTankDismissedStorageKey(''), '')
+  assert.equal(shouldAutoOpen('p1:r1', ''), true)
+  assert.equal(shouldAutoOpen('p1:r1', 'p1:r1'), false)
+  assert.equal(shouldAutoOpen('p1:r1', 'p1:r1|p2:r2'), false)
+  assert.equal(shouldAutoOpen('p1:r1|p3:r3', 'p1:r1|p2:r2'), true)
+  assert.equal(shouldAutoOpen('', ''), false)
+  assert.deepEqual(runSignatureEntries('p2:r2|p1:r1|p2:r2'), ['p1:r1', 'p2:r2'])
+  assert.equal(mergeRunSignatures('p2:r2|p1:r1', 'p3:r3|p1:r1'), 'p1:r1|p2:r2|p3:r3')
 })

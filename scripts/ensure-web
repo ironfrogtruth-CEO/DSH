@@ -53,6 +53,14 @@ if [ ! -f "$DSH_BIN" ]; then
   echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.1-rc.2 --save-exact" >>"$LOG"
   exit 1
 fi
+# 大神是本地模型的用户入口。启动 Host 前先把 Ollama、模型缓存与媒体
+# 依赖绑定到虾缸/MODEL；云端 provider 不改，且未加载模型时只保留轻量服务。
+if [ -x "$HOME/.dsh/scripts/start-local-model-runtime" ]; then
+  if ! "$HOME/.dsh/scripts/start-local-model-runtime" >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: local model runtime failed; refusing to start Host" >>"$LOG"
+    exit 1
+  fi
+fi
 # LLM 适配器补丁(历史图片块降级为文字占位,防线程报废);幂等,install 升级后自动重打
 /usr/local/bin/node "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" >>"$LOG" 2>&1 || true
 # edit 工具自动观察补丁(先读后写策略自动满足,消除 FS_NOT_OBSERVED);幂等
@@ -65,6 +73,12 @@ fi
 # client-only command action补丁(严格 rc.2 Gate,幂等)
 if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-client-command-actions.mjs" >>"$LOG" 2>&1; then
   echo "$(date '+%F %T') ensure-web: client command actions patch failed; refusing to start Host" >>"$LOG"
+  exit 1
+fi
+# Reapply the reviewed UI bundle snapshots after install/package refreshes.
+# This keeps the per-session managed-job entry visible across upgrades.
+if ! /usr/local/bin/node "$HOME/.dsh/scripts/replay-custom-ui-patches.mjs" --apply >>"$LOG" 2>&1; then
+  echo "$(date '+%F %T') ensure-web: custom UI patch replay failed; refusing to start Host" >>"$LOG"
   exit 1
 fi
 
@@ -128,6 +142,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/model.mjs" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/cordis.patch.yml" \
+  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.modified" \
@@ -135,11 +150,13 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified" \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-jobs/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js" \
   "$HOME/.dsh/scripts/ensure-web" \
   "$HOME/.dsh/scripts/host-service-state" \
   "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" \
   "$HOME/.dsh/scripts/patch-client-command-actions.mjs" \
+  "$HOME/.dsh/scripts/replay-custom-ui-patches.mjs" \
   "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" \
   "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" \
   "$HOME/.dsh/scripts/daily-git-commit.mjs" \

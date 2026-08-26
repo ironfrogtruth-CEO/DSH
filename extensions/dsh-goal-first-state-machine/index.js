@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { createInitialState, renderStateContext, transitionState, userText } from './machine.js'
+import { createInitialState, extractOutputContract, renderStateContext, transitionState, userText } from './machine.js'
 import { GoalFirstStateError, GoalFirstStateStore } from './state-store.js'
 import { enforceOneSentenceStream } from './stream-contract.js'
 
@@ -53,6 +53,60 @@ function sourceSummary(state) {
   return state.classification === 'simple_direct' ? 'simple output contract' : `${state.currentNode} r${state.revision}`
 }
 
+function latestHumanText(messages = []) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message?.source?.kind !== 'user') continue
+    const text = (message.content ?? []).filter((block) => block?.type === 'text').map((block) => block.text).join('\n').trim()
+    if (text) return text
+  }
+  return ''
+}
+
+function goalContractText(goalContract) {
+  if (!goalContract || typeof goalContract !== 'object') return ''
+  const values = [
+    goalContract.constraints,
+    goalContract.deliverables,
+    goalContract.successCriteria ?? goalContract.success_criteria,
+    goalContract.minimumDeliverable ?? goalContract.minimum_deliverable,
+  ]
+  return values
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+function rehydrateOutputContract(state, latestText, sourceEventSeq) {
+  if (!state || state.classification !== 'sop_required' || state.phase !== 'active') return null
+  const current = state.outputContract && typeof state.outputContract === 'object' ? state.outputContract : {}
+  const fields = ['continuousUntilTerminal', 'silentUntilTerminal']
+  const missing = fields.some((field) => typeof current[field] !== 'boolean')
+  const latest = latestText ? extractOutputContract(latestText) : null
+  const explicitUpgrade = latest?.continuousUntilTerminal === true || latest?.silentUntilTerminal === true
+  if (!missing && !explicitUpgrade) return null
+  const inferred = missing
+    ? extractOutputContract([latestText, goalContractText(state.goalContract)].filter(Boolean).join('\n'))
+    : latest
+  const outputContract = { ...current }
+  let changed = false
+  for (const field of fields) {
+    if (typeof current[field] !== 'boolean') {
+      outputContract[field] = field === 'continuousUntilTerminal' && current.silentUntilTerminal === true
+        ? true
+        : inferred?.[field] === true
+      changed = true
+    } else if (inferred?.[field] === true && current[field] !== true) {
+      outputContract[field] = true
+      changed = true
+    }
+  }
+  return changed
+    ? { ...state, outputContract, sourceEventSeq: Math.max(Number(sourceEventSeq || 0), Number(state.sourceEventSeq || 0)), updatedAt: Date.now() }
+    : null
+}
+
 function isExportLike(exec) {
   const nameText = String(exec?.name || '').toLowerCase()
   if (/(?:^|[_-])(export|publish|deliver|package|pdf|pptx)(?:$|[_-])/.test(nameText)) return true
@@ -89,7 +143,7 @@ export async function apply(ctx, config = {}) {
 
   register({
     name: 'goal_first_state_transition',
-    description: 'Advance or pause the Host-enforced goal-first state using revision CAS. Nodes are sequential; failed QA blocks and export requires passed QA.',
+    description: 'Advance or pause the Host-enforced goal-first state using revision CAS. Nodes are sequential; ordinary tasks allow one transition per turn, while continuousUntilTerminal tasks may continue with evidence-backed sequential transitions in the same turn. Failed QA blocks and export requires passed QA.',
     parameters: {
       expectedRevision: { type: 'integer', required: true },
       action: { type: 'string', required: true, enum: ['record_goal', 'complete_node', 'pause', 'block', 'resume'] },
@@ -135,6 +189,8 @@ export async function apply(ctx, config = {}) {
         updatedAt: Date.now(),
       }, state.revision)
     }
+    const rehydrated = rehydrateOutputContract(state, latestHumanText(messages), Math.max(agent.session.seq - 1, 0))
+    if (rehydrated) state = await store.append(agent.id, rehydrated, state.revision)
     if (human && (!state || state.phase === 'complete' || state.classification === 'simple_direct')) {
       const initial = createInitialState({ sessionId: agent.id, text: human, sourceEventSeq: Math.max(agent.session.seq - 1, 0), turn })
       state = await store.append(agent.id, initial, state?.revision ?? 0)
@@ -162,7 +218,36 @@ export async function apply(ctx, config = {}) {
       if (state.phase !== 'complete') await store.append(agent.id, { ...state, phase: 'complete', currentNode: 'direct', nodes: { direct: 'completed' }, sourceEventSeq: Math.max(agent.session.seq - 1, 0), updatedAt: Date.now() }, state.revision)
       return
     }
-    if (state.lastModelTransitionTurn === turn || state.phase === 'complete') return
+    if (state.phase !== 'active') return
+    const continuousUntilTerminal = state.outputContract?.continuousUntilTerminal === true
+    const transitionRecordedThisTurn = state.lastModelTransitionTurn === turn
+    if (continuousUntilTerminal && transitionRecordedThisTurn) {
+      const attempts = state.repair?.turn === turn ? state.repair.attempts : 0
+      if (attempts < maxRepairAttempts) {
+        const repaired = await store.append(agent.id, {
+          ...state,
+          repair: { turn, attempts: attempts + 1 },
+          sourceEventSeq: Math.max(agent.session.seq - 1, 0),
+          updatedAt: Date.now(),
+        }, state.revision)
+        agent.steer(createUserMessage({
+          content: [{ type: 'text', text: `<goal_first_continuation_required revision="${repaired.revision}">The user explicitly requires this task to continue until terminal. A legal state transition already occurred in this turn. Continue the current task with available tools. After genuinely completing the current node with evidence, call goal_first_state_transition for the next sequential node using the current revision; do not batch-jump or invent evidence. Do not end the response merely because this transition was recorded. Stop only for terminal completion, a user decision that changes the result, new permission, an external security block, or an unrecoverable failure.</goal_first_continuation_required>` }],
+          source: { kind: 'plugin', plugin: name, form: 'notice', summary: 'continuous execution required' },
+        }))
+        return
+      }
+      await store.append(agent.id, {
+        ...state,
+        phase: 'blocked',
+        nodes: { ...state.nodes, [state.currentNode]: 'blocked' },
+        rollbackTarget: state.currentNode,
+        failure: { code: 'CONTINUOUS_EXECUTION_STOPPED', message: 'model attempted to end before terminal after the bounded continuation reminder' },
+        sourceEventSeq: Math.max(agent.session.seq - 1, 0),
+        updatedAt: Date.now(),
+      }, state.revision)
+      return
+    }
+    if (transitionRecordedThisTurn) return
     const attempts = state.repair?.turn === turn ? state.repair.attempts : 0
     if (attempts < maxRepairAttempts) {
       const repaired = await store.append(agent.id, { ...state, repair: { turn, attempts: attempts + 1 }, sourceEventSeq: Math.max(agent.session.seq - 1, 0), updatedAt: Date.now() }, state.revision)

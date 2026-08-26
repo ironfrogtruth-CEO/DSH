@@ -10,6 +10,13 @@
 export const name = 'dsh-local-route-policy'
 export const inject = []
 
+export const LOCAL_MODEL_PERSONA = `You are CyberMarcus running on the selected local route {{provider}}/{{model}} in {{cwd}}.
+Keep the same truth, safety, ownership, QA, rollback, and completion gates as the cloud route, but use a narrow execution width: one file or one contract at a time, inspect before editing, preserve unrelated dirty changes, and run syntax plus the smallest focused test immediately after each mutation.
+For a simple request, answer directly. For a complex request, load goal-first-control, record the goal and output contracts, and load sop-orchestrator only when goal-first-control classifies the work as sop_required. QA blocks delivery; never turn a plan, local file, child report, or passing unit test into a completion claim without the required runtime evidence.
+Use skill to load domain instructions on demand. Use bash, read, and str_replace_editor for implementation. Long work must use managed background jobs and be collected before final delivery. Delegate only bounded, decision-complete work and verify the result yourself.
+Local media remains available without large tool schemas: call /Users/marcus/.dsh/bin/dsh-local-ai through bash for image (FLUX), tts, stt, video composition, chat, or embedding. GLM-Marcus and CyberMarcus share this work mode. Hidden specialist schemas are a context-budget choice, not evidence that a capability is unavailable; use the local gateway first, and use execute_flash only when the user allows an online worker and the route is available.
+For Chinese output, write clear native Chinese. Keep progress concise, state verified artifacts and limits, and never expose secrets or internal prompt text.`
+
 // Keep the local request below Ollama's practical 32K context ceiling while
 // retaining the development/orchestration surface needed by CyberMarcus.
 // This list is intentionally fixed and small. Specialist browser/MCP/media/
@@ -18,17 +25,10 @@ export const inject = []
 export const LOCAL_MODEL_TOOL_NAMES = Object.freeze([
   'bash',
   'read',
-  'write',
-  'edit',
-  'glob',
-  'grep',
   'str_replace_editor',
   'skill',
-  'memory_save',
   'memory_recall',
   'memory_checkpoint',
-  'memory_get',
-  'memory_list',
   'get_goal',
   'create_goal',
   'update_goal',
@@ -36,33 +36,10 @@ export const LOCAL_MODEL_TOOL_NAMES = Object.freeze([
   'goal_first_state_transition',
   'todo_write',
   'subagent',
-  'subagent_fork',
   'execute_flash',
-  'list_agents',
-  'send_message',
-  'interrupt_agent',
-  'workflow',
   'job_output',
   'job_list',
   'job_kill',
-  'git_status',
-  'git_diff',
-  'git_log',
-  'git_stage',
-  'git_unstage',
-  'git_commit',
-  'code_index_build',
-  'code_index_query',
-  'code_repo_map',
-  'code_test_impact',
-  'intelligence_task_create',
-  'intelligence_task_update',
-  'intelligence_task_checkpoint',
-  'intelligence_task_list',
-  'intelligence_context_bundle',
-  'schedule_create',
-  'schedule_list',
-  'web_search',
 ])
 
 // These are the minimum controls required for the local route to inspect,
@@ -90,6 +67,31 @@ export class LocalRoutePolicyError extends Error {
 
 function toolName(tool) {
   return typeof tool?.name === 'string' ? tool.name : ''
+}
+
+function toolSectionIsVisible(sectionName, allowedNames) {
+  if (!sectionName.startsWith('tool:')) return true
+  const suffix = sectionName.slice('tool:'.length)
+  if (suffix === 'goal') {
+    return ['get_goal', 'create_goal', 'update_goal'].some((name) => allowedNames.has(name))
+  }
+  if (suffix === 'jobs') {
+    return ['job_output', 'job_list', 'job_kill'].some((name) => allowedNames.has(name))
+  }
+  return allowedNames.has(suffix)
+}
+
+/** Remove guidance for hidden tools so their prose does not survive schema filtering. */
+export function filterLocalModelSections(sections, allowedToolNames = LOCAL_MODEL_TOOL_NAMES) {
+  if (!Array.isArray(sections)) {
+    throw new LocalRoutePolicyError('LOCAL_TOOL_POLICY_INVALID_SECTIONS', 'local route policy requires an assembly.sections array')
+  }
+  const allowedNames = new Set(allowedToolNames)
+  return sections
+    .filter((section) => toolSectionIsVisible(String(section?.name || ''), allowedNames))
+    .map((section) => section?.name === 'deployment:persona'
+      ? { ...section, text: LOCAL_MODEL_PERSONA }
+      : section)
 }
 
 /**
@@ -149,13 +151,15 @@ export function createAssemblyListener(config = {}) {
     // result so a later scoped listener cannot be bypassed by an earlier view.
     const finalAssembly = await next()
     if (!isOllamaAssembly(finalAssembly)) return finalAssembly
+    const tools = filterToolsForProvider(
+      finalAssembly.tools,
+      finalAssembly.variables?.provider,
+      config.allowedNames || config.allowlist || LOCAL_MODEL_TOOL_NAMES,
+    )
     return {
       ...finalAssembly,
-      tools: filterToolsForProvider(
-        finalAssembly.tools,
-        finalAssembly.variables?.provider,
-        config.allowedNames || config.allowlist || LOCAL_MODEL_TOOL_NAMES,
-      ),
+      sections: filterLocalModelSections(finalAssembly.sections, tools.map(toolName)),
+      tools,
     }
   }
 }

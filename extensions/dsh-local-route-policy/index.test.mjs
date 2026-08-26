@@ -3,11 +3,13 @@ import test from 'node:test'
 
 import {
   LOCAL_MODEL_TOOL_NAMES,
+  LOCAL_MODEL_PERSONA,
   LocalRoutePolicyError,
   REQUIRED_CORE_TOOL_NAMES,
   apply,
   createAssemblyListener,
   filterLocalModelTools,
+  filterLocalModelSections,
   filterToolsForProvider,
 } from './index.js'
 
@@ -29,7 +31,29 @@ test('local helper preserves order, keeps core tools, and hides specialist tools
   assert.equal(filtered.some((tool) => tool.name === 'mcp_wechat_publish'), false)
   assert.equal(filtered.some((tool) => tool.name === 'git_push'), false)
   assert.equal(filtered.length <= 50, true)
-  assert.equal(LOCAL_MODEL_TOOL_NAMES.length <= 50, true)
+  assert.equal(LOCAL_MODEL_TOOL_NAMES.length <= 20, true)
+  assert.equal(LOCAL_MODEL_PERSONA.length <= 2000, true)
+})
+
+test('local section filter removes guidance for hidden tools and preserves shared contracts', () => {
+  const persona = { name: 'deployment:persona', text: 'persona' }
+  const sections = [
+    persona,
+    { name: 'tool:bash', text: 'bash' },
+    { name: 'tool:goal', text: 'goal' },
+    { name: 'tool:jobs', text: 'jobs' },
+    { name: 'tool:web_search', text: 'web' },
+    { name: 'tool:git_commit', text: 'git' },
+  ]
+  const filtered = filterLocalModelSections(sections)
+  assert.notStrictEqual(filtered[0], persona)
+  assert.equal(filtered[0].text, LOCAL_MODEL_PERSONA)
+  assert.deepEqual(filtered.map((section) => section.name), [
+    'deployment:persona',
+    'tool:bash',
+    'tool:goal',
+    'tool:jobs',
+  ])
 })
 
 test('missing core tools fail closed instead of returning an incomplete catalog', () => {
@@ -56,7 +80,7 @@ test('waterfall awaits next and filters only the final Ollama assembly', async (
     { agent: { id: 'agent-1' } },
     async () => {
       nextCalls += 1
-      return { variables: { provider: 'ollama-local' }, tools: [...coreTools, { name: 'browser_open' }] }
+      return { variables: { provider: 'ollama-local' }, sections: [], tools: [...coreTools, { name: 'browser_open' }] }
     },
   )
   assert.equal(nextCalls, 1)
@@ -67,11 +91,13 @@ test('DeepSeek and execute_flash routes keep the complete final catalog', async 
   const listener = createAssemblyListener({ requiredNames: ['bash'] })
   for (const provider of ['deepseek-official', 'execute_flash', undefined]) {
     const tools = [{ name: 'bash' }, { name: 'browser_open' }, { name: 'mcp_wechat_publish' }]
+    const assembly = { variables: { provider }, sections: [{ name: 'cloud:full', text: 'unchanged' }], contexts: [{ name: 'runtime', text: 'unchanged' }], tools }
     const final = await listener(
       { variables: { provider: 'ollama-local' }, tools: [] },
       {},
-      async () => ({ variables: { provider }, tools }),
+      async () => assembly,
     )
+    assert.strictEqual(final, assembly)
     assert.strictEqual(final.tools, tools)
   }
 })

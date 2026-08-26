@@ -11,6 +11,10 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const inject = ['slots', 'commandUi']
     const OPEN_EVENT = 'shrimp:tank-open'
+    const AUTO_DISCOVERY_INTERVAL_MS = 12_000
+    const HIDDEN_AUTO_DISCOVERY_INTERVAL_MS = 30_000
+    const FULL_SUMMARY_REFRESH_INTERVAL_MS = 4_000
+    const DISMISSED_STORAGE_PREFIX = 'dsh-shrimp-tank-dismissed:'
     const ACTIVE_STATUSES = new Set([
       'running',
       'processing',
@@ -253,6 +257,54 @@ window.__ModuleLoader__.load({
       }
       return [...byRef.values()].sort((left, right) => right.updatedAt - left.updatedAt || left.name.localeCompare(right.name))
     }
+    // Stable identity for active canonical runs. Names, ordering and progress
+    // are deliberately excluded so a dismissed run cannot bounce the card.
+    const activeRunSignature = (groups) => {
+      const entries = []
+      for (const group of Array.isArray(groups) ? groups : []) {
+        const pipelineRef = first(
+          pipelineRefsOf(group?.run)[0],
+          group?.pipelineRef,
+          group?.pipeline_ref,
+          group?.ref,
+          pipelineRefsOf(group)[0],
+          pipelineRefsOf(group?.item)[0],
+        )
+        const runId = first(group?.runId, group?.run_id, runIdOf(group?.run), runIdOf(group))
+        if (pipelineRef && runId) entries.push(`${pipelineRef}:${runId}`)
+      }
+      return [...new Set(entries)].sort().join('|')
+    }
+    const activeSignature = activeRunSignature
+    const autoDiscoveryDelayMs = (hidden = false) => hidden ? HIDDEN_AUTO_DISCOVERY_INTERVAL_MS : AUTO_DISCOVERY_INTERVAL_MS
+    const autoPollDelayMs = autoDiscoveryDelayMs
+    const runSignatureEntries = (signature) => [...new Set(text(signature).split('|').map((entry) => entry.trim()).filter(Boolean))].sort()
+    const mergeRunSignatures = (...signatures) => [...new Set(signatures.flatMap(runSignatureEntries))].sort().join('|')
+    const dismissalStorageKey = (sessionId) => {
+      const id = first(sessionId)
+      return id ? `${DISMISSED_STORAGE_PREFIX}${encodeURIComponent(id)}` : ''
+    }
+    const readDismissedSignature = (sessionId) => {
+      const key = dismissalStorageKey(sessionId)
+      if (!key || typeof window === 'undefined') return ''
+      try { return first(window.localStorage?.getItem(key)) } catch { return '' }
+    }
+    const writeDismissedSignature = (sessionId, signature) => {
+      const key = dismissalStorageKey(sessionId)
+      if (!key || !signature || typeof window === 'undefined') return
+      try { window.localStorage?.setItem(key, signature) } catch { /* private mode/storage quota */ }
+    }
+    const clearDismissedSignature = (sessionId) => {
+      const key = dismissalStorageKey(sessionId)
+      if (!key || typeof window === 'undefined') return
+      try { window.localStorage?.removeItem(key) } catch { /* private mode/storage quota */ }
+    }
+    const shouldAutoOpen = (signature, dismissedSignature = '') => {
+      const active = runSignatureEntries(signature)
+      if (active.length === 0) return false
+      const dismissed = new Set(runSignatureEntries(dismissedSignature))
+      return active.some((entry) => !dismissed.has(entry))
+    }
     const visibleNodes = (nodes, limit = 6, current = undefined) => {
       const source = Array.isArray(nodes) ? nodes : []
       if (limit && typeof limit === 'object') {
@@ -372,20 +424,54 @@ window.__ModuleLoader__.load({
       const [state, setState] = React.useState({ phase: 'idle', groups: [], shrimps: [], error: '' })
       const [selectedRef, setSelectedRef] = React.useState('')
       const [reloadKey, setReloadKey] = React.useState(0)
-      const close = React.useCallback(() => setOpen(false), [])
+      const dismissedSignatureRef = React.useRef(readDismissedSignature(sessionId))
+      const observedSignatureRef = React.useRef('')
+      const activeSignatureRef = React.useRef('')
+      const dismissNextDiscoveryRef = React.useRef(false)
+      const generationRef = React.useRef(0)
+      const close = React.useCallback(() => {
+        const signature = first(activeSignatureRef.current, observedSignatureRef.current)
+        if (signature) {
+          const dismissed = mergeRunSignatures(dismissedSignatureRef.current, signature)
+          dismissedSignatureRef.current = dismissed
+          writeDismissedSignature(sessionId, dismissed)
+        } else dismissNextDiscoveryRef.current = true
+        // Invalidate an in-flight read synchronously; effect cleanup follows on
+        // the next commit, so a late response cannot reopen the dismissed run.
+        generationRef.current += 1
+        setOpen(false)
+      }, [sessionId])
+      const forceOpen = React.useCallback(() => {
+        generationRef.current += 1
+        dismissedSignatureRef.current = ''
+        observedSignatureRef.current = ''
+        activeSignatureRef.current = ''
+        dismissNextDiscoveryRef.current = false
+        clearDismissedSignature(sessionId)
+        setState({ phase: 'loading', groups: [], shrimps: [], error: '' })
+        setSelectedRef('')
+        setReloadKey((value) => value + 1)
+        setOpen(true)
+      }, [sessionId])
       const headerStatus = state.phase === 'ready' ? state.groups.length > 0 ? `${state.groups.length}只运行中` : state.shrimps.length > 0 ? '都在休息' : '还没有已发布的虾' : ''
+
+      React.useEffect(() => {
+        dismissedSignatureRef.current = readDismissedSignature(sessionId)
+        observedSignatureRef.current = ''
+        activeSignatureRef.current = ''
+        dismissNextDiscoveryRef.current = false
+      }, [sessionId])
 
       React.useEffect(() => {
         const onOpen = (event) => {
           const detail = event?.detail && typeof event.detail === 'object' ? event.detail : {}
           if (detail.sessionId && text(detail.sessionId) !== text(sessionId)) return
-          setState({ phase: 'loading', groups: [], shrimps: [], error: '' })
-          setSelectedRef('')
-          setOpen(true)
+          // Explicit `/虾缸` always wins over a previous close decision.
+          forceOpen()
         }
         window.addEventListener(OPEN_EVENT, onOpen)
         return () => window.removeEventListener(OPEN_EVENT, onOpen)
-      }, [sessionId])
+      }, [sessionId, forceOpen])
 
       React.useEffect(() => {
         if (!open) return undefined
@@ -395,51 +481,124 @@ window.__ModuleLoader__.load({
       }, [open, close])
 
       React.useEffect(() => {
-        if (!open) return undefined
-        setState({ phase: 'loading', groups: [], shrimps: [], error: '' })
-        setSelectedRef('')
         let alive = true
         let timer = null
         const controller = typeof AbortController === 'function' ? new AbortController() : null
         const signal = controller?.signal
+        const generation = generationRef.current
+        const current = () => alive && generation === generationRef.current
+        let inFlight = false
+        const discover = async () => {
+          // Keep discovery serial and list-only while the card is closed. It
+          // observes canonical pipeline/run state without fetching summaries.
+          const shrimpValue = await tankApi('/api/v1/dsh/shrimps', { signal })
+          const runValue = await tankApi('/api/v1/runs?limit=50', { signal })
+          const shrimps = projectPublishedShrimps(unwrapItems(shrimpValue))
+          const groups = groupLatestActiveRuns(shrimps, unwrapItems(runValue))
+          return { shrimps, groups, signature: activeRunSignature(groups) }
+        }
         const read = async () => {
           try {
-            const [shrimpValue, runValue] = await Promise.all([
-              tankApi('/api/v1/dsh/shrimps', { signal }),
-              tankApi('/api/v1/runs?limit=50', { signal }),
-            ])
-            const items = unwrapItems(shrimpValue)
-            const shrimps = projectPublishedShrimps(items)
-            const runs = unwrapItems(runValue)
-            const groups = groupLatestActiveRuns(shrimps, runs)
-            const withSummaries = (await Promise.all(groups.map(async (group) => {
+            const snapshot = await discover()
+            if (!current()) return
+            const { shrimps, groups, signature } = snapshot
+            observedSignatureRef.current = signature
+            activeSignatureRef.current = signature
+            const withSummaries = []
+            // Summary requests are serial: one run's transition cannot leave
+            // several overlapping refresh chains behind when the card closes.
+            for (const group of groups) {
+              if (!current()) return
               const runId = runIdOf(group.run)
-              if (!runId) return { ...group, summary: normalizeRunPayload(null, group.run) }
+              if (!runId) {
+                withSummaries.push({ ...group, summary: normalizeRunPayload(null, group.run) })
+                continue
+              }
               try {
                 const summaryValue = await tankApi(`/api/v1/runs/${encodeURIComponent(runId)}/summary`, { signal })
                 const summary = normalizeRunPayload(summaryValue, group.run)
-                return isActiveStatus(summary.status) ? { ...group, summary } : null
+                // The summary is newer than the list. Keep a just-finished or
+                // failed run visible for this list cycle so its terminal result
+                // is not replaced by an unexplained idle animation.
+                withSummaries.push({ ...group, summary })
               } catch (error) {
                 if (error?.name === 'AbortError') throw error
-                return { ...group, summary: normalizeRunPayload(null, group.run), summaryError: text(error?.message || error) || 'summary 请求失败' }
+                withSummaries.push({ ...group, summary: normalizeRunPayload(null, group.run), summaryError: text(error?.message || error) || 'summary 请求失败' })
               }
-            }))).filter(Boolean)
-            if (!alive) return
+            }
+            if (!current()) return
+            // Keep the list signature even when a summary has already reached
+            // a terminal state. A stale run list may still report it as active
+            // for one poll; closing here must dismiss that exact identity.
+            activeSignatureRef.current = activeRunSignature(withSummaries) || signature
+            observedSignatureRef.current = signature
             setState({ phase: 'ready', groups: withSummaries, shrimps, error: '' })
             setSelectedRef((current) => withSummaries.some((group) => group.ref === current) ? current : withSummaries[0]?.ref || '')
           } catch (error) {
-            if (!alive || error?.name === 'AbortError') return
+            if (!current() || error?.name === 'AbortError') return
             setState({ phase: 'error', groups: [], shrimps: [], error: text(error?.message || error) || '虾缸读取失败' })
+            activeSignatureRef.current = ''
             setSelectedRef('')
           }
         }
-        const tick = async () => {
-          await read()
-          if (alive) timer = window.setTimeout(() => { void tick() }, 4000)
+        const discoverWhileClosed = async () => {
+          try {
+            const snapshot = await discover()
+            if (!current()) return
+            const { shrimps, groups, signature } = snapshot
+            observedSignatureRef.current = signature
+            activeSignatureRef.current = signature
+            if (dismissNextDiscoveryRef.current) {
+              dismissNextDiscoveryRef.current = false
+              if (signature) {
+                const dismissed = mergeRunSignatures(dismissedSignatureRef.current, signature)
+                dismissedSignatureRef.current = dismissed
+                writeDismissedSignature(sessionId, dismissed)
+              }
+              return
+            }
+            if (shouldAutoOpen(signature, dismissedSignatureRef.current)) {
+              setState({ phase: 'loading', groups: [], shrimps, error: '' })
+              setSelectedRef('')
+              setOpen(true)
+            }
+          } catch (error) {
+            // A closed watcher is intentionally quiet. The explicit card read
+            // will show a recoverable error when the user opens it.
+            if (!current() || error?.name === 'AbortError') return
+          }
         }
+        const tick = async () => {
+          if (!current() || inFlight) return
+          inFlight = true
+          timer = null
+          try {
+            if (open) await read()
+            else await discoverWhileClosed()
+          } finally {
+            inFlight = false
+          }
+          if (!current()) return
+          const delay = open ? FULL_SUMMARY_REFRESH_INTERVAL_MS : autoDiscoveryDelayMs(document.hidden)
+          timer = window.setTimeout(() => { void tick() }, delay)
+        }
+        const onVisibilityChange = () => {
+          if (open || !current()) return
+          // While a list read is in flight there is no timer to retime; the
+          // read's completion schedules exactly one next tick.
+          if (inFlight || timer === null) return
+          if (timer !== null) window.clearTimeout(timer)
+          timer = window.setTimeout(() => { void tick() }, autoDiscoveryDelayMs(document.hidden))
+        }
+        if (!open) document.addEventListener('visibilitychange', onVisibilityChange)
         void tick()
-        return () => { alive = false; if (timer !== null) window.clearTimeout(timer); controller?.abort() }
-      }, [open, reloadKey])
+        return () => {
+          alive = false
+          if (timer !== null) window.clearTimeout(timer)
+          controller?.abort()
+          if (!open) document.removeEventListener('visibilitychange', onVisibilityChange)
+        }
+      }, [open, reloadKey, sessionId])
 
       if (!open) return null
       const content = state.phase === 'error'
@@ -539,6 +698,10 @@ window.__ModuleLoader__.load({
     exports.groupLatestActiveRuns = groupLatestActiveRuns
     exports.isActiveStatus = isActiveStatus
     exports.canonicalName = canonicalName
+    exports.activeRunSignature = activeRunSignature
+    exports.mergeRunSignatures = mergeRunSignatures
+    exports.autoDiscoveryDelayMs = autoDiscoveryDelayMs
+    exports.shouldAutoOpen = shouldAutoOpen
     return module.exports
   },
 })

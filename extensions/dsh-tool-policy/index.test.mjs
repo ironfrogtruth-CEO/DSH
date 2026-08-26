@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { apply, classifyToolCall, ToolPolicy } from './index.js'
+import { apply, classifyToolCall, detachedBackgroundReason, ToolPolicy } from './index.js'
 
 test('classifier recognizes built-ins, unknown shell, and ignores content fields', async () => {
   assert.equal(classifyToolCall('git_commit', { message: 'ok' }).category, 'destructive')
@@ -20,6 +20,37 @@ test('classifier recognizes built-ins, unknown shell, and ignores content fields
   const contentOnly = classifyToolCall('memory_record', { content: 'rm -rf /; curl https://evil.example' })
   assert.equal(contentOnly.category, 'write')
   assert.equal(contentOnly.commandInspected, false)
+})
+
+test('detached background hard gate catches shell escape forms without false positives', () => {
+  for (const syntax of [
+    'nohup node worker.mjs > worker.log 2>&1 &',
+    'disown %1',
+    'setsid node worker.mjs',
+    'sleep 30 &',
+  ]) {
+    const decision = detachedBackgroundReason('bash', { command: syntax, run_in_background: true })
+    assert.deepEqual(decision, {
+      kind: 'deny',
+      reason: '后台任务必须移除脱管语法并使用 run_in_background: true；跨重启请使用 schedule/heartbeat/canonical run',
+    })
+  }
+  assert.equal(detachedBackgroundReason('bash', { command: 'bash -lc "nohup node worker.mjs &"' }).kind, 'deny')
+  assert.equal(detachedBackgroundReason('bash', { command: 'bash -lc "sleep 30 &"' }).kind, 'deny')
+  assert.equal(detachedBackgroundReason('shell', { command: 'sh -c \'setsid node worker.mjs\'' }).kind, 'deny')
+  assert.equal(detachedBackgroundReason('shell', { command: 'eval "sleep 30 &"' }).kind, 'deny')
+  assert.equal(detachedBackgroundReason('bash', { command: 'echo first && echo second' }), undefined)
+  assert.equal(detachedBackgroundReason('shell', { command: 'echo output &> /tmp/output.log' }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { command: 'echo output >& /tmp/output.log' }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { command: 'echo "nohup & disown setsid"' }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { command: "rg -n 'nohup|disown|setsid' ." }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { command: "printf '%s\\n' nohup disown setsid" }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { command: 'env MODE=prod nohup node worker.mjs' }).kind, 'deny')
+  assert.equal(detachedBackgroundReason('bash', { command: 'sudo -n setsid node worker.mjs' }).kind, 'deny')
+  assert.equal(detachedBackgroundReason('bash', { command: 'echo \\&' }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { command: 'echo nohup-wrapper' }), undefined)
+  assert.equal(detachedBackgroundReason('python', { command: 'nohup python worker.py &' }), undefined)
+  assert.equal(detachedBackgroundReason('bash', { description: 'nohup is only documentation' }), undefined)
 })
 
 test('operation modes and patterns produce explicit decisions', async () => {
@@ -90,6 +121,40 @@ test('fake ctx enforce listener preserves next, ask/deny/allow and cleanup', asy
   assert.equal(listeners.has('observe:tools/pre-execute'), false)
 })
 
+test('observe mode still hard-denies detached shell work, while explicit opt-out preserves observe behavior', async () => {
+  const listeners = new Map()
+  const tools = []
+  const provided = {}
+  const ctx = {
+    toolPolicyConfig: { mode: 'observe', operationMode: 'act', blockDetachedBackground: true },
+    tools: { register(tool) { tools.push(tool); return () => {} } },
+    on(event, listener) { listeners.set(event, listener); return () => listeners.delete(event) },
+    effect(factory) { return factory() },
+    provide(name, value) { provided[name] = value },
+  }
+  await apply(ctx)
+  const listener = listeners.get('tools/pre-execute')
+  let nextCalls = 0
+  const next = async () => { nextCalls += 1; return { kind: 'allow' } }
+  const denied = await listener({ name: 'bash', arguments: { command: 'nohup node worker.mjs &' } }, next)
+  assert.equal(denied.kind, 'deny')
+  assert.match(denied.reason, /run_in_background/)
+  assert.equal(nextCalls, 0)
+  const snapshot = provided.dshToolPolicy.policy.snapshot()
+  assert.equal(snapshot.recent.at(-1).hardGate, 'detached-background')
+  assert.equal(snapshot.recent.at(-1).decision, 'deny')
+
+  const optOutListeners = new Map()
+  const optOutCtx = {
+    ...ctx,
+    toolPolicyConfig: { mode: 'observe', operationMode: 'act', blockDetachedBackground: false },
+    on(event, listener) { optOutListeners.set(event, listener); return () => optOutListeners.delete(event) },
+  }
+  await apply(optOutCtx)
+  assert.deepEqual(await optOutListeners.get('tools/pre-execute')({ name: 'bash', arguments: { command: 'nohup node worker.mjs &' } }, next), { kind: 'allow' })
+  assert.equal(nextCalls, 1)
+})
+
 test('explicit evaluate and in-memory metrics/list tools do not execute target tools', async () => {
   const tools = []
   const ctx = { toolPolicyConfig: { mode: 'observe', operationMode: 'review' }, tools: { register(tool) { tools.push(tool) } }, effect(factory) { return factory() }, on() { return () => {} }, provide() {} }
@@ -113,6 +178,11 @@ test('explicit evaluate and in-memory metrics/list tools do not execute target t
   assert.ok(evaluated.result.classification.pathBoundary)
   assert.ok(Array.isArray(evaluated.result.classification.reasons))
   assert.equal(evaluated.result.argumentsRedacted, true)
+  const detached = await evaluate.execute({ toolName: 'bash', arguments: { command: 'nohup node worker.mjs &' } })
+  assert.equal(detached.ok, true)
+  assert.equal(detached.result.decision.kind, 'deny')
+  assert.equal(detached.result.appliedDecision.kind, 'deny')
+  assert.equal(detached.result.hardGate, 'detached-background')
   const metricResult = await metrics.execute({ recentLimit: 10 })
   assert.equal(metricResult.ok, true)
   assert.ok(metricResult.metrics.metrics.total >= 1)
@@ -121,6 +191,7 @@ test('explicit evaluate and in-memory metrics/list tools do not execute target t
   const listed = await list.execute({})
   assert.equal(listed.ok, true)
   assert.equal(listed.policy.mode, 'observe')
+  assert.equal(listed.policy.blockDetachedBackground, true)
   const listedRendered = render(list, listed)
   assert.equal(listedRendered.policy.mode, 'observe')
 })

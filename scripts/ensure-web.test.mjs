@@ -44,6 +44,7 @@ test('大神.app uses ensure-web and ensure-web suppresses the external browser'
     writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs'), 'process.exit(0)\n', 'utf8')
     writeFileSync(join(dshHome, 'scripts', 'patch-client-command-actions.mjs'), 'process.exit(0)\n', 'utf8')
+    writeFileSync(join(dshHome, 'scripts', 'replay-custom-ui-patches.mjs'), 'process.exit(0)\n', 'utf8')
 
     const result = spawnSync('/bin/bash', [ensureWeb], {
       cwd: root,
@@ -111,6 +112,7 @@ test('ensure-web reload signature covers the complete CyberMarcus/runtime seam',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/model.mjs',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/cordis.patch.yml',
+    '$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.modified',
@@ -118,14 +120,33 @@ test('ensure-web reload signature covers the complete CyberMarcus/runtime seam',
     '$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified',
     '$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js',
+    '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-jobs/lib/client.js',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js',
     '$HOME/.dsh/scripts/ensure-web',
+    '$HOME/.dsh/scripts/start-local-model-runtime',
     '$HOME/.dsh/scripts/patch-subagent-selected-route.mjs',
     '$HOME/.dsh/scripts/patch-client-command-actions.mjs',
+    '$HOME/.dsh/scripts/replay-custom-ui-patches.mjs',
     '$HOME/.dsh/scripts/patch-llm-image-downcast.mjs',
     '$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs',
     '$HOME/.dsh/scripts/daily-git-commit.mjs',
 ]) assert.match(source, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), path)
+})
+
+test('大神 local model bootstrap uses the project model root without compatibility symlinks', () => {
+  const source = readFileSync(join(repoRoot, 'scripts', 'start-local-model-runtime'), 'utf8')
+  assert.match(source, /MODEL_ROOT="\/Users\/marcus\/Desktop\/虾缸\/MODEL"/)
+  assert.match(source, /OLLAMA_MODELS_ROOT="\$MODEL_ROOT\/ollama\/models"/)
+  assert.match(source, /cybermarcus:latest/)
+  assert.match(source, /glm-marcus:latest/)
+  assert.match(source, /launchctl setenv OLLAMA_MODELS/)
+  assert.match(readFileSync(ensureWeb, 'utf8'), /scripts\/start-local-model-runtime/)
+})
+
+test('ensure-web replays reviewed client UI patches before Host startup', () => {
+  const source = readFileSync(ensureWeb, 'utf8')
+  assert.match(source, /scripts\/replay-custom-ui-patches\.mjs" --apply/)
+  assert.match(source, /custom UI patch replay failed; refusing to start Host/)
 })
 
 test('foreground ensure-web releases startup lock after bind while keeping the Host owner alive', async () => {
@@ -138,6 +159,7 @@ test('foreground ensure-web releases startup lock after bind while keeping the H
   const runnerPath = join(dshHome, 'scripts', 'run-web-pty.py')
   const subagentPatch = join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs')
   const commandActionsPatch = join(dshHome, 'scripts', 'patch-client-command-actions.mjs')
+  const replayUiPatches = join(dshHome, 'scripts', 'replay-custom-ui-patches.mjs')
   let child
   try {
     mkdirSync(resolve(binPath, '..'), { recursive: true })
@@ -155,6 +177,7 @@ test('foreground ensure-web releases startup lock after bind while keeping the H
     writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(subagentPatch, 'process.exit(0)\n', 'utf8')
     writeFileSync(commandActionsPatch, 'process.exit(0)\n', 'utf8')
+    writeFileSync(replayUiPatches, 'process.exit(0)\n', 'utf8')
     writeFileSync(runnerPath, readFileSync(join(repoRoot, 'scripts', 'run-web-pty.py')))
     chmodSync(runnerPath, 0o755)
 

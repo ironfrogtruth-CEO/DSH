@@ -27,13 +27,14 @@ assert.match(metadataText, /^name:\s*可靠本地开发模式\s*$/m)
 
 const composition = document.toJSON()
 const ids = new Set(composition.map((entry) => entry?.id).filter(Boolean))
-for (const id of ['persona', 'persistent-shell', 'filesystem', 'skill-filesystem', 'tool-skill', 'compaction']) {
+for (const id of ['persona', 'tool-bash', 'tool-jobs', 'filesystem', 'skill-filesystem', 'tool-skill', 'compaction']) {
   assert.ok(ids.has(id), `missing top-level preset entry: ${id}`)
 }
 
 for (const required of [
   '@deepseek-ai/dsh-persona',
-  '@deepseek-ai/dsh-tool-bash-persistent',
+  '@deepseek-ai/dsh-tool-bash',
+  '@deepseek-ai/dsh-tool-jobs',
   '@deepseek-ai/dsh-tool-str-replace-editor',
   '@deepseek-ai/dsh-skill-filesystem',
   '@deepseek-ai/dsh-tool-skill',
@@ -58,6 +59,12 @@ for (const required of [
 }
 
 assert.match(compositionText, /includeRuntimeContext:\s*false/)
+assert.match(compositionText, /enableRunInBackground:\s*true/)
+assert.match(compositionText, /run_in_background:\s*true/)
+assert.match(compositionText, /job_output\/job_list\/job_kill/)
+assert.match(compositionText, /nohup.*disown.*setsid.*trailing ampersand/s)
+assert.match(compositionText, /process-local job does not survive Host restart/)
+assert.doesNotMatch(compositionText, /persistent_bash|tool-bash-persistent|persistent-shell/i)
 assert.match(compositionText, /thresholdRatio:\s*0\.60/)
 assert.match(compositionText, /retainTokens:\s*32768/)
 assert.match(compositionText, /compactionRetries:\s*2/)

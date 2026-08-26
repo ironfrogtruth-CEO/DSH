@@ -628,6 +628,563 @@ async function tankFetchWithRecovery(options) {
   }
 }
 
+// 单独运行虾的回执合同：创建接口只负责排队，随后只读 summary 等待终态。
+// 这里刻意不调用 /api/shrimp/heartbeat/*；心跳由下方独立调度器维护，不能
+// 因为一次手工运行而改变、清除或重新登记心跳状态。
+export const SHRIMP_RUN_TERMINAL_STATUSES = Object.freeze([
+  'done', 'succeeded', 'completed', 'success',
+  'failed', 'blocked', 'blocked_ai_provider', 'blocked_external_dependency',
+  'stopped', 'cancelled', 'canceled', 'aborted',
+])
+const SHRIMP_RUN_TERMINAL_STATUS_SET = new Set(SHRIMP_RUN_TERMINAL_STATUSES)
+export const SHRIMP_RUN_POLL_INTERVAL_MS = 2_000
+export const SHRIMP_RUN_WAIT_TIMEOUT_MS = 90_000
+const SHRIMP_RUN_READ_TIMEOUT_MS = 12_000
+const SHRIMP_RUN_TOOL_TIMEOUT_MS = 150_000
+const SHRIMP_RUN_MAX_ARTIFACT_SUMMARY_ITEMS = 20
+const SHRIMP_RUN_MAX_WAIT_TIMEOUT_MS = 5 * 60 * 1000
+
+function apiData(value) {
+  if (value && typeof value === 'object' && value.data && typeof value.data === 'object') return value.data
+  return value && typeof value === 'object' ? value : {}
+}
+
+function apiErrorText(value) {
+  if (value instanceof Error) return errorText(value)
+  const error = value && typeof value === 'object' ? value.error : value
+  if (typeof error === 'string' && error.trim()) return error.trim()
+  if (error && typeof error === 'object') {
+    const message = String(error.message || error.code || '').trim()
+    if (message) return message
+    try { return JSON.stringify(error) } catch { return '虾缸接口返回了不可解析的错误' }
+  }
+  return ''
+}
+
+// 创建接口目前返回 resource_refs[].id；兼容旧的直接 run_id/runId 响应，
+// 但不把 operation_id 当成 run_id，避免把操作记录误当成运行记录。
+export function extractShrimpRunId(value) {
+  const root = value && typeof value === 'object' ? value : {}
+  const data = apiData(root)
+  const direct = [root.run_id, root.runId, data.run_id, data.runId]
+  for (const candidate of direct) {
+    const id = String(candidate || '').trim()
+    if (id) return id
+  }
+  const refs = [
+    ...(Array.isArray(root.resource_refs) ? root.resource_refs : []),
+    ...(Array.isArray(data.resource_refs) ? data.resource_refs : []),
+  ]
+  const runRef = refs.find((ref) => ref && String(ref.type || '').toLowerCase() === 'run' && ref.id)
+  return runRef ? String(runRef.id).trim() : ''
+}
+
+function normalizedRunStatus(value) {
+  const data = apiData(value)
+  const lifecycle = data.lifecycle && typeof data.lifecycle === 'object' ? data.lifecycle : {}
+  return String(
+    data.status || data.state || lifecycle.legacy_status || lifecycle.status || '',
+  ).trim().toLowerCase()
+}
+
+function normalizedProgress(value) {
+  const data = apiData(value)
+  const raw = data.progress_percent ?? data.progress?.percent ?? data.progress
+  if (raw === null || raw === undefined || raw === '') return null
+  const number = typeof raw === 'string' && raw.trim().endsWith('%')
+    ? Number.parseFloat(raw)
+    : Number(raw)
+  return Number.isFinite(number) ? number : raw
+}
+
+function normalizedCurrentNode(value) {
+  const data = apiData(value)
+  const raw = data.current_node_id ?? data.current_node
+  if (raw && typeof raw === 'object') return String(raw.id || raw.node_id || raw.name || '').trim() || null
+  return raw === null || raw === undefined ? null : String(raw).trim() || null
+}
+
+function normalizedRunError(value) {
+  const data = apiData(value)
+  const error = data.error_summary ?? data.error ?? value?.error_summary ?? value?.error
+  return apiErrorText({ error }) || null
+}
+
+function runSnapshot(value, runId) {
+  const data = apiData(value)
+  return {
+    run_id: String(data.id || data.run_id || data.runId || runId || '').trim() || runId,
+    status: normalizedRunStatus(value),
+    progress: normalizedProgress(value),
+    current_node: normalizedCurrentNode(value),
+    error_summary: normalizedRunError(value),
+  }
+}
+
+function emptyArtifactSummary(error = null) {
+  return { total: 0, items: [], ...(error ? { error } : {}) }
+}
+
+export function summarizeShrimpArtifacts(value) {
+  const data = apiData(value)
+  const rawItems = Array.isArray(data.items)
+    ? data.items
+    : Array.isArray(data.artifacts) ? data.artifacts : []
+  const items = rawItems.slice(0, SHRIMP_RUN_MAX_ARTIFACT_SUMMARY_ITEMS).map((item) => ({
+    id: item && item.id ? String(item.id) : null,
+    name: String(item && (item.name || item.artifact_name) || '').trim() || null,
+    type: String(item && (item.type || item.artifact_type) || '').trim() || null,
+    bucket: String(item && item.bucket || '').trim() || null,
+    size_bytes: Number.isFinite(Number(item && item.size_bytes)) ? Number(item.size_bytes) : null,
+    mime_type: String(item && item.mime_type || '').trim() || null,
+    previewable: item && typeof item.previewable === 'boolean' ? item.previewable : null,
+  }))
+  const total = Number.isFinite(Number(data.total)) ? Number(data.total) : rawItems.length
+  const error = value && value.ok === false ? apiErrorText(value) : ''
+  return { total: Math.max(0, total), items, ...(error ? { error } : {}) }
+}
+
+function normalizeWaitNumber(value, fallback, maximum = SHRIMP_RUN_MAX_WAIT_TIMEOUT_MS) {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < 0) return fallback
+  return Math.min(number, maximum)
+}
+
+function terminalRunResult(snapshot, artifacts, { stillRunning = false } = {}) {
+  const status = snapshot.status || null
+  return {
+    ok: !stillRunning && Boolean(status) && ['done', 'succeeded', 'completed', 'success'].includes(status),
+    started: true,
+    reported: !stillRunning,
+    run_id: snapshot.run_id,
+    final_status: status,
+    progress: snapshot.progress,
+    current_node: snapshot.current_node,
+    error_summary: snapshot.error_summary,
+    artifacts,
+    ...(stillRunning ? {
+      still_running: true,
+      next_action: {
+        tool: 'shrimp_run_status',
+        run_id: snapshot.run_id,
+        wait_seconds: 120,
+      },
+    } : {}),
+  }
+}
+
+// 等待单独运行的虾产生终态回执。readSummary/readArtifacts 必须是 GET
+// 读函数；通过依赖注入测试也能证明该流程没有心跳写入或心跳副作用。
+export async function waitForShrimpRunTerminal({
+  runId,
+  readSummary,
+  readArtifacts,
+  timeoutMs = SHRIMP_RUN_WAIT_TIMEOUT_MS,
+  pollIntervalMs = SHRIMP_RUN_POLL_INTERVAL_MS,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  now = () => Date.now(),
+} = {}) {
+  const id = String(runId || '').trim()
+  if (!id) {
+    return {
+      ok: false,
+      started: false,
+      run_id: null,
+      final_status: null,
+      progress: null,
+      current_node: null,
+      error_summary: '缺少 run_id，未开始终态监控。',
+      artifacts: emptyArtifactSummary(),
+      reported: true,
+    }
+  }
+  if (typeof readSummary !== 'function') throw new TypeError('readSummary 必须是函数')
+  const boundedTimeout = normalizeWaitNumber(timeoutMs, SHRIMP_RUN_WAIT_TIMEOUT_MS)
+  const boundedInterval = Math.max(0, normalizeWaitNumber(pollIntervalMs, SHRIMP_RUN_POLL_INTERVAL_MS, boundedTimeout || SHRIMP_RUN_POLL_INTERVAL_MS))
+  const deadline = now() + boundedTimeout
+  const maxPolls = Math.max(1, Math.ceil((boundedTimeout || 1) / Math.max(1, boundedInterval || 1)) + 1)
+  let latest = { run_id: id, status: '', progress: null, current_node: null, error_summary: null }
+  let lastReadError = ''
+
+  for (let poll = 0; poll < maxPolls; poll += 1) {
+    let result
+    try {
+      result = await readSummary(id)
+      if (result && result.ok === false) lastReadError = apiErrorText(result) || '无法读取运行状态'
+      else lastReadError = ''
+    } catch (error) {
+      lastReadError = apiErrorText(error) || '无法读取运行状态'
+      result = null
+    }
+    const snapshot = runSnapshot(result, id)
+    if (snapshot.status) latest = { ...latest, ...snapshot }
+    if (snapshot.status && SHRIMP_RUN_TERMINAL_STATUS_SET.has(snapshot.status)) {
+      let artifacts = emptyArtifactSummary()
+      if (typeof readArtifacts === 'function') {
+        try { artifacts = summarizeShrimpArtifacts(await readArtifacts(id)) } catch (error) {
+          artifacts = emptyArtifactSummary(apiErrorText(error) || '终态产物读取失败')
+        }
+      }
+      return terminalRunResult(latest, artifacts)
+    }
+    if (now() >= deadline || poll + 1 >= maxPolls) {
+      return terminalRunResult(
+        { ...latest, error_summary: latest.error_summary || lastReadError || '在等待时间内未读到终态。' },
+        emptyArtifactSummary(),
+        { stillRunning: true },
+      )
+    }
+    const remaining = Math.max(0, deadline - now())
+    await sleep(Math.min(boundedInterval, remaining))
+  }
+  return terminalRunResult(
+    { ...latest, error_summary: latest.error_summary || lastReadError || '在等待时间内未读到终态。' },
+    emptyArtifactSummary(),
+    { stillRunning: true },
+  )
+}
+
+// 把“创建 + 只读终态回执”保持在一个工具调用内，避免模型创建任务后
+// 口头承诺继续跟进却没有任何可交付的运行结果。
+export async function runShrimpWithReceipt({
+  launch,
+  readSummary,
+  readArtifacts,
+  timeoutMs = SHRIMP_RUN_WAIT_TIMEOUT_MS,
+  pollIntervalMs = SHRIMP_RUN_POLL_INTERVAL_MS,
+  sleep,
+  now,
+} = {}) {
+  if (typeof launch !== 'function') throw new TypeError('launch 必须是函数')
+  const created = await launch()
+  if (!created || created.ok === false) {
+    return {
+      ...(created && typeof created === 'object' ? created : {}),
+      ok: false,
+      started: false,
+      run_id: null,
+      final_status: null,
+      progress: null,
+      current_node: null,
+      error_summary: apiErrorText(created) || '虾缸未接受运行请求。',
+      artifacts: emptyArtifactSummary(),
+      reported: true,
+    }
+  }
+  const runId = extractShrimpRunId(created)
+  if (!runId) {
+    return {
+      ok: false,
+      started: false,
+      blocked: true,
+      operation_id: created.operation_id || null,
+      run_id: null,
+      final_status: null,
+      progress: null,
+      current_node: null,
+      error_summary: '虾缸启动响应缺少 run_id，未开始终态监控。',
+      artifacts: emptyArtifactSummary(),
+      reported: true,
+    }
+  }
+  const receipt = await waitForShrimpRunTerminal({
+    runId,
+    readSummary,
+    readArtifacts,
+    timeoutMs,
+    pollIntervalMs,
+    ...(sleep ? { sleep } : {}),
+    ...(now ? { now } : {}),
+  })
+  return {
+    ...receipt,
+    operation_id: created.operation_id || null,
+  }
+}
+
+// shrimp_run 的 approval=never 兼容只接受当前用户回合的一次性、有界授权。
+// 授权保存在进程内存中，既不写持久会话，也不触碰心跳状态；Host 重启后自然失效。
+export const SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES = 1
+export const SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES = 2
+export const SHRIMP_AUTH_RECEIPT_MAX_USES = SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES
+export const SHRIMP_AUTH_RECEIPT_TTL_MS = 15 * 60 * 1000
+const SHRIMP_RUN_ACTION_RE = /调用|运行|启动|执行|开跑|跑通|交给|驱动/u
+const SHRIMP_RUN_RECOVERY_RE = /(?:遇阻(?:断|碍)?|遇到阻断|遇到阻碍)(?:后)?[，,、\s]*(?:请)?(?:自行)?修复(?:并)?跑通/u
+const SHRIMP_RUN_NEGATED_RE = /(?:不要|别|禁止|不可|不能|无需|不需要|暂不|先别|先不要)[\s\S]{0,18}(?:调用|运行|启动|执行|开跑|跑通)/u
+const SHRIMP_RUN_INQUIRY_RE = /^(?:请问|了解(?:一下)?|介绍(?:一下)?|推荐|匹配|看看|查看|检查(?:一下)?|分析(?:一下)?|怎么|如何|能否|是否|可以|能不能|可不可以|为什么|什么是)/u
+const SHRIMP_RUN_PAST_ONLY_RE = /^(?:刚才|之前|上次|此前|曾经|已经)[^。！？!?]{0,40}(?:运行|调用|启动|执行)[^。！？!?]{0,24}(?:过|了|失败|完成)(?:[。！？!?]|$)/u
+
+function messageText(value) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.map((item) => messageText(item)).filter(Boolean).join('\n')
+  if (typeof value !== 'object') return ''
+  if (typeof value.text === 'string') return value.text
+  if (Array.isArray(value.content)) return messageText(value.content)
+  if (value.message) return messageText(value.message)
+  return ''
+}
+
+function humanMessageText(input) {
+  const messages = Array.isArray(input) ? input : [input]
+  const message = messages.findLast((candidate) => {
+    if (typeof candidate === 'string') return true
+    if (!candidate || typeof candidate !== 'object') return false
+    if (candidate.role && candidate.role !== 'user') return false
+    const kind = String(candidate.source?.kind || '').toLowerCase()
+    return !kind || kind === 'user' || kind === 'human'
+  })
+  return messageText(message).trim()
+}
+
+/**
+ * Classify only an explicit current-user run instruction. Questions,
+ * recommendations, historical statements, and negative instructions do not
+ * create a receipt even when they contain a run verb and a shrimp name.
+ */
+export function explicitShrimpRunIntent(input) {
+  const text = humanMessageText(input)
+  const recovery = SHRIMP_RUN_RECOVERY_RE.test(text)
+  const action = SHRIMP_RUN_ACTION_RE.test(text)
+  const negated = SHRIMP_RUN_NEGATED_RE.test(text)
+  const inquiry = SHRIMP_RUN_INQUIRY_RE.test(text) || /(?:吗|？|\?)\s*$/u.test(text)
+  const pastOnly = SHRIMP_RUN_PAST_ONLY_RE.test(text)
+  return {
+    explicit: Boolean(text && !negated && !inquiry && !pastOnly && (action || recovery)),
+    action,
+    recovery,
+    text,
+  }
+}
+
+function compactTargetText(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[\s\p{P}\p{S}]+/gu, '')
+}
+
+function pushTargetAlias(target, value) {
+  const text = String(value || '').trim()
+  if (text.length < 2 || text.length > 240) return
+  target.add(text)
+  const at = text.indexOf('@')
+  if (at > 0 && at < text.length - 1) {
+    const left = text.slice(0, at).trim()
+    const right = text.slice(at + 1).trim()
+    if (left) pushTargetAlias(target, `${left}虾`)
+    if (right) pushTargetAlias(target, right)
+  }
+}
+
+/** Return user-facing names and safe aliases for one ShrimpTank list item. */
+export function shrimpTargetAliases(item) {
+  const aliases = new Set()
+  if (!item || typeof item !== 'object') return []
+  for (const key of [
+    'display_name', 'displayName', 'name', 'title', 'ref', 'id',
+    'slug', 'pipelineSlug', 'pipeline_slug', 'alias', 'aliases',
+    'trigger_pattern', 'trigger_patterns', 'triggers',
+  ]) {
+    const value = item[key]
+    if (Array.isArray(value)) for (const entry of value) pushTargetAlias(aliases, entry)
+    else pushTargetAlias(aliases, value)
+  }
+  return [...aliases]
+}
+
+function catalogItems(value, depth = 0) {
+  if (depth > 3 || value === null || value === undefined) return []
+  if (Array.isArray(value)) return value.filter((item) => item && typeof item === 'object')
+  if (typeof value !== 'object') return []
+  for (const key of ['items', 'shrimps', 'pipelines']) {
+    if (Array.isArray(value[key])) return catalogItems(value[key], depth + 1)
+  }
+  if (value.data !== undefined) return catalogItems(value.data, depth + 1)
+  return []
+}
+
+export function listShrimpCatalogItems(value) {
+  return catalogItems(value)
+}
+
+function isPublishedPipeline(item) {
+  if (!item || typeof item !== 'object') return false
+  const identity = String(item.identity || item.kind || '').trim().toLowerCase()
+  if (identity && identity !== 'pipeline') return false
+  const lifecycle = String(item.lifecycle_status || item.lifecycleStatus || item.status || '').trim().toLowerCase()
+  if (lifecycle && !['published', 'active', 'ready'].includes(lifecycle)) return false
+  return identity === 'pipeline' || lifecycle === 'published' || lifecycle === 'active' || lifecycle === 'ready'
+}
+
+function pipelineSlugForItem(item) {
+  return String(item?.pipelineSlug || item?.pipeline_slug || item?.slug || item?.ref || '').trim()
+}
+
+export function shrimpTargetMentioned(item, text) {
+  const compactText = compactTargetText(text)
+  if (!compactText) return false
+  return shrimpTargetAliases(item).some((alias) => {
+    const compactAlias = compactTargetText(alias)
+    return compactAlias.length >= 2 && compactText.includes(compactAlias)
+  })
+}
+
+/** Resolve exactly one published pipeline whose display name/alias is named. */
+export function findShrimpTarget(items, text) {
+  const matches = (Array.isArray(items) ? items : listShrimpCatalogItems(items))
+    .filter((item) => isPublishedPipeline(item) && shrimpTargetMentioned(item, text))
+  return matches.length === 1 ? matches[0] : null
+}
+
+export function findShrimpPipeline(items, pipelineSlug) {
+  const slug = String(pipelineSlug || '').trim()
+  if (!slug) return null
+  return (Array.isArray(items) ? items : listShrimpCatalogItems(items))
+    .find((item) => isPublishedPipeline(item) && pipelineSlugForItem(item) === slug) || null
+}
+
+function receiptPart(value) {
+  return value === null || value === undefined || String(value).trim() === '' ? null : String(value)
+}
+
+function receiptKey(agentId, turn, pipelineSlug) {
+  const agent = receiptPart(agentId)
+  const currentTurn = receiptPart(turn)
+  const slug = receiptPart(pipelineSlug)
+  return agent && currentTurn && slug ? `${agent}\u0000${currentTurn}\u0000${slug}` : null
+}
+
+export class ShrimpAuthorizationReceipts {
+  constructor({ maxUses = SHRIMP_AUTH_RECEIPT_MAX_USES, ttlMs = SHRIMP_AUTH_RECEIPT_TTL_MS, now = () => Date.now() } = {}) {
+    this.maxUses = Math.max(1, Math.floor(Number(maxUses) || SHRIMP_AUTH_RECEIPT_MAX_USES))
+    this.ttlMs = Math.max(1, Number(ttlMs) || SHRIMP_AUTH_RECEIPT_TTL_MS)
+    this.now = now
+    this.entries = new Map()
+  }
+
+  prune(now = this.now()) {
+    for (const [key, entry] of this.entries) if (entry.expiresAt <= now) this.entries.delete(key)
+  }
+
+  issue({ agentId, turn, pipelineSlug, requestText, targetDisplayName, maxUses = this.maxUses, now = this.now() } = {}) {
+    const key = receiptKey(agentId, turn, pipelineSlug)
+    if (!key) return null
+    this.prune(now)
+    const current = this.entries.get(key)
+    if (current) return { ...current }
+    const boundedMaxUses = Math.max(1, Math.min(SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES, Math.floor(Number(maxUses) || this.maxUses)))
+    const entry = {
+      agentId: String(agentId),
+      turn: String(turn),
+      pipelineSlug: String(pipelineSlug),
+      requestText: String(requestText || '').trim(),
+      targetDisplayName: String(targetDisplayName || '').trim() || null,
+      issuedAt: now,
+      expiresAt: now + this.ttlMs,
+      uses: 0,
+      maxUses: boundedMaxUses,
+    }
+    this.entries.set(key, entry)
+    return { ...entry }
+  }
+
+  peek({ agentId, turn, pipelineSlug, now = this.now() } = {}) {
+    const key = receiptKey(agentId, turn, pipelineSlug)
+    if (!key) return null
+    this.prune(now)
+    const entry = this.entries.get(key)
+    return entry ? { ...entry } : null
+  }
+
+  consume({ agentId, turn, pipelineSlug, now = this.now() } = {}) {
+    const key = receiptKey(agentId, turn, pipelineSlug)
+    if (!key) return null
+    this.prune(now)
+    const entry = this.entries.get(key)
+    if (!entry || entry.uses >= entry.maxUses) return null
+    entry.uses += 1
+    return { ...entry, remainingUses: Math.max(0, entry.maxUses - entry.uses) }
+  }
+}
+
+export function currentAgentTurn(agent) {
+  const events = Array.isArray(agent?.session?.events) ? agent.session.events : []
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index]
+    if (event?.type === 'turn/end') return null
+    if (event?.type === 'turn/start') return event.data?.turn ?? null
+  }
+  return null
+}
+
+async function readShrimpCatalogForAuthorization({ recover = false } = {}) {
+  try {
+    // Only an explicit user authorization may recover the local tank service;
+    // this remains a read-only catalog request and never touches heartbeat API.
+    const fetchCatalog = recover ? tankFetchWithRecovery : tankFetch
+    const result = await fetchCatalog({ path: '/api/v1/dsh/shrimps', method: 'GET', timeoutMs: 4_000 })
+    return result.ok ? listShrimpCatalogItems(result.json) : []
+  } catch {
+    return []
+  }
+}
+
+/** Build the two Host event listeners while keeping the state testable. */
+export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogForAuthorization, receipts = new ShrimpAuthorizationReceipts(), now = () => Date.now() } = {}) {
+  const safeCatalog = async (recover = false) => {
+    try {
+      const value = await readCatalog({ recover })
+      return listShrimpCatalogItems(value)
+    } catch {
+      return []
+    }
+  }
+  const ask = { kind: 'ask', reason: '请确认运行这只已发布虾；只有当前回合明确点名并授权的目标才可免重复确认。' }
+
+  return {
+    receipts,
+    async preStep({ agent, messages, turn, signal } = {}, next = async () => ({ kind: 'enter', messages: [] })) {
+      const decision = await next()
+      if (!decision || decision.kind !== 'enter' || signal?.aborted) return decision
+      const intent = explicitShrimpRunIntent(messages)
+      if (!intent.explicit) return decision
+      const target = findShrimpTarget(await safeCatalog(true), intent.text)
+      const pipelineSlug = pipelineSlugForItem(target)
+      if (!target || !pipelineSlug || turn === null || turn === undefined) return decision
+      receipts.issue({
+        agentId: agent?.id,
+        turn,
+        pipelineSlug,
+        requestText: intent.text,
+        targetDisplayName: target.display_name || target.name || target.title,
+        maxUses: intent.recovery ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES,
+        now: now(),
+      })
+      return decision
+    },
+    async preExecute(exec, next = async () => ({ kind: 'allow' })) {
+      if (exec && exec.name === 'shrimp_run') {
+        const args = exec.arguments && typeof exec.arguments === 'object' && !Array.isArray(exec.arguments)
+          ? exec.arguments
+          : {}
+        if (args.confirm !== true || !exec.agent) return { ...ask }
+        const turn = currentAgentTurn(exec.agent)
+        const pipelineSlug = String(args.pipelineSlug || '').trim()
+        if (turn === null || !pipelineSlug) return { ...ask }
+        const target = findShrimpPipeline(await safeCatalog(), pipelineSlug)
+        const receipt = receipts.peek({ agentId: exec.agent.id, turn, pipelineSlug, now: now() })
+        if (!target || !receipt || !shrimpTargetMentioned(target, receipt.requestText)) return { ...ask }
+        const downstream = await next()
+        if (!downstream || downstream.kind !== 'allow') return downstream
+        if (!receipts.consume({ agentId: exec.agent.id, turn, pipelineSlug, now: now() })) return { ...ask }
+        return downstream
+      }
+      return next()
+    },
+  }
+}
+
 async function readRequestBody(req, maxBytes = SHRIMP_TANK_MAX_BODY) {
   const chunks = []
   let size = 0
@@ -1086,7 +1643,7 @@ function mimeFor(path) {
   })[ext] || 'application/octet-stream'
 }
 
-export function apply(ctx) {
+export function apply(ctx, config = {}) {
   // Profile invariant: shrimp-shell is the final web bundle.  Its visual
   // bridge dispatches through the adapter boundary; loading it after
   // goal-first/checkpoint listeners lets those earlier waterfalls still wrap
@@ -1141,9 +1698,9 @@ export function apply(ctx) {
   }), 'shrimp-shell: tank proxy')
 
   const toolResult = (value) => [{ type: 'text', text: JSON.stringify(value || {}, null, 2).slice(0, 16_000) }]
-  const toolCall = async ({ path, method = 'GET', body, headers = {} }) => {
+  const toolCall = async ({ path, method = 'GET', body, headers = {}, timeoutMs = SHRIMP_TANK_TIMEOUT_MS }) => {
     try {
-      const result = await tankFetchWithRecovery({ path, method, body, headers })
+      const result = await tankFetchWithRecovery({ path, method, body, headers, timeoutMs })
       const value = tankJson(result)
       return { ok: result.ok, status: result.status, ...((value && typeof value === 'object') ? value : { data: value }) }
     } catch (error) {
@@ -1159,6 +1716,7 @@ export function apply(ctx) {
     render: (_args, value) => toolResult(value),
   }
   if (ctx.tools && typeof ctx.tools.register === 'function') {
+    const shrimpAuthorization = createShrimpAuthorizationGate({ readCatalog: config.readShrimpCatalog })
     ctx.tools.register(defineTool({
       name: 'shrimp_list',
       description: '读取虾缸中的虾、草稿、试跑与已发布工作流列表。只读，不会启动运行。',
@@ -1289,7 +1847,7 @@ export function apply(ctx) {
 
     ctx.tools.register(defineTool({
       name: 'shrimp_run',
-      description: '运行一只已明确点名的已发布虾。必须显式 confirm=true、提供 pipelineSlug 和完整输入；匹配推荐不会自动触发此工具。高风险发布动作不在此工具内。',
+      description: '运行一只已明确点名的已发布虾。必须显式 confirm=true、提供 pipelineSlug 和完整输入；匹配推荐不会自动触发此工具。当前用户回合若已明确点名并授权该目标，Host 会用短期、有界授权跳过重复 approval=never 拒绝，否则仍要求原生确认。创建后会自动只读轮询 /api/v1/runs/{run_id}/summary，并在终态读取 /artifacts，最终回传 run_id、终态、进度、当前节点、错误和产物摘要；超时会返回 still_running=true，绝不声称已完成。不要用裸 curl 绕过此工具，否则不会生成可回传的任务回执；此工具不会读取或修改心跳任务。',
       parameters: {
         pipelineSlug: { type: 'string', required: true, description: '已发布虾的 pipeline slug' },
         payload: {
@@ -1301,29 +1859,73 @@ export function apply(ctx) {
         confirm: { type: 'boolean', required: true, description: '用户是否明确确认运行' },
       },
       output: toolOutput,
-      timeoutMs: 40_000,
+      timeoutMs: SHRIMP_RUN_TOOL_TIMEOUT_MS,
       async execute(args) {
         const slug = String(args.pipelineSlug || '').trim()
         if (!/^[A-Za-z0-9_.-]+$/.test(slug)) return { ok: false, error: 'pipelineSlug 格式无效' }
         if (args.confirm !== true) return { ok: false, blocked: true, error: '需要用户明确确认后才能运行虾' }
         if (!args.payload || typeof args.payload !== 'object' || Array.isArray(args.payload)) return { ok: false, error: '运行输入必须是对象' }
         const idempotencyKey = `dsh-shrimp:${slug}:${Date.now()}:${randomUUID()}`
-        return toolCall({
-          path: `/api/v1/pipelines/${encodeURIComponent(slug)}/runs`,
-          method: 'POST',
-          body: args.payload,
-          headers: { 'idempotency-key': idempotencyKey },
+        return runShrimpWithReceipt({
+          launch: () => toolCall({
+            path: `/api/v1/pipelines/${encodeURIComponent(slug)}/runs`,
+            method: 'POST',
+            body: args.payload,
+            headers: { 'idempotency-key': idempotencyKey },
+          }),
+          readSummary: (runId) => toolCall({
+            path: `/api/v1/runs/${encodeURIComponent(runId)}/summary`,
+            method: 'GET',
+            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+          }),
+          readArtifacts: (runId) => toolCall({
+            path: `/api/v1/runs/${encodeURIComponent(runId)}/artifacts`,
+            method: 'GET',
+            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+          }),
         })
       },
       presentCall(args) { return { card: 'generic', title: `运行虾：${args.pipelineSlug || '未命名'}` } },
     }))
-    // 模型即使给出 confirm=true 也不能自行授权副作用；Harness 的原生
-    // approval 通道会在真正执行 shrimp_run 前向用户询问一次。
+
+    ctx.tools.register(defineTool({
+      name: 'shrimp_run_status',
+      description: '只读查询一条已经创建的虾运行，并继续等待其终态回执。必须提供已有 run_id；只读取 /api/v1/runs/{run_id}/summary，终态后读取 /artifacts，不会创建新运行，也不会读取或修改心跳任务。shrimp_run 超时返回的 still_running=true 时，应使用此工具继续查询，禁止使用裸 curl。',
+      parameters: {
+        runId: { type: 'string', required: true, description: '已有运行的 run_id；不能填写 operation_id 或 pipelineSlug' },
+        waitSeconds: { type: 'number', description: '最多继续等待秒数，默认 30 秒，范围 0-120 秒' },
+      },
+      output: toolOutput,
+      timeoutMs: 140_000,
+      async execute(args) {
+        const runId = String(args.runId || '').trim()
+        if (!runId) return { ok: false, error: 'runId 不能为空' }
+        const requestedSeconds = Number(args.waitSeconds)
+        const waitSeconds = Number.isFinite(requestedSeconds)
+          ? Math.max(0, Math.min(120, requestedSeconds))
+          : 30
+        return waitForShrimpRunTerminal({
+          runId,
+          timeoutMs: waitSeconds * 1000,
+          readSummary: (id) => toolCall({
+            path: `/api/v1/runs/${encodeURIComponent(id)}/summary`,
+            method: 'GET',
+            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+          }),
+          readArtifacts: (id) => toolCall({
+            path: `/api/v1/runs/${encodeURIComponent(id)}/artifacts`,
+            method: 'GET',
+            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+          }),
+        })
+      },
+      presentCall(args) { return { card: 'generic', title: `查询虾运行：${String(args.runId || '').slice(0, 42)}` } },
+    }))
+    // 未获得当前用户回合的明确目标授权时，保留原生 approval；明确授权由
+    // agent/pre-step 建立短期 receipt，tools/pre-execute 再按目标和回合核验。
     if (typeof ctx.on === 'function') {
-      ctx.on('tools/pre-execute', async (exec, next) => {
-        if (exec && exec.name === 'shrimp_run') return { kind: 'ask', reason: '请确认运行这只已发布虾；运行会在虾缸中创建一次真实工作流任务。' }
-        return next()
-      })
+      ctx.on('agent/pre-step', shrimpAuthorization.preStep)
+      ctx.on('tools/pre-execute', shrimpAuthorization.preExecute)
     }
   }
 
