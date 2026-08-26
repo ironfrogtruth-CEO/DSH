@@ -43,6 +43,7 @@ test('大神.app uses ensure-web and ensure-web suppresses the external browser'
     writeFileSync(dependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs'), 'process.exit(0)\n', 'utf8')
+    writeFileSync(join(dshHome, 'scripts', 'patch-client-command-actions.mjs'), 'process.exit(0)\n', 'utf8')
 
     const result = spawnSync('/bin/bash', [ensureWeb], {
       cwd: root,
@@ -117,8 +118,10 @@ test('ensure-web reload signature covers the complete CyberMarcus/runtime seam',
     '$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified',
     '$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js',
+    '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js',
     '$HOME/.dsh/scripts/ensure-web',
     '$HOME/.dsh/scripts/patch-subagent-selected-route.mjs',
+    '$HOME/.dsh/scripts/patch-client-command-actions.mjs',
     '$HOME/.dsh/scripts/patch-llm-image-downcast.mjs',
     '$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs',
     '$HOME/.dsh/scripts/daily-git-commit.mjs',
@@ -134,6 +137,7 @@ test('foreground ensure-web releases startup lock after bind while keeping the H
   const knowledgeDependencyPath = join(dshHome, 'extensions', 'dsh-knowledge-manager', 'node_modules', '@deepseek-ai', 'dsh-tools', 'package.json')
   const runnerPath = join(dshHome, 'scripts', 'run-web-pty.py')
   const subagentPatch = join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs')
+  const commandActionsPatch = join(dshHome, 'scripts', 'patch-client-command-actions.mjs')
   let child
   try {
     mkdirSync(resolve(binPath, '..'), { recursive: true })
@@ -150,6 +154,7 @@ test('foreground ensure-web releases startup lock after bind while keeping the H
     writeFileSync(dependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(subagentPatch, 'process.exit(0)\n', 'utf8')
+    writeFileSync(commandActionsPatch, 'process.exit(0)\n', 'utf8')
     writeFileSync(runnerPath, readFileSync(join(repoRoot, 'scripts', 'run-web-pty.py')))
     chmodSync(runnerPath, 0o755)
 

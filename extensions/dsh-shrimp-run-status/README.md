@@ -1,10 +1,15 @@
 # dsh-shrimp-run-status
 
-在会话标签栏下、聊天信息流上方显示当前会话真实虾运行的节点，包括正式 `shrimp_run` 和通过 bash 启动的 `gzh-multi-article` 心跳 runner。
+`/虾缸` 是一个只读的输入区状态卡。命令由 `commandUi` 注册为纯客户端 action：运行时先消费精确的命令 token，再打开当前会话的虾缸卡片，不发送 prompt、不执行 Host command，也不写入聊天节点。
 
-- 只读取 session durable `runningCalls` / `nodes` / `pending`；heartbeat 只接受真实执行 `scripts/heartbeat_gzh_publish.py` 的 bash call，grep/read 等提及不会触发，不根据用户文字猜测运行。
-- runner 启动后立即读取固定 `.heartbeat_batch.json` 与 `heartbeats.json` 的最小投影；登录预检阶段也显示组件。checkpoint 产生 run id 后切换到 ShrimpTank canonical run。
-- 拿到 `run_id`/`runId` 后，通过 DSH 同源 `/api/shrimp/tank` 只读代理读取 summary 与 status，每 3 秒轮询，终态停止。
-- 节点名称、数量、进度和领域来自虾缸 run summary；`data-shrimp-kind` 仅由真实 summary/domain/pipelineSlug 映射。
-- 终态可关闭；关闭只在当前浏览器会话按 `sessionId + runId` 持久隐藏组件，不删除 run、节点或产物；出现新 runId 自动重新展示。
-- 点击组件或节点通过 `shrimp:request-library` 安全事件打开“我的虾”现有详情，不跳任意 URL。
+卡片注册在 `conversation.input.dock`，进入输入区的正常文档流，打开时增加 composer 高度并把对话可视区向上推，不遮挡消息。关闭时返回 `null`，不占位、不轮询；按 Esc、点击“关闭”或再次输入 `/虾缸` 均可控制卡片。打开时串行刷新（每次读取完成后等待 4 秒），关闭会取消在途请求；主列表读取失败显示整卡错误，单只虾的 summary 失败只在该虾旁显示“真实节点暂时无法读取”。
+
+卡片只通过同源 `/api/shrimp/tank?path=` 读取三类 canonical 路径：
+
+- `/api/v1/dsh/shrimps`
+- `/api/v1/runs?limit=50`
+- 活跃运行对应的 `/api/v1/runs/{id}/summary`
+
+模型只接受有非空 pipeline ref 的匹配，合并虾条目内嵌运行与运行列表，并按每条流水线保留最新活跃运行。活跃状态包括 `running`、`processing`、`queued`、`trialing`、`awaiting_confirmation`、`awaiting_external`、`waiting_external` 和 `cancel_requested`。读取失败显示错误，不降级为空闲。
+
+有活跃运行时显示 canonical 虾名、状态徽章、总进度、细进度条、当前节点和真实 summary 节点的横向细进度轨；running 节点显示真实百分比与“运行中”，queued 节点显示“排队中”；多只运行才显示小型分段切换。没有活跃运行时，名单实时取自已发布 pipeline，显示“现在没有虾在运行”和中文身份胶囊；没有已发布虾时显示“虾缸里还没有已发布的虾”。支持深浅色、窄屏、焦点可见和 `prefers-reduced-motion`。

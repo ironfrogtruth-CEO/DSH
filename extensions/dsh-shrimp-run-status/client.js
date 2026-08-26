@@ -1,6 +1,5 @@
-// @local/dsh-shrimp-run-status — session run-status rail.
-// It reads durable tool evidence and a fixed read-only heartbeat checkpoint;
-// it never infers a run from user prose.
+// @local/dsh-shrimp-run-status — the `/虾缸` input card.
+// It is a read-only surface: the command contribution only opens this card.
 window.__ModuleLoader__.load({
   id: '@local/dsh-shrimp-run-status',
   factory: (require) => {
@@ -10,15 +9,67 @@ window.__ModuleLoader__.load({
 
     const React = require('react')
     const h = React.createElement
-    const inject = ['slots']
-    const TERMINAL = new Set(['done', 'completed', 'succeeded', 'success', 'failed', 'error', 'blocked', 'cancelled', 'canceled', 'stopped', 'interrupted', 'aborted'])
-    const ALIASES = new Map([
-      ['done', 'completed'], ['succeeded', 'completed'], ['success', 'completed'], ['complete', 'completed'],
-      ['error', 'failed'], ['failure', 'failed'], ['canceled', 'cancelled'], ['aborted', 'cancelled'], ['stopped', 'cancelled'],
-      ['processing', 'running'], ['in_progress', 'running'], ['in-progress', 'running'],
-      ['waiting_approval', 'approval_needed'], ['approval', 'approval_needed'],
+    const inject = ['slots', 'commandUi']
+    const OPEN_EVENT = 'shrimp:tank-open'
+    const ACTIVE_STATUSES = new Set([
+      'running',
+      'processing',
+      'queued',
+      'trialing',
+      'awaiting_confirmation',
+      'awaiting_external',
+      'waiting_external',
+      'cancel_requested',
     ])
+    const STATUS_ALIASES = new Map([
+      ['done', 'completed'],
+      ['succeeded', 'completed'],
+      ['success', 'completed'],
+      ['complete', 'completed'],
+      ['error', 'failed'],
+      ['failure', 'failed'],
+      ['canceled', 'cancelled'],
+      ['aborted', 'cancelled'],
+      ['stopped', 'cancelled'],
+      ['processing', 'running'],
+      ['in_progress', 'running'],
+      ['in-progress', 'running'],
+      ['waiting_approval', 'approval_needed'],
+      ['approval', 'approval_needed'],
+    ])
+    const IDLE_COLORS = ['#6f9d9a', '#8f86ad', '#b28b6b', '#6f8eae']
+    const PUBLISHED_EXCLUDED_LIFECYCLES = new Set(['deleted', 'archived', 'draft'])
+    const STATUS_LABELS = {
+      running: '运行中',
+      processing: '处理中',
+      queued: '排队中',
+      trialing: '试跑中',
+      awaiting_confirmation: '等待确认',
+      awaiting_external: '等待外部处理',
+      waiting_external: '等待外部处理',
+      cancel_requested: '取消中',
+      completed: '已完成',
+      failed: '失败',
+      blocked: '已阻断',
+      cancelled: '已取消',
+      approval_needed: '等待确认',
+      pending: '待运行',
+      unknown: '状态未知',
+    }
+
     const text = (value) => value == null ? '' : typeof value === 'string' ? value : String(value)
+    const first = (...values) => {
+      for (const value of values) {
+        const result = text(value).trim()
+        if (result) return result
+      }
+      return ''
+    }
+    const normalizeStatus = (value) => {
+      const raw = text(value).trim().toLowerCase().replace(/[\s-]+/g, '_')
+      return STATUS_ALIASES.get(raw) || raw || 'unknown'
+    }
+    const isActiveStatus = (value) => ACTIVE_STATUSES.has(normalizeStatus(value))
     const unwrap = (value) => {
       let current = value
       for (let index = 0; index < 4; index += 1) {
@@ -27,265 +78,467 @@ window.__ModuleLoader__.load({
       }
       return current
     }
-    const parseJson = (value) => {
-      if (value && typeof value === 'object') return value
-      const raw = text(value).trim()
-      if (!raw) return null
-      try { return JSON.parse(raw) } catch {
-        const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
-        if (!fenced) return null
-        try { return JSON.parse(fenced[1]) } catch { return null }
+    const unwrapItems = (value) => {
+      const root = unwrap(value)
+      if (Array.isArray(root)) return root
+      if (Array.isArray(root?.items)) return root.items
+      if (Array.isArray(root?.runs)) return root.runs
+      if (Array.isArray(root?.data)) return root.data
+      return []
+    }
+    const publishedLifecycleOf = (item) => text(item?.lifecycle_status || item?.lifecycleStatus || item?.lifecycle || item?.state || item?.status).trim().toLowerCase()
+    const publishedRefOf = (item) => first(item?.ref, item?.slug, item?.id)
+    const publishedNameOf = (item) => first(item?.display_name, item?.title, item?.name)
+    const projectPublishedShrimps = (items) => {
+      const output = []
+      const positions = new Map()
+      for (const item of Array.isArray(items) ? items : []) {
+        if (!item || item.identity !== 'pipeline') continue
+        const ref = publishedRefOf(item)
+        const name = publishedNameOf(item)
+        const lifecycle = publishedLifecycleOf(item)
+        if (!ref || !name || PUBLISHED_EXCLUDED_LIFECYCLES.has(lifecycle)) continue
+        const previousIndex = positions.get(ref)
+        if (previousIndex === undefined) {
+          positions.set(ref, output.length)
+          output.push(item)
+        } else if (lifecycle === 'published' && publishedLifecycleOf(output[previousIndex]) !== 'published') {
+          output[previousIndex] = item
+        }
       }
+      return output
     }
-    const contentText = (value) => {
-      if (typeof value === 'string') return value
-      if (Array.isArray(value)) return value.map(contentText).filter(Boolean).join('\n')
-      if (!value || typeof value !== 'object') return ''
-      return text(value.text || value.content || value.value || '')
-    }
-    function visit(value, seen, depth, callback) {
-      if (depth > 7 || value == null) return null
-      if (typeof value !== 'object') return callback(value)
-      if (seen.has(value)) return null
-      seen.add(value)
-      const direct = callback(value)
-      if (direct) return direct
-      if (Array.isArray(value)) {
-        for (const item of value) { const found = visit(item, seen, depth + 1, callback); if (found) return found }
-        return null
-      }
-      for (const [key, item] of Object.entries(value)) {
-        if (!['data', 'value', 'result', 'response', 'operation', 'resource_refs', 'resources', 'run'].includes(key)) continue
-        const found = visit(item, seen, depth + 1, callback)
-        if (found) return found
-      }
-      return null
-    }
-    const runReference = (value) => visit(unwrap(value), new Set(), 0, (item) => {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) return null
-      const direct = item.run_id || item.runId
-      if (direct) return String(direct)
-      if (Array.isArray(item.resource_refs)) {
-        const ref = item.resource_refs.find((candidate) => candidate && (candidate.type === 'run' || candidate.kind === 'run') && (candidate.id || candidate.run_id || candidate.runId))
-        if (ref) return String(ref.id || ref.run_id || ref.runId)
-      }
-      if (item.operation && typeof item.operation === 'object' && item.operation.aggregate_id) return String(item.operation.aggregate_id)
-      return null
-    }) || ''
-    const normalizeStatus = (value) => {
-      const raw = text(value).trim().toLowerCase().replace(/\s+/g, '_')
-      return ALIASES.get(raw) || raw || 'unknown'
-    }
-    const terminal = (value) => {
-      const raw = text(value).trim().toLowerCase().replace(/\s+/g, '_')
-      return TERMINAL.has(raw) || TERMINAL.has(ALIASES.get(raw) || '')
-    }
-    const progress = (value) => {
+    const progressOf = (value) => {
       const number = Number(value?.progress_percent ?? value?.progressPercent ?? value?.progress ?? value?.percent)
       return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : null
     }
-    const parseResult = (node) => {
-      const plain = contentText(node?.content)
-      const parsed = parseJson(plain) || parseJson(node?.meta) || parseJson(node?.result)
-      return {
-        runId: runReference(parsed || { content: node?.content, meta: node?.meta, result: node?.result }),
-        isError: Boolean(node?.isError || node?.error),
-        error: text([node?.error?.code, node?.error?.message].filter(Boolean).join('：') || (node?.isError ? plain : '')).slice(0, 500),
-      }
-    }
-    const domainOf = (value, slug = '') => {
-      const source = [value?.domain, value?.shrimp_domain, value?.pipelineSlug, value?.pipeline_slug, value?.name, value?.display_name, slug].filter(Boolean).join(' ').toLowerCase()
-      if (/(xiaohongshu|xhs|小红书)/i.test(source)) return 'xiaohongshu'
-      if (/(enterprise[-_ ]?health|enterprise[-_ ]?report|企业健康|企康|平安健康)/i.test(source)) return 'enterprise-health'
-      if (/(article|wechat|公众号|文章|虾六答)/i.test(source)) return 'article'
-      return 'generic'
-    }
-    const heartbeatCommand = (value) => {
-      const parsed = parseJson(value)
-      const command = text(parsed?.command ?? value)
-      return /(?:^|[\n;&])\s*(?:nohup\s+)?(?:arch\s+-arm64\s+)?(?:\/\S*\/)?python(?:3(?:\.\d+)?)?\s+(?:\S*\/)?scripts\/heartbeat_gzh_publish\.py(?:\s|>|&|$)/m.test(command)
-    }
-    function latestRun(snapshot) {
-      const map = new Map()
-      const add = (call, fallback, source) => {
-        if (!call || String(call.name || '').trim() !== 'shrimp_run') return
-        const args = parseJson(call.argsRaw) || call.args || {}
-        const id = text(call.callId || call.id || `${source}-${fallback}`)
-        const previous = map.get(id) || {}
-        map.set(id, { ...previous, callId: id, seq: Number(call.seq ?? fallback ?? previous.seq ?? 0), time: Number(call.time ?? previous.time ?? 0), pipelineSlug: text(args?.pipelineSlug || args?.pipeline_slug || args?.slug), args, source })
-      }
-      const addHeartbeat = (call, fallback, source) => {
-        if (!call || String(call.name || '').trim() !== 'bash') return
-        const args = parseJson(call.argsRaw) || call.args || {}
-        if (!heartbeatCommand(args)) return
-        const id = text(call.callId || call.id || `${source}-${fallback}`)
-        const previous = map.get(id) || {}
-        map.set(id, { ...previous, callId: id, seq: Number(call.seq ?? fallback ?? previous.seq ?? 0), time: Number(call.time ?? previous.time ?? 0), pipelineSlug: 'shrimp-c433b57dac59419d', args, runner: 'gzh-multi-article', sourceType: 'heartbeat', source })
-      }
-      ;(Array.isArray(snapshot?.runningCalls) ? snapshot.runningCalls : []).forEach((call, index) => add(call, call?.seq ?? call?.time ?? index, 'call'))
-      ;(Array.isArray(snapshot?.runningCalls) ? snapshot.runningCalls : []).forEach((call, index) => addHeartbeat(call, call?.seq ?? call?.time ?? index, 'heartbeat-call'))
-      ;(Array.isArray(snapshot?.nodes) ? snapshot.nodes : []).forEach((node, index) => {
-        if (node?.kind !== 'tool-result') return
-        if (String(node.call?.name || '') === 'bash') {
-          const heartbeatCallId = node.callId || node.call?.callId
-          addHeartbeat({ ...node.call, ...(heartbeatCallId ? { callId: heartbeatCallId } : {}), seq: node.seq, time: node.callTime || node.time }, node.seq ?? index, 'heartbeat-result')
-          const heartbeatId = text(heartbeatCallId || `heartbeat-result-${node.seq ?? index}`)
-          const heartbeat = map.get(heartbeatId)
-          if (heartbeat) map.set(heartbeatId, { ...heartbeat, callId: heartbeatId, seq: Number(node.seq ?? heartbeat.seq), time: Number(node.time ?? heartbeat.time), pid: /\bPID\s*=\s*(\d+)\b/.exec(contentText(node.content))?.[1] || '', source: 'heartbeat-result' })
-          return
+    const messageOf = (value, keys) => {
+      if (!value || typeof value !== 'object') return ''
+      for (const key of keys) {
+        const candidate = value[key]
+        if (candidate && typeof candidate === 'object') {
+          const nested = first(candidate.message, candidate.text, candidate.detail, candidate.reason)
+          if (nested) return nested.slice(0, 500)
         }
-        if (String(node.call?.name || '') !== 'shrimp_run') return
-        const resultCallId = node.callId || node.call?.callId
-        add({ ...node.call, ...(resultCallId ? { callId: resultCallId } : {}), seq: node.seq, time: node.callTime || node.time }, node.seq ?? index, 'result')
-        const id = text(resultCallId || `result-${node.seq ?? index}`)
-        const previous = map.get(id)
-        if (!previous) return
-        const result = parseResult(node)
-        map.set(id, { ...previous, callId: id, seq: Number(node.seq ?? previous.seq), time: Number(node.time ?? previous.time), result, runId: result.runId, isError: result.isError, error: result.error, source: 'result' })
-      })
-      const entries = [...map.values()].sort((left, right) => (left.seq - right.seq) || (left.time - right.time))
-      const candidate = entries.at(-1)
-      if (!candidate) return null
-      return { ...candidate, approvalPending: Array.isArray(snapshot?.pending) && snapshot.pending.some((item) => item?.kind === 'approval'), domain: candidate.sourceType === 'heartbeat' ? 'article' : domainOf(candidate, candidate.pipelineSlug) }
+        const message = text(candidate).trim()
+        if (message) return message.slice(0, 500)
+      }
+      return ''
     }
-    const normalizeNode = (node, index) => {
-      const status = normalizeStatus(node?.status || node?.state || node?.lifecycle_status)
-      const state = status === 'completed' ? 'done' : status === 'failed' || status === 'blocked' ? 'failed' : status === 'cancelled' ? 'blocked' : status === 'running' || status === 'queued' || status === 'pending' || status === 'approval_needed' ? status : 'pending'
-      return { id: text(node?.node_id || node?.id || node?.key || `node-${index + 1}`), name: text(node?.node_name || node?.display_name || node?.name || node?.title || node?.node_id || `节点 ${index + 1}`), state, status, progress: progress(node), failure: text(node?.error_summary || node?.error || node?.failure_summary || '').slice(0, 500), order: Number(node?.order_index ?? node?.order ?? index) }
+    const normalizeNode = (node, index = 0) => {
+      const source = node && typeof node === 'object' ? node : {}
+      const status = normalizeStatus(source.status || source.state || source.lifecycle_status)
+      const state = status === 'completed'
+        ? 'done'
+        : status === 'failed'
+          ? 'failed'
+          : status === 'blocked' || status === 'cancelled'
+            ? 'blocked'
+            : status === 'running' || status === 'processing' || status === 'queued' || status === 'pending' || status === 'approval_needed'
+              ? status
+              : 'pending'
+      return {
+        id: first(source.node_id, source.nodeId, source.id, source.key, `node-${index + 1}`),
+        name: first(source.node_name, source.nodeName, source.display_name, source.name, source.title, source.node_id, source.nodeId),
+        status,
+        state,
+        progress: progressOf(source),
+        failure: messageOf(source, ['failure_message', 'error_summary', 'error', 'failure_summary', 'failure']),
+        blocked: messageOf(source, ['blocked_message', 'blocked_reason', 'blocking_reason', 'blocked']),
+        order: Number(source.order_index ?? source.order ?? index),
+      }
     }
-    const normalizePayload = (summaryValue, statusValue) => {
-      const summaryRoot = unwrap(summaryValue)
-      const statusRoot = unwrap(statusValue)
-      const summary = summaryRoot?.summary && typeof summaryRoot.summary === 'object' ? { ...summaryRoot, ...summaryRoot.summary } : summaryRoot
-      const status = statusRoot?.status && typeof statusRoot.status === 'object' ? { ...statusRoot, ...statusRoot.status } : statusRoot
-      const merged = { ...(summary && typeof summary === 'object' ? summary : {}), ...(status && typeof status === 'object' ? status : {}) }
-      const source = Array.isArray(merged.nodes) ? merged.nodes : Array.isArray(merged.node_states) ? merged.node_states : Array.isArray(merged.steps) ? merged.steps : []
-      const nodes = source.map(normalizeNode).sort((a, b) => a.order - b.order)
-      const value = progress(merged)
+    const summaryRoot = (value) => {
+      const root = unwrap(value)
+      return root?.summary && typeof root.summary === 'object' && !Array.isArray(root.summary) ? { ...root, ...root.summary } : root
+    }
+    const statusRoot = (value) => {
+      const root = unwrap(value)
+      return root?.status && typeof root.status === 'object' && !Array.isArray(root.status) ? { ...root, ...root.status } : root
+    }
+    const nodeSource = (value) => {
+      if (!value || typeof value !== 'object') return []
+      if (Array.isArray(value.nodes)) return value.nodes
+      if (Array.isArray(value.node_states)) return value.node_states
+      if (Array.isArray(value.nodeStates)) return value.nodeStates
+      if (Array.isArray(value.steps)) return value.steps
+      return []
+    }
+    const currentNodeIdOf = (value, nodes) => {
+      const direct = value?.current_node && typeof value.current_node === 'object' ? value.current_node : null
+      const currentId = first(value?.current_node_id, value?.currentNodeId, direct?.id, direct?.node_id)
+      if (currentId) return currentId
+      const currentText = typeof value?.current_node === 'string' ? value.current_node : typeof value?.currentNode === 'string' ? value.currentNode : first(value?.current_node_name, value?.currentNodeName, direct?.node_name, direct?.name)
+      if (currentText) return nodes.find((node) => node.id === currentText || node.name === currentText)?.id || ''
+      return nodes.find((node) => ['running', 'processing', 'queued', 'failed', 'blocked'].includes(node.status))?.id || ''
+    }
+    const currentNodeOf = (value, nodes) => {
+      const currentId = currentNodeIdOf(value, nodes)
+      return nodes.find((node) => node.id === currentId)?.name || currentId || ''
+    }
+    const normalizeRunPayload = (summaryValue, statusValue) => {
+      const summary = summaryRoot(summaryValue)
+      const status = statusRoot(statusValue)
+      const merged = { ...(status && typeof status === 'object' ? status : {}), ...(summary && typeof summary === 'object' ? summary : {}) }
+      const nodes = nodeSource(merged).map(normalizeNode).sort((left, right) => left.order - right.order)
+      const progress = progressOf(merged)
       const statusName = normalizeStatus(merged.status || merged.state || merged.lifecycle_status)
-      return { status: statusName, terminal: terminal(statusName), progress: value == null && nodes.length ? Math.round(nodes.reduce((sum, node) => sum + (node.progress ?? (node.state === 'done' ? 100 : 0)), 0) / nodes.length) : value, nodes, name: text(merged.display_name || merged.pipeline_name || merged.name || merged.title || merged.shrimp_name || ''), domain: text(merged.domain || merged.shrimp_domain || merged.kind || ''), startedAt: text(merged.started_at || merged.startedAt || merged.created_at || ''), updatedAt: text(merged.updated_at || merged.updatedAt || merged.finished_at || merged.completed_at || ''), failure: text(merged.error_summary || merged.error || merged.failure_summary || '').slice(0, 500), raw: merged }
+      const failure = messageOf(merged, ['failure_message', 'error_summary', 'error', 'failure_summary', 'failure'])
+      const blocked = messageOf(merged, ['blocked_message', 'blocked_reason', 'blocking_reason', 'blocked'])
+      return {
+        status: statusName,
+        progress: progress == null && nodes.length ? Math.round(nodes.reduce((sum, node) => sum + (node.progress ?? (node.state === 'done' ? 100 : 0)), 0) / nodes.length) : progress,
+        nodes,
+        currentNode: currentNodeOf(merged, nodes),
+        currentNodeId: currentNodeIdOf(merged, nodes),
+        name: first(merged.display_name, merged.pipeline_name, merged.name, merged.title, merged.shrimp_name),
+        startedAt: first(merged.started_at, merged.startedAt, merged.created_at, merged.createdAt),
+        updatedAt: first(merged.updated_at, merged.updatedAt, merged.finished_at, merged.completed_at),
+        failure,
+        blocked,
+        raw: merged,
+      }
     }
-    const displayNodes = (nodes) => {
+    const valuesOf = (value, keys) => !value || typeof value !== 'object' ? [] : keys.map((key) => text(value[key]).trim()).filter(Boolean)
+    const pipelineRefsOf = (value) => [...new Set(valuesOf(value, ['pipeline_ref', 'pipelineRef', 'pipeline_slug', 'pipelineSlug', 'pipeline_id', 'pipelineId', 'shrimp_ref', 'shrimpRef', 'ref', 'slug']))]
+    const refsMatch = (left, right) => {
+      const leftRefs = pipelineRefsOf(left)
+      const rightRefs = pipelineRefsOf(right)
+      return leftRefs.length > 0 && rightRefs.length > 0 && rightRefs.some((ref) => leftRefs.includes(ref))
+    }
+    const runIdOf = (run) => first(run?.id, run?.run_id, run?.runId)
+    const runUpdatedAt = (run) => {
+      const parsed = Date.parse(first(run?.updated_at, run?.updatedAt, run?.finished_at, run?.finishedAt, run?.completed_at, run?.started_at, run?.created_at))
+      if (Number.isFinite(parsed)) return parsed
+      const numeric = Number(run?.updated_at ?? run?.updatedAt ?? run?.created_at ?? run?.seq ?? 0)
+      return Number.isFinite(numeric) ? numeric : 0
+    }
+    const embeddedRun = (item) => {
+      if (!item || typeof item !== 'object' || !item.run || typeof item.run !== 'object') return null
+      const refs = [...new Set([...pipelineRefsOf(item), ...valuesOf(item, ['id'])])]
+      if (refs.length === 0) return null
+      if (pipelineRefsOf(item.run).length > 0 && !pipelineRefsOf(item.run).some((ref) => refs.includes(ref))) return null
+      return pipelineRefsOf(item.run).length > 0 ? { ...item.run, __embedded: true } : { ...item.run, pipeline_ref: refs[0], __embedded: true }
+    }
+    const itemRefsOf = (item) => [...new Set([...pipelineRefsOf(item), ...valuesOf(item, ['id'])])]
+    const runBelongsTo = (run, item) => {
+      const itemRefs = itemRefsOf(item)
+      const runRefs = pipelineRefsOf(run)
+      return Boolean(run && item && itemRefs.length > 0 && ((run.__embedded === true) || (runRefs.length > 0 && runRefs.some((ref) => itemRefs.includes(ref)))))
+    }
+    const latestActiveRun = (item, runs) => {
+      const embedded = embeddedRun(item)
+      const matched = (Array.isArray(runs) ? runs : []).filter((run) => runBelongsTo(run, item))
+      if (embedded) matched.push(embedded)
+      const active = matched.filter((run) => isActiveStatus(run?.status || run?.state || run?.lifecycle_status))
+      active.sort((left, right) => runUpdatedAt(right) - runUpdatedAt(left) || runIdOf(right).localeCompare(runIdOf(left)))
+      return active[0] || null
+    }
+    const canonicalName = (item, run) => {
+      const itemName = publishedNameOf(item)
+      if (itemName) return itemName
+      const runName = first(run?.display_name, run?.pipeline_name, run?.name, run?.title)
+      return runName || first(itemRefsOf(item)[0], pipelineRefsOf(run)[0]) || '未命名虾'
+    }
+    const groupLatestActiveRuns = (items, runs) => {
+      const byRef = new Map()
+      for (const item of Array.isArray(items) ? items : []) {
+        const refs = itemRefsOf(item)
+        if (refs.length === 0) continue
+        const run = latestActiveRun(item, runs)
+        if (!run) continue
+        const group = { ref: refs[0], refs, item, run, name: canonicalName(item, run), updatedAt: runUpdatedAt(run) }
+        const previous = byRef.get(group.ref)
+        if (!previous || group.updatedAt > previous.updatedAt || (group.updatedAt === previous.updatedAt && runIdOf(group.run).localeCompare(runIdOf(previous.run)) > 0)) byRef.set(group.ref, group)
+      }
+      return [...byRef.values()].sort((left, right) => right.updatedAt - left.updatedAt || left.name.localeCompare(right.name))
+    }
+    const visibleNodes = (nodes, limit = 6, current = undefined) => {
       const source = Array.isArray(nodes) ? nodes : []
-      if (source.length <= 6) return source.map((node) => ({ node }))
-      const indexes = [...new Set([0, 1, 2, 3, source.length - 2, source.length - 1])].sort((a, b) => a - b)
-      const output = []; let previous = -1
-      for (const index of indexes) { if (previous >= 0 && index - previous > 1) output.push({ ellipsis: true, key: `ellipsis-${previous}-${index}` }); output.push({ node: source[index] }); previous = index }
+      if (limit && typeof limit === 'object') {
+        current = limit
+        limit = Number(current.limit || 6)
+      }
+      if (source.length <= limit) return source.map((node) => ({ node }))
+      const currentId = typeof current === 'string' ? current : first(current?.currentNodeId, current?.nodeId, current?.id, current?.currentNode)
+      let currentIndex = currentId ? source.findIndex((node) => node?.id === currentId || node?.node_id === currentId || node?.name === currentId || node?.node_name === currentId) : -1
+      if (currentIndex < 0) currentIndex = source.findIndex((node) => ['running', 'processing', 'queued', 'failed', 'blocked'].includes(normalizeStatus(node?.status || node?.state || node?.lifecycle_status)))
+      const required = [...new Set([0, source.length - 1, ...(currentIndex < 0 ? [] : [currentIndex - 1, currentIndex, currentIndex + 1])])].filter((index) => index >= 0 && index < source.length)
+      const center = currentIndex < 0 ? 0 : currentIndex
+      const fill = Array.from({ length: source.length }, (_, index) => index).filter((index) => !required.includes(index)).sort((left, right) => (Math.abs(left - center) - Math.abs(right - center)) || left - right)
+      const indexes = [...required, ...fill.slice(0, Math.max(0, limit - required.length))].sort((left, right) => left - right)
+      const output = []
+      let previous = -1
+      for (const index of indexes) {
+        if (previous >= 0 && index - previous > 1) output.push({ ellipsis: true, key: `ellipsis-${previous}-${index}` })
+        output.push({ node: source[index] })
+        previous = index
+      }
       return output
     }
-    const storageKey = (sessionId, runId) => `dsh-shrimp-run-status:dismissed:${text(sessionId)}:${text(runId)}`
-    const readDismissed = (key) => { try { return Boolean(key && window.localStorage.getItem(key) === '1') } catch { return false } }
-    const saveDismissed = (key) => { try { if (key) window.localStorage.setItem(key, '1') } catch {} }
-    const fetchApi = async (path) => {
+
+    const tankApi = async (path, options = {}) => {
       const query = new URLSearchParams({ path })
-      const response = await fetch(`/api/shrimp/tank?${query.toString()}`, { cache: 'no-store', headers: { Accept: 'application/json' } })
+      const response = await fetch(`/api/shrimp/tank?${query.toString()}`, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: options.signal })
       const value = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(text(value?.error || value?.message || `虾缸请求失败（${response.status}）`))
+      if (!response.ok) throw new Error(text(value?.error?.message || value?.error || value?.message || `虾缸请求失败（${response.status}）`))
       return unwrap(value)
     }
-    const fetchHeartbeatRuntime = async () => {
-      const response = await fetch('/api/dsh-shrimp-run-status/heartbeat', { cache: 'no-store', headers: { Accept: 'application/json' } })
-      const value = await response.json().catch(() => null)
-      if (!response.ok || value?.ok !== true) throw new Error(text(value?.error || `运行状态请求失败（${response.status}）`))
-      return value
+    const dispatchOpen = (sessionId) => {
+      if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
+      window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { sessionId: text(sessionId) } }))
     }
-    const statusText = { completed: '已完成', running: '运行中', queued: '排队中', pending: '待运行', approval_needed: '等待确认', failed: '失败', blocked: '已阻断', cancelled: '已取消', unknown: '启动中', offline: '虾缸离线' }
-    const stateColor = { done: '#35a56f', running: '#3d83e6', queued: '#3d83e6', pending: '#858c96', approval_needed: '#d99532', failed: '#d84c45', blocked: '#d84c45' }
-    const finalState = (status) => status === 'completed' ? 'done' : status === 'failed' ? 'failed' : status === 'cancelled' ? 'blocked' : status === 'blocked' ? 'failed' : status
 
-    function RunStatus({ sessionId, useSession }) {
-      const snapshot = useSession((value) => value)
-      const candidate = latestRun(snapshot)
-      const identity = candidate ? `${sessionId}:${candidate.runId || candidate.callId || candidate.seq}` : ''
-      const [remote, setRemote] = React.useState(null)
-      const [error, setError] = React.useState('')
-      const [dismissed, setDismissed] = React.useState(false)
+    const formatProgress = (value) => value == null ? '' : `${Math.round(Number(value))}%`
+    const statusLabel = (status) => STATUS_LABELS[normalizeStatus(status)] || normalizeStatus(status)
+    const pointerAvoid = (event) => {
+      const target = event.currentTarget
+      const rect = target.getBoundingClientRect()
+      const offset = (event.clientX - (rect.left + rect.width / 2)) / Math.max(rect.width / 2, 1)
+      target.style.setProperty('--swimmer-avoid', `${Math.max(-5, Math.min(5, Math.round(offset * 5)))}px`)
+    }
+    const clearPointerAvoid = (event) => event.currentTarget.style.removeProperty('--swimmer-avoid')
+
+    function IdleView({ shrimps }) {
+      const entries = Array.isArray(shrimps) ? shrimps : []
+      if (entries.length === 0) return h('p', { className: 'dsh-shrimp-tank-idle-empty' }, '虾缸里还没有已发布的虾')
+      return h('section', { className: 'dsh-shrimp-tank-idle', 'aria-label': '虾缸中的虾' },
+        h('p', { className: 'dsh-shrimp-tank-idle-hint' }, '现在没有虾在运行'),
+        h('div', { className: 'dsh-shrimp-tank-pond', 'aria-label': '已发布虾' },
+          h('ul', { className: 'dsh-shrimp-tank-swimmers' }, entries.map((identity, index) => h('li', {
+            key: publishedRefOf(identity) || identity.name || index,
+            className: `dsh-shrimp-tank-swimmer${index < 4 ? ` is-path-${index + 1}` : ''}`,
+            style: { '--swimmer-color': IDLE_COLORS[index % IDLE_COLORS.length], '--swimmer-delay': `${index * -0.9}s` },
+            onPointerMove: index < 4 ? pointerAvoid : undefined,
+            onPointerLeave: index < 4 ? clearPointerAvoid : undefined,
+          }, h('span', { className: 'dsh-shrimp-tank-swimmer-shrimp', role: 'img', 'aria-label': `${publishedNameOf(identity)} 虾` }, '🦐'), h('span', { className: 'dsh-shrimp-tank-swimmer-name' }, publishedNameOf(identity)))))
+        ),
+      )
+    }
+
+    function NodeStepper({ nodes, currentNodeId, currentNode, unavailable }) {
+      if (unavailable) return h('p', { className: 'dsh-shrimp-tank-node-unavailable', role: 'status' }, `真实节点暂时无法读取：${unavailable}`)
+      const entries = visibleNodes(nodes, 6, { currentNodeId, currentNode })
+      if (entries.length === 0) return h('p', { className: 'dsh-shrimp-tank-empty' }, '虾缸尚未返回真实节点')
+      return h('div', { className: 'dsh-shrimp-tank-stepper', role: 'list', 'aria-label': '运行节点' }, entries.map((entry, index) => {
+        if (entry.ellipsis) return h('span', { key: entry.key, className: 'dsh-shrimp-tank-stepper-ellipsis', 'aria-label': '中间节点已省略' }, '…')
+        const node = entry.node
+        const running = node.state === 'running'
+        const stateText = node.state === 'done' ? '已完成' : running ? `${formatProgress(node.progress) ? `${formatProgress(node.progress)} · ` : ''}运行中` : node.state === 'queued' ? '排队中' : node.state === 'failed' ? '失败' : node.state === 'blocked' ? '已阻断' : statusLabel(node.status)
+        return h('div', { key: node.id || index, className: `dsh-shrimp-tank-stepper-item is-${node.state}`, role: 'listitem', title: node.failure || node.blocked || node.name || stateText },
+          h('span', { className: 'dsh-shrimp-tank-stepper-dot', 'aria-hidden': true }),
+          h('div', { className: 'dsh-shrimp-tank-stepper-label' }, h('strong', null, node.name || '未命名节点'), h('span', null, stateText)),
+        )
+      }))
+    }
+
+    function RunCard({ group }) {
+      const summary = group.summary || normalizeRunPayload(null, group.run)
+      const status = normalizeStatus(summary.status || group.run?.status || group.run?.state)
+      const failure = group.summaryError ? '' : summary.failure || messageOf(group.run, ['failure_message', 'error_summary', 'error', 'failure_summary', 'failure'])
+      const blocked = group.summaryError ? '' : summary.blocked || messageOf(group.run, ['blocked_message', 'blocked_reason', 'blocking_reason', 'blocked'])
+      const currentNode = group.summaryError ? '' : summary.currentNode
+      return h('article', { className: 'dsh-shrimp-tank-run-summary', 'data-run-status': status, 'data-run-id': runIdOf(group.run) || undefined },
+        h('div', { className: 'dsh-shrimp-tank-summary-head' },
+          h('span', { className: 'dsh-shrimp-tank-summary-shrimp', role: 'img', 'aria-label': `${group.name} 虾` }, '🦐'),
+          h('div', { className: 'dsh-shrimp-tank-summary-title' }, h('h3', null, group.name), h('span', { className: `dsh-shrimp-tank-badge is-${status}` }, statusLabel(status))),
+          summary.progress != null ? h('strong', { className: 'dsh-shrimp-tank-progress' }, formatProgress(summary.progress)) : null,
+        ),
+        summary.progress != null ? h('div', { className: 'dsh-shrimp-tank-progress-bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(Number(summary.progress)) }, h('span', { style: { width: `${Math.max(0, Math.min(100, Number(summary.progress)))}%` } })) : null,
+        currentNode ? h('p', { className: 'dsh-shrimp-tank-current' }, `当前在「${currentNode}」` ) : null,
+        failure ? h('p', { className: 'dsh-shrimp-tank-message is-failure', role: 'alert' }, failure) : null,
+        blocked ? h('p', { className: 'dsh-shrimp-tank-message is-blocked', role: 'alert' }, blocked) : null,
+        h(NodeStepper, { nodes: summary.nodes, currentNodeId: summary.currentNodeId, currentNode: summary.currentNode, unavailable: group.summaryError }),
+      )
+    }
+
+    function ActiveView({ groups, selectedRef, onSelect }) {
+      const selected = groups.find((group) => group.ref === selectedRef) || groups[0]
+      return h('section', { className: 'dsh-shrimp-tank-active', 'aria-label': '运行中的虾' },
+        groups.length > 1 ? h('div', { className: 'dsh-shrimp-tank-segmented', role: 'tablist', 'aria-label': '运行中的虾' }, groups.map((group) => h('button', {
+          key: group.ref,
+          type: 'button',
+          role: 'tab',
+          'aria-selected': group.ref === selected?.ref,
+          className: `dsh-shrimp-tank-segment${group.ref === selected?.ref ? ' is-selected' : ''}`,
+          onClick: () => onSelect(group.ref),
+        }, group.name))) : null,
+        selected ? h(RunCard, { group: selected }) : null,
+      )
+    }
+
+    function TankCard({ sessionId }) {
+      const [open, setOpen] = React.useState(false)
+      const [state, setState] = React.useState({ phase: 'idle', groups: [], shrimps: [], error: '' })
+      const [selectedRef, setSelectedRef] = React.useState('')
+      const [reloadKey, setReloadKey] = React.useState(0)
+      const close = React.useCallback(() => setOpen(false), [])
+      const headerStatus = state.phase === 'ready' ? state.groups.length > 0 ? `${state.groups.length}只运行中` : state.shrimps.length > 0 ? '都在休息' : '还没有已发布的虾' : ''
+
       React.useEffect(() => {
-        setRemote(null); setError('')
-        const dismissalId = candidate?.runId || candidate?.callId
-        setDismissed(Boolean(dismissalId && readDismissed(storageKey(sessionId, dismissalId))))
-      }, [identity, sessionId, candidate?.runId, candidate?.callId])
+        const onOpen = (event) => {
+          const detail = event?.detail && typeof event.detail === 'object' ? event.detail : {}
+          if (detail.sessionId && text(detail.sessionId) !== text(sessionId)) return
+          setState({ phase: 'loading', groups: [], shrimps: [], error: '' })
+          setSelectedRef('')
+          setOpen(true)
+        }
+        window.addEventListener(OPEN_EVENT, onOpen)
+        return () => window.removeEventListener(OPEN_EVENT, onOpen)
+      }, [sessionId])
+
       React.useEffect(() => {
-        const runId = candidate?.runId
-        if ((!runId && candidate?.sourceType !== 'heartbeat') || dismissed) return undefined
+        if (!open) return undefined
+        const onKeyDown = (event) => { if (event.key === 'Escape') { event.preventDefault(); close() } }
+        document.addEventListener('keydown', onKeyDown)
+        return () => document.removeEventListener('keydown', onKeyDown)
+      }, [open, close])
+
+      React.useEffect(() => {
+        if (!open) return undefined
+        setState({ phase: 'loading', groups: [], shrimps: [], error: '' })
+        setSelectedRef('')
         let alive = true
         let timer = null
+        const controller = typeof AbortController === 'function' ? new AbortController() : null
+        const signal = controller?.signal
         const read = async () => {
-          let heartbeat = null
-          let activeRunId = runId
-          if (candidate?.sourceType === 'heartbeat') {
-            try { heartbeat = await fetchHeartbeatRuntime(); activeRunId = text(heartbeat.currentRunId) } catch (cause) {
-              if (alive) setError(text(cause?.message || cause)); return
-            }
+          try {
+            const [shrimpValue, runValue] = await Promise.all([
+              tankApi('/api/v1/dsh/shrimps', { signal }),
+              tankApi('/api/v1/runs?limit=50', { signal }),
+            ])
+            const items = unwrapItems(shrimpValue)
+            const shrimps = projectPublishedShrimps(items)
+            const runs = unwrapItems(runValue)
+            const groups = groupLatestActiveRuns(shrimps, runs)
+            const withSummaries = (await Promise.all(groups.map(async (group) => {
+              const runId = runIdOf(group.run)
+              if (!runId) return { ...group, summary: normalizeRunPayload(null, group.run) }
+              try {
+                const summaryValue = await tankApi(`/api/v1/runs/${encodeURIComponent(runId)}/summary`, { signal })
+                const summary = normalizeRunPayload(summaryValue, group.run)
+                return isActiveStatus(summary.status) ? { ...group, summary } : null
+              } catch (error) {
+                if (error?.name === 'AbortError') throw error
+                return { ...group, summary: normalizeRunPayload(null, group.run), summaryError: text(error?.message || error) || 'summary 请求失败' }
+              }
+            }))).filter(Boolean)
+            if (!alive) return
+            setState({ phase: 'ready', groups: withSummaries, shrimps, error: '' })
+            setSelectedRef((current) => withSummaries.some((group) => group.ref === current) ? current : withSummaries[0]?.ref || '')
+          } catch (error) {
+            if (!alive || error?.name === 'AbortError') return
+            setState({ phase: 'error', groups: [], shrimps: [], error: text(error?.message || error) || '虾缸读取失败' })
+            setSelectedRef('')
           }
-          const paths = activeRunId
-            ? [`/api/v1/runs/${encodeURIComponent(activeRunId)}/summary`, `/api/v1/runs/${encodeURIComponent(activeRunId)}/status`]
-            : heartbeat?.pipelineSlug ? [`/api/v1/pipelines/${encodeURIComponent(heartbeat.pipelineSlug)}/summary`] : []
-          const results = await Promise.allSettled(paths.map(fetchApi))
-          if (!alive) return
-          const summary = results[0]?.status === 'fulfilled' ? results[0].value : null
-          const status = results[1]?.status === 'fulfilled' ? results[1].value : null
-          if (!summary && !status && !heartbeat?.exists) { setError('虾缸当前不可用，运行节点会在恢复后重试。'); return }
-          setError('')
-          const canonical = normalizePayload(summary, status)
-          const next = heartbeat ? {
-            ...canonical,
-            runId: activeRunId,
-            status: heartbeat.status || canonical.status,
-            terminal: Boolean(heartbeat.terminal),
-            progress: activeRunId ? canonical.progress : 0,
-            name: `${heartbeat.taskName || '虾六答'}${heartbeat.currentOut ? ` · ${heartbeat.currentOut}` : ''}`,
-            domain: 'article',
-            startedAt: heartbeat.createdAt || canonical.startedAt,
-            updatedAt: heartbeat.updatedAt || canonical.updatedAt,
-            failure: canonical.failure,
-            heartbeat,
-          } : canonical
-          setRemote(next)
-          if (next.terminal && timer) clearInterval(timer)
         }
-        void read()
-        timer = setInterval(() => { void read() }, 3000)
-        return () => { alive = false; if (timer) clearInterval(timer) }
-      }, [candidate?.runId, candidate?.sourceType, candidate?.callId, dismissed])
-      if (!candidate || dismissed) return null
-      const run = remote || { status: candidate.approvalPending ? 'approval_needed' : candidate.isError ? 'failed' : 'unknown', terminal: Boolean(candidate.isError), progress: null, nodes: [], name: '', domain: '', startedAt: '', updatedAt: '', failure: candidate.error || '' }
-      const kind = domainOf(run, candidate.pipelineSlug)
-      const status = normalizeStatus(error && !run.terminal ? 'offline' : run.status)
-      const terminalState = run.terminal || terminal(status)
-      const name = run.name || candidate.pipelineSlug || '虾运行'
-      const runId = candidate.runId || run.runId || ''
-      const dismissalId = runId || candidate.callId
-      const close = () => { if (!terminalState || !dismissalId) return; saveDismissed(storageKey(sessionId, dismissalId)); setDismissed(true) }
-      const openDetail = () => {
-        if (!candidate.pipelineSlug) return
-        window.dispatchEvent(new CustomEvent('shrimp:request-library', { detail: { ref: candidate.pipelineSlug, shrimpRef: candidate.pipelineSlug, shrimpDomain: kind, identity: 'pipeline', runId: runId || undefined } }))
-      }
-      const nodes = displayNodes(run.nodes)
-      const failure = run.failure || candidate.error || error
-      return h('section', { className: 'dsh-shrimp-run-status', 'data-shrimp-kind': kind, 'data-run-status': status, 'data-run-id': runId || undefined, 'aria-label': '虾运行节点', onClick: openDetail },
-        h('header', { className: 'dsh-shrimp-run-status-head' }, h('div', { className: 'dsh-shrimp-run-status-title' }, h('strong', null, '运行节点'), h('span', null, nodes.length ? `${run.nodes.length} 个节点` : '等待节点'), h('span', { className: `dsh-shrimp-run-status-badge is-${finalState(status)}` }, statusText[status] || status)), run.progress != null ? h('span', { className: 'dsh-shrimp-run-status-progress' }, `${Number(run.progress).toFixed(1)}%`) : null, terminalState && dismissalId ? h('button', { type: 'button', className: 'dsh-shrimp-run-status-close', 'aria-label': '关闭运行节点', onClick: (event) => { event.stopPropagation(); close() } }, '×') : null),
-        h('div', { className: 'dsh-shrimp-run-status-meta' }, h('span', null, name), runId ? h('code', null, runId) : null, run.startedAt ? h('time', null, new Date(run.startedAt).toLocaleString('zh-CN')) : null),
-        nodes.length ? h('div', { className: 'dsh-shrimp-run-status-track', role: 'list' }, nodes.map((entry, index) => entry.ellipsis ? h('span', { className: 'dsh-shrimp-run-status-ellipsis', key: entry.key, 'aria-label': '中间节点已省略' }, '…') : h('button', { type: 'button', role: 'listitem', key: entry.node.id || index, className: `dsh-shrimp-run-status-node is-${entry.node.state}`, title: `${entry.node.name} · ${entry.node.failure || statusText[entry.node.state] || entry.node.state}`, onClick: (event) => { event.stopPropagation(); openDetail() } }, h('span', { className: 'dsh-shrimp-run-status-dot', 'aria-hidden': true }), h('span', { className: 'dsh-shrimp-run-status-node-name' }, entry.node.name), h('span', { className: 'dsh-shrimp-run-status-node-state' }, entry.node.state === 'done' ? '已完成' : entry.node.state === 'running' ? `${Math.round(Number(entry.node.progress || 0))}%` : entry.node.state === 'failed' || entry.node.state === 'blocked' ? '已阻断' : entry.node.state === 'approval_needed' ? '等确认' : '待运行')))) : h('div', { className: 'dsh-shrimp-run-status-empty' }, '已识别运行请求，等待虾缸返回真实节点…'),
-        failure ? h('p', { className: 'dsh-shrimp-run-status-failure', role: status === 'offline' ? 'status' : 'alert' }, failure) : null)
+        const tick = async () => {
+          await read()
+          if (alive) timer = window.setTimeout(() => { void tick() }, 4000)
+        }
+        void tick()
+        return () => { alive = false; if (timer !== null) window.clearTimeout(timer); controller?.abort() }
+      }, [open, reloadKey])
+
+      if (!open) return null
+      const content = state.phase === 'error'
+        ? h('div', { className: 'dsh-shrimp-tank-error-wrap' }, h('p', { className: 'dsh-shrimp-tank-error', role: 'alert' }, `虾缸读取失败：${state.error}`), h('button', { type: 'button', className: 'dsh-shrimp-tank-retry', onClick: () => { setState({ phase: 'loading', groups: [], shrimps: [], error: '' }); setReloadKey((value) => value + 1) } }, '重新读取'))
+        : state.phase === 'loading'
+          ? h('p', { className: 'dsh-shrimp-tank-loading', role: 'status' }, '正在读取运行状态…')
+          : state.groups.length > 0
+            ? h(ActiveView, { groups: state.groups, selectedRef, onSelect: setSelectedRef })
+            : h(IdleView, { shrimps: state.shrimps })
+      return h('section', { className: 'dsh-shrimp-tank-card', role: 'region', 'aria-labelledby': 'dsh-shrimp-tank-title' },
+        h('header', { className: 'dsh-shrimp-tank-header' }, h('h2', { id: 'dsh-shrimp-tank-title' }, '虾缸'), headerStatus ? h('span', { className: 'dsh-shrimp-tank-header-status' }, headerStatus) : null, h('button', { type: 'button', className: 'dsh-shrimp-tank-close', onClick: close }, '关闭')),
+        h('div', { className: 'dsh-shrimp-tank-body' }, content),
+      )
     }
 
     function apply(ctx) {
       const style = document.createElement('style')
-      style.id = 'dsh-shrimp-run-status-styles'
+      style.id = 'dsh-shrimp-tank-styles'
       style.textContent = `
-        .dsh-shrimp-run-status{box-sizing:border-box;display:flex;flex-direction:column;gap:8px;flex:none;min-width:0;margin:8px 16px 2px;padding:12px 14px;border:1px solid var(--dsw-alias-border-l2,rgba(128,128,128,.28));border-radius:14px;background:var(--dsw-alias-bg-layer-1,rgba(128,128,128,.08));color:var(--dsw-alias-label-primary);cursor:pointer;overflow:hidden}.dsh-shrimp-run-status-head{display:flex;align-items:center;gap:8px;min-width:0}.dsh-shrimp-run-status-title{display:flex;align-items:center;gap:8px;min-width:0;flex:1}.dsh-shrimp-run-status-title strong{font-size:15px}.dsh-shrimp-run-status-title>span:not(.dsh-shrimp-run-status-badge){color:var(--dsw-alias-label-tertiary);font-size:12px}.dsh-shrimp-run-status-badge{padding:2px 7px;border-radius:999px;font-size:11px;white-space:nowrap}.dsh-shrimp-run-status-badge.is-done{color:#35a56f;background:#35a56f18}.dsh-shrimp-run-status-badge.is-running,.dsh-shrimp-run-status-badge.is-queued{color:#3d83e6;background:#3d83e618}.dsh-shrimp-run-status-badge.is-failed,.dsh-shrimp-run-status-badge.is-blocked{color:#d84c45;background:#d84c4518}.dsh-shrimp-run-status-badge.is-pending,.dsh-shrimp-run-status-badge.is-approval_needed{color:#d99532;background:#d9953218}.dsh-shrimp-run-status-progress{color:#ee785f;font-size:14px;font-variant-numeric:tabular-nums}.dsh-shrimp-run-status-close{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:18px;cursor:pointer}.dsh-shrimp-run-status-close:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.dsh-shrimp-run-status-meta{display:flex;align-items:center;gap:8px;min-width:0;color:var(--dsw-alias-label-tertiary);font-size:11px}.dsh-shrimp-run-status-meta span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsh-shrimp-run-status-meta code{padding:1px 5px;border-radius:5px;background:var(--dsw-alias-bg-base);font-size:10px}.dsh-shrimp-run-status-meta time{margin-left:auto;white-space:nowrap}.dsh-shrimp-run-status-track{display:flex;align-items:stretch;gap:7px;min-width:0;overflow-x:auto;padding:2px 1px 4px;scrollbar-width:thin}.dsh-shrimp-run-status-node{display:flex;flex:1 1 0;flex-direction:column;align-items:flex-start;gap:4px;min-width:116px;max-width:210px;padding:9px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-base,rgba(128,128,128,.07));color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left}.dsh-shrimp-run-status-node:hover{border-color:var(--dsw-alias-label-secondary)}.dsh-shrimp-run-status-node-name{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600}.dsh-shrimp-run-status-node-state{font-size:10px;color:var(--dsw-alias-label-tertiary)}.dsh-shrimp-run-status-dot{width:9px;height:9px;flex:none;border-radius:50%;background:#858c96}.dsh-shrimp-run-status-node.is-done{border-color:#35a56f66;background:#35a56f0d}.dsh-shrimp-run-status-node.is-done .dsh-shrimp-run-status-dot{background:#35a56f}.dsh-shrimp-run-status-node.is-running,.dsh-shrimp-run-status-node.is-queued{border-color:#3d83e666;background:#3d83e60d}.dsh-shrimp-run-status-node.is-running .dsh-shrimp-run-status-dot,.dsh-shrimp-run-status-node.is-queued .dsh-shrimp-run-status-dot{background:#3d83e6;box-shadow:0 0 0 3px #3d83e622}.dsh-shrimp-run-status-node.is-failed,.dsh-shrimp-run-status-node.is-blocked{border-color:#d84c4566;background:#d84c450d}.dsh-shrimp-run-status-node.is-failed .dsh-shrimp-run-status-dot,.dsh-shrimp-run-status-node.is-blocked .dsh-shrimp-run-status-dot{background:#d84c45}.dsh-shrimp-run-status-ellipsis{display:grid;place-items:center;min-width:24px;color:var(--dsw-alias-label-tertiary);font-size:22px}.dsh-shrimp-run-status-empty{padding:7px 0;color:var(--dsw-alias-label-tertiary);font-size:11px}.dsh-shrimp-run-status-failure{margin:0;padding-top:2px;color:#d84c45;font-size:11px;line-height:17px}.dsh-shrimp-run-status[data-run-status=offline]{border-color:#d9953266}.dsh-shrimp-run-status[data-run-status=offline] .dsh-shrimp-run-status-badge{color:#d99532;background:#d9953218}@media(max-width:760px){.dsh-shrimp-run-status{margin:7px 8px 2px;padding:10px}.dsh-shrimp-run-status-track{margin-right:-3px}.dsh-shrimp-run-status-node{flex:0 0 132px}.dsh-shrimp-run-status-meta time{display:none}}@media(prefers-reduced-motion:reduce){.dsh-shrimp-run-status *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+        .dsh-shrimp-tank-card{box-sizing:border-box;display:flex;flex-direction:column;width:calc(100% - (var(--dsh-composer-side-clearance,16px) * 2));max-width:var(--dsh-composer-card-max-width,780px);max-height:min(48vh,480px);margin:0 auto calc(var(--dsh-composer-stack-gap,6px) * -1);flex:none;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-block-end-color:transparent;border-radius:22px 22px 0 0;background:var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-base)));box-shadow:var(--dsw-shadow-lv2,0 8px 24px rgba(0,0,0,.12));color:var(--dsw-alias-label-primary)}
+        [data-composer-seat]:has(.dsh-shrimp-tank-card)>:has(>[data-slot="conversation.input.dock"]>.dsh-shrimp-tank-card){gap:0;--dsh-composer-stack-gap:0px}
+        [data-composer-seat]:has(.dsh-shrimp-tank-card) [data-composer-card]{border-radius:0 0 22px 22px}
+        .dsh-shrimp-tank-header{box-sizing:border-box;display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:none;min-height:48px;padding:8px 14px;border-block-end:1px solid var(--dsw-alias-border-l3,var(--dsw-alias-border-l2))}
+        .dsh-shrimp-tank-header h2{margin:0;color:var(--dsw-alias-label-primary);font-size:16px;line-height:24px;font-weight:600}
+        .dsh-shrimp-tank-header-status{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}
+        .dsh-shrimp-tank-close{display:inline-flex;align-items:center;justify-content:center;flex:none;min-height:28px;margin-left:auto;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:20px;cursor:pointer}
+        .dsh-shrimp-tank-close:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+        .dsh-shrimp-tank-close:focus-visible,.dsh-shrimp-tank-segment:focus-visible{outline:2px solid var(--dsw-alias-button-info-fill,#3d83e6);outline-offset:2px}
+        .dsh-shrimp-tank-body{box-sizing:border-box;min-height:0;padding:9px 14px 10px;overflow:auto}
+        .dsh-shrimp-tank-loading,.dsh-shrimp-tank-error,.dsh-shrimp-tank-idle-hint{margin:4px 0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}
+        .dsh-shrimp-tank-error{color:var(--dsw-alias-state-error-primary,#d84c45)}
+        .dsh-shrimp-tank-error-wrap{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.dsh-shrimp-tank-retry{min-height:30px;padding:0 11px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1,transparent);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer}.dsh-shrimp-tank-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsh-shrimp-tank-retry:focus-visible{outline:2px solid var(--dsw-alias-button-info-fill,#3d83e6);outline-offset:2px}
+        .dsh-shrimp-tank-segmented{display:flex;flex-wrap:wrap;gap:5px;min-width:0;margin:0 0 10px}
+        .dsh-shrimp-tank-segment{min-width:0;max-width:100%;padding:5px 9px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-layer-1,rgba(128,128,128,.07));color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .dsh-shrimp-tank-segment:hover,.dsh-shrimp-tank-segment.is-selected{border-color:var(--dsw-alias-button-info-fill,#3d83e6);background:color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 10%,transparent);color:var(--dsw-alias-label-primary)}
+        .dsh-shrimp-tank-run-summary{display:flex;flex-direction:column;gap:9px;min-width:0}
+        .dsh-shrimp-tank-summary-head{display:flex;align-items:center;gap:9px;min-width:0}
+        .dsh-shrimp-tank-summary-shrimp{display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;font-size:19px;line-height:24px}
+        .dsh-shrimp-tank-summary-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;flex:1}.dsh-shrimp-tank-summary-title h3{margin:0;color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px;font-weight:600}
+        .dsh-shrimp-tank-badge{padding:3px 8px;border-radius:999px;font-size:11px;line-height:17px;white-space:nowrap}
+        .dsh-shrimp-tank-badge.is-running,.dsh-shrimp-tank-badge.is-processing,.dsh-shrimp-tank-badge.is-trialing,.dsh-shrimp-tank-badge.is-queued{color:#2c9a68;background:#35a56f18}
+        .dsh-shrimp-tank-badge.is-failed,.dsh-shrimp-tank-badge.is-blocked{color:#d84c45;background:#d84c4518}
+        .dsh-shrimp-tank-badge.is-awaiting_confirmation,.dsh-shrimp-tank-badge.is-awaiting_external,.dsh-shrimp-tank-badge.is-waiting_external,.dsh-shrimp-tank-badge.is-cancel_requested{color:#d99532;background:#d9953218}
+        .dsh-shrimp-tank-progress{flex:none;color:#ee785f;font-size:16px;font-variant-numeric:tabular-nums}
+        .dsh-shrimp-tank-progress-bar{height:4px;border-radius:999px;background:var(--dsw-alias-border-l3);overflow:hidden}.dsh-shrimp-tank-progress-bar span{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-state-business-primary,#35a56f);transition:width .2s ease}
+        .dsh-shrimp-tank-current{margin:0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}
+        .dsh-shrimp-tank-stepper{display:flex;align-items:stretch;gap:0;min-width:0;margin:2px 0 0;padding:5px 1px 6px;overflow-x:auto;scrollbar-width:thin}
+        .dsh-shrimp-tank-stepper-item{display:flex;flex:0 0 110px;flex-direction:column;gap:4px;min-width:100px;padding:4px 10px 2px;border-block-start:1px solid var(--dsw-alias-border-l2);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--dsw-alias-state-business-primary,#35a56f) 9%,transparent),transparent);background-size:200% 100%;background-repeat:no-repeat}
+        .dsh-shrimp-tank-stepper-item:first-child{border-block-start-color:transparent}.dsh-shrimp-tank-stepper-item + .dsh-shrimp-tank-stepper-item{margin-inline-start:-1px}
+        .dsh-shrimp-tank-stepper-dot{width:9px;height:9px;flex:none;border:2px solid var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2));border-radius:50%;background:var(--dsw-alias-label-caption)}
+        .dsh-shrimp-tank-stepper-label{display:flex;flex-direction:column;gap:1px;min-width:0}.dsh-shrimp-tank-stepper-label strong{min-width:0;color:var(--dsw-alias-label-primary);font-size:11px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsh-shrimp-tank-stepper-label span{color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:15px;white-space:nowrap}
+        .dsh-shrimp-tank-stepper-item.is-done .dsh-shrimp-tank-stepper-dot{background:#35a56f}.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot,.dsh-shrimp-tank-stepper-item.is-queued .dsh-shrimp-tank-stepper-dot{background:#3d83e6}.dsh-shrimp-tank-stepper-item.is-failed .dsh-shrimp-tank-stepper-dot,.dsh-shrimp-tank-stepper-item.is-blocked .dsh-shrimp-tank-stepper-dot{background:#d84c45}.dsh-shrimp-tank-stepper-ellipsis{display:flex;flex:0 0 18px;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:18px}
+        .dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot{animation:dsh-shrimp-stepper-pulse 1.8s ease-in-out infinite}.dsh-shrimp-tank-stepper-item.is-running{animation:dsh-shrimp-stepper-highlight 2s ease-in-out infinite}
+        @keyframes dsh-shrimp-stepper-pulse{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.18)}}
+        @keyframes dsh-shrimp-stepper-highlight{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+        .dsh-shrimp-tank-empty,.dsh-shrimp-tank-node-unavailable{margin:0;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:18px}.dsh-shrimp-tank-node-unavailable{color:#d99532}
+        .dsh-shrimp-tank-message{margin:0;padding:6px 9px;border-radius:8px;background:var(--dsw-alias-bg-base,rgba(128,128,128,.06));font-size:11px;line-height:17px;overflow-wrap:anywhere}
+        .dsh-shrimp-tank-pond{min-height:82px;padding:8px;border:1px solid color-mix(in srgb,#6f9d9a 18%,var(--dsw-alias-border-l2));border-radius:14px;background:radial-gradient(circle at 18% 20%,color-mix(in srgb,#6f9d9a 11%,transparent),transparent 28%),linear-gradient(145deg,color-mix(in srgb,#6f9d9a 5%,transparent),color-mix(in srgb,#8f86ad 4%,transparent));overflow:hidden}
+        .dsh-shrimp-tank-swimmers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0 0;padding:0;list-style:none}
+        .dsh-shrimp-tank-swimmer{box-sizing:border-box;display:flex;align-items:center;gap:7px;min-width:0;padding:6px 9px;border:1px solid color-mix(in srgb,var(--swimmer-color) 20%,var(--dsw-alias-border-l2));border-radius:999px;background:color-mix(in srgb,var(--swimmer-color) 6%,transparent);color:var(--dsw-alias-label-primary);transform:translate3d(var(--swimmer-avoid,0px),0,0);animation-duration:7.2s;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-delay:var(--swimmer-delay)}
+        .dsh-shrimp-tank-swimmer.is-path-1{animation-name:dsh-shrimp-swim-one}.dsh-shrimp-tank-swimmer.is-path-2{animation-name:dsh-shrimp-swim-two}.dsh-shrimp-tank-swimmer.is-path-3{animation-name:dsh-shrimp-swim-three}.dsh-shrimp-tank-swimmer.is-path-4{animation-name:dsh-shrimp-swim-four}
+        .dsh-shrimp-tank-swimmer:hover{transform:translate3d(calc(var(--swimmer-avoid,0px) + 4px),-1px,0)}
+        .dsh-shrimp-tank-swimmer-shrimp{display:inline-block;flex:none;font-size:22px;line-height:24px;filter:saturate(1.1)}
+        .dsh-shrimp-tank-swimmer-dot{width:10px;height:10px;flex:none;border-radius:50%;background:var(--swimmer-color);box-shadow:0 0 0 4px color-mix(in srgb,var(--swimmer-color) 14%,transparent)}
+        .dsh-shrimp-tank-swimmer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550}
+        @keyframes dsh-shrimp-swim-one{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) + 12px),-5px,0)}}
+        @keyframes dsh-shrimp-swim-two{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) - 9px),-3px,0)}}
+        @keyframes dsh-shrimp-swim-three{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) + 6px),-8px,0)}}
+        @keyframes dsh-shrimp-swim-four{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) - 13px),-2px,0)}}
+        @media(max-width:760px){.dsh-shrimp-tank-header{padding:8px 11px}.dsh-shrimp-tank-body{padding:9px 11px 11px}.dsh-shrimp-tank-stepper-item{flex-basis:104px;min-width:100px}.dsh-shrimp-tank-swimmers{gap:7px}}
+        @media(prefers-reduced-motion:reduce){.dsh-shrimp-tank-swimmer,.dsh-shrimp-tank-stepper-item,.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot{animation:none!important;transform:none!important}.dsh-shrimp-tank-progress-bar span{transition:none!important}.dsh-shrimp-tank-swimmer:hover{transform:none!important}}
       `
       document.getElementById(style.id)?.remove()
       document.head.appendChild(style)
       ctx.effect(() => () => style.remove(), 'dsh-shrimp-run-status: styles')
-      ctx.effect(() => ctx.slots.inject('conversation.session.run-status', () => ctx.slots.register({ name: 'conversation.session.run-status', id: 'dsh-shrimp-run-status', order: 0, label: '运行节点' }, RunStatus)), 'dsh-shrimp-run-status: session slot')
+
+      const commandUi = ctx.commandUi || (typeof ctx.get === 'function' ? ctx.get('commandUi') : null)
+      ctx.effect(() => commandUi.register({
+        name: '虾缸',
+        description: '打开虾缸运行状态',
+        available: () => true,
+        ui: {
+          kind: 'action',
+          run: (session) => dispatchOpen(session?.sessionId),
+        },
+      }), 'dsh-shrimp-run-status: command contribution')
+      ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
+        { name: 'conversation.input.dock', id: 'dsh-shrimp-run-status', order: 10, label: '虾缸' },
+        TankCard,
+      )), 'dsh-shrimp-run-status: input dock')
     }
 
     exports.apply = apply
     exports.inject = inject
-    exports.latestRun = latestRun
-    exports.normalizePayload = normalizePayload
+    exports.normalizeRunPayload = normalizeRunPayload
+    exports.visibleNodes = visibleNodes
+    exports.groupLatestActiveRuns = groupLatestActiveRuns
+    exports.isActiveStatus = isActiveStatus
+    exports.canonicalName = canonicalName
     return module.exports
   },
 })

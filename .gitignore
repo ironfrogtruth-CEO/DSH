@@ -37,6 +37,7 @@ private/
 /.playwright-cli/
 /.web-load-signature
 /heartbeats*.json
+/gzh-heartbeat-browser-session.json
 
 # 密钥、环境变量与 SSH 私密材料 — 永不入库
 /.env

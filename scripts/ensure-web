@@ -62,6 +62,11 @@ if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" 
   echo "$(date '+%F %T') ensure-web: subagent route patch failed; refusing to start Host" >>"$LOG"
   exit 1
 fi
+# client-only command action补丁(严格 rc.2 Gate,幂等)
+if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-client-command-actions.mjs" >>"$LOG" 2>&1; then
+  echo "$(date '+%F %T') ensure-web: client command actions patch failed; refusing to start Host" >>"$LOG"
+  exit 1
+fi
 
 # 本地 shrimp-shell 是独立 ESM 包，必须拥有自己的声明依赖。依赖目录被
 # 清理或首次迁移时补装一次；已存在时不访问网络、不重复安装。
@@ -130,9 +135,11 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified" \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js" \
   "$HOME/.dsh/scripts/ensure-web" \
   "$HOME/.dsh/scripts/host-service-state" \
   "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" \
+  "$HOME/.dsh/scripts/patch-client-command-actions.mjs" \
   "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" \
   "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" \
   "$HOME/.dsh/scripts/daily-git-commit.mjs" \
