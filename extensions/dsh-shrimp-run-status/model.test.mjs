@@ -125,6 +125,21 @@ test('visibleNodes keeps first/current neighbors/last for long tracks', () => {
   assert.equal(visibleNodes([]).length, 0)
 })
 
+test('visibleNodes keeps a running node visible when currentNodeId is stale', () => {
+  const nodes = Array.from({ length: 11 }, (_, index) => ({
+    id: `node-${index}`,
+    name: `节点${index}`,
+    state: index === 8 ? 'running' : index === 3 ? 'queued' : 'pending',
+  }))
+  const output = visibleNodes(nodes, 6, { currentNodeId: 'node-3' })
+  const visibleIds = output.filter((item) => item.node).map((item) => item.node.id)
+  assert.ok(visibleIds.includes('node-0'))
+  assert.ok(visibleIds.includes('node-10'))
+  assert.ok(visibleIds.includes('node-3'))
+  assert.ok(visibleIds.includes('node-8'))
+  assert.equal(output.find((item) => item.node?.state === 'running')?.node.id, 'node-8')
+})
+
 test('active run signature is stable, canonical, sorted, and name-independent', () => {
   const groups = [
     { ref: 'health', name: '旧名称', run: { id: 'run-2', pipeline_ref: 'health' } },

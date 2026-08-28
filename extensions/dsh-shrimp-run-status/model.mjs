@@ -443,16 +443,42 @@ export function visibleNodes(nodes, limit = 6, current = undefined) {
     current = limit
     limit = Number(current.limit || 6)
   }
-  if (source.length <= limit) return source.map((node) => ({ node }))
+  const maxVisible = Math.max(1, Number.isFinite(Number(limit)) ? Number(limit) : 6)
+  if (source.length <= maxVisible) return source.map((node) => ({ node }))
   const currentId = typeof current === 'string' ? current : firstNonEmpty(current?.currentNodeId, current?.nodeId, current?.id, current?.currentNode)
   let currentIndex = currentId ? source.findIndex((node) => node?.id === currentId || node?.node_id === currentId || node?.name === currentId || node?.node_name === currentId) : -1
-  if (currentIndex < 0) currentIndex = source.findIndex((node) => ['running', 'processing', 'queued', 'failed', 'blocked'].includes(normalizeStatus(node?.status || node?.state || node?.lifecycle_status)))
-  const neighborIndexes = currentIndex < 0 ? [] : [currentIndex - 1, currentIndex, currentIndex + 1]
-  const required = [...new Set([0, source.length - 1, ...neighborIndexes])].filter((index) => index >= 0 && index < source.length)
+  const nodeState = (node) => normalizeStatus(node?.state || node?.status || node?.lifecycle_status)
+  const runningIndexes = source
+    .map((node, index) => ({ node, index }))
+    .filter(({ node }) => nodeState(node) === 'running' || normalizeStatus(node?.status || node?.state || node?.lifecycle_status) === 'running')
+    .map(({ index }) => index)
+  if (currentIndex < 0) currentIndex = runningIndexes[0] ?? source.findIndex((node) => ['processing', 'queued', 'failed', 'blocked'].includes(nodeState(node)))
+  const focusIndex = currentIndex < 0 ? (runningIndexes[0] ?? 0) : currentIndex
+  const required = []
+  const addRequired = (index) => {
+    if (index >= 0 && index < source.length && !required.includes(index)) required.push(index)
+  }
+  // These nodes are never allowed to disappear into an ellipsis. In
+  // particular, the node's running state wins when currentNodeId is stale.
+  addRequired(0)
+  addRequired(source.length - 1)
+  addRequired(currentIndex)
+  for (const index of runningIndexes) addRequired(index)
+  const preferred = []
+  const addPreferred = (index) => {
+    if (index >= 0 && index < source.length && !required.includes(index) && !preferred.includes(index)) preferred.push(index)
+  }
+  // Fill the remaining budget from the current node outwards before taking
+  // unrelated nodes. This keeps the immediate context around the active step.
+  for (let distance = 1; distance < source.length; distance += 1) {
+    addPreferred(focusIndex - distance)
+    addPreferred(focusIndex + distance)
+  }
   const fill = Array.from({ length: source.length }, (_, index) => index)
-    .filter((index) => !required.includes(index))
-    .sort((left, right) => (Math.abs(left - (currentIndex < 0 ? 0 : currentIndex)) - Math.abs(right - (currentIndex < 0 ? 0 : currentIndex))) || left - right)
-  const indexes = [...required, ...fill.slice(0, Math.max(0, limit - required.length))].sort((left, right) => left - right)
+    .filter((index) => !required.includes(index) && !preferred.includes(index))
+    .sort((left, right) => (Math.abs(left - focusIndex) - Math.abs(right - focusIndex)) || left - right)
+  const visibleCount = Math.max(maxVisible, required.length)
+  const indexes = [...required, ...preferred, ...fill].slice(0, visibleCount).sort((left, right) => left - right)
   const output = []
   let previous = -1
   for (const index of indexes) {

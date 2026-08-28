@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "production_receipt.v1",
+  "title": "Production Receipt v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "node_id",
+    "status",
+    "input_checksum",
+    "version_refs",
+    "actual_bindings",
+    "artifacts",
+    "qa_result",
+    "evidence",
+    "failure_fingerprint",
+    "rollback_to"
+  ],
+  "properties": {
+    "schema": {"const": "production_receipt.v1"},
+    "node_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["completed", "blocked", "failed", "rolled_back"]},
+    "input_checksum": {"type": "string", "minLength": 1},
+    "version_refs": {"type": "object"},
+    "actual_bindings": {"type": "object"},
+    "artifacts": {"type": "array"},
+    "qa_result": {
+      "type": "object",
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {"enum": ["passed", "failed", "blocked"]},
+        "checks": {"type": "array"}
+      }
+    },
+    "evidence": {"type": "array"},
+    "failure_fingerprint": {"type": ["string", "null"]},
+    "rollback_to": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "evidence": {"minItems": 1},
+          "qa_result": {"properties": {"status": {"const": "passed"}}}
+        }
+      }
+    }
+  ]
+}

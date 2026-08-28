@@ -2,7 +2,7 @@ ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
   provider: deepseek-official
-  model: deepseek-v4-flash
+  model: deepseek-v4-pro
   reasoningEffort: high
 agent-presets:
   default: reliable-development
@@ -33,6 +33,31 @@ llm-deepseek:
         - image
 llm-pi-ai:
   providers:
+    zhipu-glm:
+      displayName: 智谱 GLM
+      api: openai-completions
+      baseURL: https://open.bigmodel.cn/api/paas/v4
+      apiKeyEnv: ZHIPU_API_KEY
+      # glm-5.3-flash 始终思考,"默认"档若落到无 effort 会被 pi-ai zai 格式
+      # 写成 thinking:disabled,智谱直接 400 code 1210。这里强制兜底为 high。
+      reasoning: high
+      models:
+        - id: glm-5.3-flash
+          name: GLM-5.3-Flash
+          contextWindow: 1048576
+          maxTokens: 131072
+          input:
+            - text
+            - image
+          reasoningEfforts:
+            "off": null
+            low: high
+            medium: high
+            high: high
+            max: max
+          compat:
+            supportsReasoningEffort: true
+            thinkingFormat: zai
     ollama-local:
       displayName: 本地模型
       api: openai-completions
@@ -55,4 +80,4 @@ llm-pi-ai:
             - text
             - image
 ui-theme:
-  preference: dark
+  preference: system

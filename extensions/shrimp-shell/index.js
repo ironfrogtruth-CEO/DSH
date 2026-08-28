@@ -8,6 +8,7 @@ import { homedir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
 import { chatWithImageDetailed } from '../../mcp-servers/zhipu-mcp/server.mjs'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { buildCatchDraftFacts, buildRunBody, draftCardTitle, runCardTitle } from './work-contract.js'
 
 export const name = 'dsh-shrimp-shell'
 
@@ -1756,17 +1757,27 @@ export function apply(ctx, config = {}) {
       parameters: {
         product: { type: 'string', required: true, description: '功能产物，例如 企业健康报告' },
         institution: { type: 'string', required: true, description: '机构，例如 平安' },
-        goal: { type: 'string', required: true, description: '要交付什么、给谁使用' },
+        goal: { type: 'string', description: '要交付什么、给谁使用；留空时可由工作合同 goal_contract.problem 补全' },
         acceptance: { type: 'string', description: '至少一条可检查的验收标准' },
+        work_contract: { type: 'object', additionalProperties: true, description: 'cybermarcus_work_contract.v1 工作合同对象；随 facts.work_contract 携带，服务端据此计算 checksum' },
       },
       output: toolOutput,
       timeoutMs: 20_000,
       async execute(args) {
         const product = String(args.product || '').trim()
         const institution = String(args.institution || '').trim()
-        const goal = String(args.goal || '').trim()
-        if (!product || !institution || !goal) return { ok: false, error: '功能产物、机构和目标都不能为空' }
-        const acceptance = String(args.acceptance || '').trim()
+        const workContract = args.work_contract && typeof args.work_contract === 'object' && !Array.isArray(args.work_contract)
+          ? args.work_contract
+          : undefined
+        if (!product || !institution) return { ok: false, error: '功能产物和机构都不能为空' }
+        const facts = buildCatchDraftFacts({
+          product,
+          institution,
+          goal: args.goal,
+          acceptance: args.acceptance,
+          workContract,
+        })
+        if (!facts.goal_text) return { ok: false, error: '目标不能为空，或工作合同需提供 goal_contract.problem' }
         const nameResult = await toolCall({
           path: '/api/v1/dsh/shrimps:name',
           method: 'POST',
@@ -1782,21 +1793,13 @@ export function apply(ctx, config = {}) {
         return toolCall({
           path: '/api/v1/catch-drafts',
           method: 'POST',
-          body: {
-            title,
-            facts: {
-              product_name: product,
-              institution_name: institution,
-              goal_text: goal,
-              acceptance_text: acceptance,
-              goal_complete: true,
-              acceptance_complete: Boolean(acceptance),
-              current_step_key: acceptance ? 'knowledge_strategy' : 'acceptance',
-            },
-          },
+          body: { title, facts },
         })
       },
-      presentCall(args) { return { card: 'generic', title: `创建草稿：${args.product || '功能产物'}@${args.institution || '机构'}` } },
+      presentCall(args) {
+        const hasContract = !!(args.work_contract && typeof args.work_contract === 'object' && !Array.isArray(args.work_contract))
+        return { card: 'generic', title: draftCardTitle(`创建草稿：${args.product || '功能产物'}@${args.institution || '机构'}`, { hasContract }) }
+      },
     }))
 
     ctx.tools.register(defineTool({
@@ -1857,6 +1860,8 @@ export function apply(ctx, config = {}) {
           description: '本次运行的完整输入对象',
         },
         confirm: { type: 'boolean', required: true, description: '用户是否明确确认运行' },
+        work_contract_checksum: { type: 'string', description: '创建草稿时服务端返回的工作合同 checksum；非空时随运行请求顶层携带，锁定运行合同' },
+        pipeline_version_id: { type: 'string', description: '要锁定的流水线版本 id；非空时随运行请求顶层携带' },
       },
       output: toolOutput,
       timeoutMs: SHRIMP_RUN_TOOL_TIMEOUT_MS,
@@ -1870,7 +1875,7 @@ export function apply(ctx, config = {}) {
           launch: () => toolCall({
             path: `/api/v1/pipelines/${encodeURIComponent(slug)}/runs`,
             method: 'POST',
-            body: args.payload,
+            body: buildRunBody(args.payload, { workContractChecksum: args.work_contract_checksum, pipelineVersionId: args.pipeline_version_id }),
             headers: { 'idempotency-key': idempotencyKey },
           }),
           readSummary: (runId) => toolCall({
@@ -1885,7 +1890,7 @@ export function apply(ctx, config = {}) {
           }),
         })
       },
-      presentCall(args) { return { card: 'generic', title: `运行虾：${args.pipelineSlug || '未命名'}` } },
+      presentCall(args) { return { card: 'generic', title: runCardTitle(`运行虾：${args.pipelineSlug || '未命名'}`) } },
     }))
 
     ctx.tools.register(defineTool({

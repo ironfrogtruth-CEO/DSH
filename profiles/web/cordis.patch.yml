@@ -104,3 +104,5 @@
 # formal DSH session ingress are available after explicit local authorization.
 - id: dsh-imessage-bridge
   name: '@local/dsh-imessage-bridge'
+
+  config: {}

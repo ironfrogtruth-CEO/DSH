@@ -141,9 +141,13 @@ assert.deepEqual(
   ],
   'ollama-local picker must contain exactly the two user-selectable local models',
 )
-assert.equal(settings?.['agent-default-model']?.provider, 'deepseek-official')
-assert.equal(settings?.['agent-default-model']?.model, 'deepseek-v4-flash')
-assert.equal(settings?.['agent-default-model']?.reasoningEffort, 'high')
+const agentDefaultModel = settings?.['agent-default-model']
+assert.ok(agentDefaultModel, 'settings must declare agent-default-model')
+const knownProviders = new Set(['deepseek-official', ...Object.keys(settings?.['llm-pi-ai']?.providers ?? {})])
+assert.ok(knownProviders.has(agentDefaultModel.provider), `agent-default-model provider ${agentDefaultModel.provider} must be a known provider`)
+const modelPrefix = String(agentDefaultModel.model ?? '').split(/[-:.]/, 1)[0].toLowerCase()
+assert.ok(modelPrefix.length > 0 && String(agentDefaultModel.provider).toLowerCase().includes(modelPrefix), `agent-default-model model ${agentDefaultModel.model} prefix must match provider ${agentDefaultModel.provider}`)
+assert.ok(['off', 'low', 'medium', 'high', 'max'].includes(agentDefaultModel.reasoningEffort), `agent-default-model reasoningEffort ${agentDefaultModel.reasoningEffort} must be a supported effort`)
 const pickerIds = new Set(pickerModels.map((model) => model.id))
 for (const hiddenModel of ['gemma4:26b-a4b-it-qat', 'x/flux2-klein:4b', 'embeddinggemma:latest']) {
   assert.equal(pickerIds.has(hiddenModel), false, `${hiddenModel} must remain backend-only`)

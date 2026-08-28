@@ -1,0 +1,4 @@
+# CyberMarcus 真实浏览器桥(host 半身;扩展位于 ~/Desktop/CyberMarcus-Chrome)
+- insert:
+    - id: dsh-webbridge
+      name: '@local/dsh-webbridge'

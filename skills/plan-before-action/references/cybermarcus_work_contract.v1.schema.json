@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cybermarcus_work_contract.v1",
+  "title": "CyberMarcus Work Contract v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "goal_contract",
+    "source_contract",
+    "output_contract",
+    "production_blueprint",
+    "qa_contract",
+    "recovery_contract",
+    "lineage"
+  ],
+  "properties": {
+    "schema": {"const": "cybermarcus_work_contract.v1"},
+    "goal_contract": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["problem", "audience_action", "deliverables", "minimum_deliverable"],
+      "properties": {
+        "problem": {"type": "string", "minLength": 1},
+        "audience_action": {"type": "string", "minLength": 1},
+        "deliverables": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "minimum_deliverable": {"type": "string", "minLength": 1}
+      }
+    },
+    "source_contract": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["truth_sources", "derived_outputs", "debug_notes", "pollution_risks", "knowledge_versions"],
+      "properties": {
+        "truth_sources": {"type": "array"},
+        "derived_outputs": {"type": "array"},
+        "debug_notes": {"type": "array"},
+        "pollution_risks": {"type": "array"},
+        "knowledge_versions": {"type": "array"}
+      }
+    },
+    "output_contract": {"type": "object"},
+    "production_blueprint": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["task_mode", "nodes"],
+      "properties": {
+        "task_mode": {
+          "enum": ["one_off_complex", "catch_candidate", "existing_shrimp", "shrimp_mismatch"]
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["node_id", "goal", "dependencies", "inputs", "outputs", "qa_gate", "rollback_to"],
+            "properties": {
+              "node_id": {"type": "string", "minLength": 1},
+              "goal": {"type": "string", "minLength": 1},
+              "dependencies": {"type": "array"},
+              "inputs": {"type": "array"},
+              "outputs": {"type": "array", "minItems": 1},
+              "source_refs": {"type": "array"},
+              "ability_bindings": {"type": "object"},
+              "artifact_contract": {"type": "object"},
+              "qa_gate": {"type": "object"},
+              "rollback_to": {"type": ["string", "null"]}
+            }
+          }
+        }
+      }
+    },
+    "qa_contract": {
+      "type": "object",
+      "required": ["node_gates", "final_acceptance", "release_conditions"]
+    },
+    "recovery_contract": {
+      "type": "object",
+      "required": ["rollback_points", "max_retries", "failure_fingerprint_fields"],
+      "properties": {
+        "rollback_points": {"type": "array", "minItems": 1},
+        "max_retries": {"type": "integer", "minimum": 0},
+        "failure_fingerprint_fields": {"type": "array", "minItems": 1}
+      }
+    },
+    "lineage": {"type": "object"}
+  }
+}

@@ -1,6 +1,27 @@
 import { createHash, randomUUID } from 'node:crypto'
+import { stableJsonChecksumV1, stableJsonStringifyV1 } from './stable-json.js'
 
 export const SOP_NODES = Object.freeze(['route', 'parse', 'structure', 'generate', 'validate', 'export', 'review'])
+
+// G2+ structured failure fingerprint: failure/blocked receipts must record at
+// least the input/work-contract checksum, workflow/capability versions, node,
+// provider+model ('none' when unknown), the error code, and the checksums of
+// related artifacts. production_receipt.v1 types failure_fingerprint as
+// string|null, so the structured object is persisted as a canonical
+// stableJsonStringifyV1 JSON string that parses back to an object carrying
+// exactly these keys; successful completed receipts keep null.
+export const GOAL_FIRST_WORKFLOW_VERSION = 'goal-first-sop.v1'
+export const GOAL_FIRST_CAPABILITY_VERSION = 'production_receipt.v1'
+export const FAILURE_FINGERPRINT_KEYS = Object.freeze([
+  'input_checksum',
+  'contract_checksum',
+  'workflow_version',
+  'capability_version',
+  'node_id',
+  'provider_model',
+  'error_code',
+  'artifact_checksums',
+])
 
 // Governance is an overlay on the existing seven-node state machine. Keep the
 // node ids stable: persisted schemaVersion=1 snapshots may not have a
@@ -144,6 +165,12 @@ export function createInitialState({ sessionId, text, sourceEventSeq = 0, turn =
     classificationReasons: route.reasons,
     phase: 'active',
     goalContract: null,
+    workContract: null,
+    workContractChecksum: null,
+    blueprintConfirmed: null,
+    structureContract: null,
+    workContractRef: null,
+    productionReceipts: [],
     outputContract: extractOutputContract(text),
     currentNode,
     nodes: nodeMap(route.classification),
@@ -186,6 +213,99 @@ function nextNode(node) {
 
 function evidence(value) { return list(value, 30) }
 
+const MAX_PRODUCTION_RECEIPTS = 50
+const WORK_CONTRACT_KEYS = ['goal_contract', 'source_contract', 'output_contract', 'production_blueprint', 'qa_contract', 'recovery_contract', 'lineage']
+
+function contractError(code, message) {
+  return Object.assign(new Error(message), { code })
+}
+
+export function validateWorkContract(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw contractError('WORK_CONTRACT_INVALID', 'workContract must be an object')
+  if (value.schema !== 'cybermarcus_work_contract.v1') throw contractError('WORK_CONTRACT_INVALID', 'workContract.schema must be cybermarcus_work_contract.v1')
+  for (const key of WORK_CONTRACT_KEYS) {
+    if (!(key in value)) throw contractError('WORK_CONTRACT_INVALID', `workContract.${key} is required`)
+  }
+  return value
+}
+
+export function validateStructureContract(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw contractError('STRUCTURE_CONTRACT_INVALID', 'structureContract must be an object')
+  if (!Number.isInteger(value.contract_version) || value.contract_version <= 0) throw contractError('STRUCTURE_CONTRACT_INVALID', 'structureContract.contract_version must be a positive integer')
+  if (value.text === undefined && value.ref === undefined) throw contractError('STRUCTURE_CONTRACT_INVALID', 'structureContract must provide text or ref')
+  if (value.text !== undefined && typeof value.text !== 'string') throw contractError('STRUCTURE_CONTRACT_INVALID', 'structureContract.text must be a string')
+  if (value.ref !== undefined && (!value.ref || typeof value.ref !== 'object' || typeof value.ref.uri !== 'string' || typeof value.ref.sha256 !== 'string')) {
+    throw contractError('STRUCTURE_CONTRACT_INVALID', 'structureContract.ref must be { uri, sha256 }')
+  }
+  return value
+}
+
+export function validateWorkContractRef(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.uri !== 'string' || !value.uri || typeof value.sha256 !== 'string' || !value.sha256) {
+    throw contractError('WORK_CONTRACT_REF_INVALID', 'workContractRef must be { uri, sha256 }')
+  }
+  return { uri: value.uri, sha256: value.sha256 }
+}
+
+function structuredFailureFingerprint(provided, { state, node, artifacts = [], actualBindings = {} }) {
+  const checksums = (Array.isArray(artifacts) ? artifacts : [])
+    .map((item) => (item && typeof item === 'object' ? item.checksum : undefined))
+    .filter((checksum) => typeof checksum === 'string' && checksum)
+  const provider = String(actualBindings?.provider ?? actualBindings?.provider_id ?? '').trim()
+  const model = String(actualBindings?.model ?? actualBindings?.model_id ?? '').trim()
+  const providerModel = provider || model
+    ? `${provider || 'none'}/${model || 'none'}`
+    : 'none'
+  const base = {
+    input_checksum: state.taskFingerprint,
+    contract_checksum: state.workContractChecksum ?? 'none',
+    workflow_version: GOAL_FIRST_WORKFLOW_VERSION,
+    capability_version: GOAL_FIRST_CAPABILITY_VERSION,
+    node_id: node,
+    provider_model: providerModel,
+    error_code: 'FAILURE_UNSPECIFIED',
+    artifact_checksums: checksums,
+  }
+  const merged = { ...base, ...(provided && typeof provided === 'object' && !Array.isArray(provided) ? provided : {}) }
+  for (const key of FAILURE_FINGERPRINT_KEYS) if (merged[key] === undefined) merged[key] = base[key]
+  if (!Array.isArray(merged.artifact_checksums)) merged.artifact_checksums = base.artifact_checksums
+  return merged
+}
+
+function productionReceipt({ state, node, status = 'completed', qaStatus = 'passed', checks = [], evidence = [], actualBindings = {}, artifacts = [], versionRefs = {}, failureFingerprint = null, rollbackTo = null, workContractRef = null }) {
+  if (status === 'completed') {
+    if (evidence.length < 1) throw contractError('RECEIPT_INCOMPLETE', 'completed receipt requires evidence')
+    if (qaStatus !== 'passed') throw contractError('RECEIPT_INCOMPLETE', 'completed receipt requires qa_result.status=passed')
+    if (!actualBindings || typeof actualBindings !== 'object' || Object.keys(actualBindings).length === 0) throw contractError('RECEIPT_INCOMPLETE', 'completed receipt requires non-empty actual_bindings')
+    if (!Array.isArray(artifacts) || artifacts.length === 0) {
+      if (!workContractRef || typeof workContractRef !== 'object') throw contractError('RECEIPT_INCOMPLETE', 'completed receipt requires artifacts or workContractRef')
+    }
+  }
+  return {
+    schema: 'production_receipt.v1',
+    node_id: node,
+    status,
+    input_checksum: state.taskFingerprint,
+    version_refs: { schemaVersion: state.schemaVersion, revision: state.revision, ...versionRefs },
+    actual_bindings: actualBindings,
+    artifacts: Array.isArray(artifacts) ? artifacts : [],
+    qa_result: { status: qaStatus, checks },
+    evidence,
+    failure_fingerprint: failureFingerprint === null || failureFingerprint === undefined
+      ? null
+      : typeof failureFingerprint === 'string'
+        ? failureFingerprint
+        : stableJsonStringifyV1(structuredFailureFingerprint(failureFingerprint, { state, node, artifacts, actualBindings })),
+    rollback_to: rollbackTo,
+    workContract_ref: workContractRef,
+  }
+}
+
+function appendReceipt(state, receipt) {
+  const receipts = [...(state.productionReceipts ?? []), receipt]
+  return receipts.length > MAX_PRODUCTION_RECEIPTS ? receipts.slice(receipts.length - MAX_PRODUCTION_RECEIPTS) : receipts
+}
+
 export function transitionState(state, input, { turn, sourceEventSeq }) {
   if (!state || state.classification !== 'sop_required') throw new Error('state transition is available only for sop_required tasks')
   if (state.outputContract?.continuousUntilTerminal !== true && state.lastModelTransitionTurn === turn) {
@@ -193,6 +313,15 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
   }
   const action = String(input?.action || '')
   const next = structuredClone(state)
+  // Historical schemaVersion=1 snapshots predate the production-contract
+  // fields. Rehydrate the defaults in memory while leaving their append-only
+  // records intact; index.js pre-step persists them once on resume.
+  next.workContract = state.workContract ?? null
+  next.workContractChecksum = state.workContractChecksum ?? null
+  next.blueprintConfirmed = state.blueprintConfirmed ?? null
+  next.structureContract = state.structureContract ?? null
+  next.workContractRef = state.workContractRef ?? null
+  next.productionReceipts = Array.isArray(state.productionReceipts) ? state.productionReceipts : []
   // Historical schemaVersion=1 snapshots predate governance. Rehydrate the
   // derived overlay in memory while leaving their append-only records intact.
   next.governance = governanceForState(state.classification, state.currentNode)
@@ -204,6 +333,16 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
   if (action === 'record_goal') {
     if (state.phase !== 'active' || state.currentNode !== 'route') throw new Error('record_goal requires active route node')
     next.goalContract = normalizeGoalContract(input.goalContract)
+    next.productionReceipts = appendReceipt(next, productionReceipt({
+      state,
+      node: 'route',
+      status: 'completed',
+      qaStatus: 'passed',
+      checks: ['goal contract recorded'],
+      evidence: [next.goalContract.problem],
+      actualBindings: { skills: ['goal-first-control', 'three-provinces-six-ministries', 'plan-before-action'], execution: 'host_state_machine_deterministic' },
+      artifacts: [{ name: 'goal_contract', checksum: stableJsonChecksumV1(next.goalContract) }],
+    }))
     next.nodes.route = 'completed'
     next.nodes.parse = 'in_progress'
     next.currentNode = 'parse'
@@ -217,20 +356,78 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
     if (node === 'route') throw new Error('route must use record_goal')
     const proof = evidence(input.evidence)
     if (proof.length === 0) throw new Error('node completion requires evidence')
+    let receiptStatus = 'completed'
+    let qaStatus = 'passed'
+    let checks = []
+    let failureFingerprint = null
+    let rollbackTo = null
     if (node === 'validate') {
       if (!['passed', 'failed'].includes(input.qaStatus)) throw new Error('validate completion requires qaStatus passed or failed')
-      next.qa = { status: input.qaStatus, checks: list(input.qaChecks), evidence: proof }
+      qaStatus = input.qaStatus
+      checks = list(input.qaChecks)
+      next.qa = { status: input.qaStatus, checks, evidence: proof }
       if (input.qaStatus === 'failed') {
-        const rollbackTo = String(input.rollbackTo || '')
-        if (!SOP_NODES.slice(0, SOP_NODES.indexOf('validate')).includes(rollbackTo)) throw new Error('failed validation requires an earlier rollbackTo node')
-        next.nodes.validate = 'blocked'
-        next.phase = 'blocked'
-        next.rollbackTarget = rollbackTo
-        next.failure = { code: 'QA_FAILED', message: boundedText(input.reason || 'validation failed') }
-        return next
+        const target = String(input.rollbackTo || '')
+        if (!SOP_NODES.slice(0, SOP_NODES.indexOf('validate')).includes(target)) throw new Error('failed validation requires an earlier rollbackTo node')
+        receiptStatus = 'blocked'
+        failureFingerprint = { error_code: 'QA_FAILED' }
+        rollbackTo = target
       }
     }
     if (node === 'export' && state.qa.status !== 'passed') throw new Error('export requires passed QA')
+    if (input.actualBindings !== undefined && (!input.actualBindings || typeof input.actualBindings !== 'object' || Array.isArray(input.actualBindings))) {
+      throw contractError('RECEIPT_PARAM_INVALID', 'actualBindings must be an object')
+    }
+    if (input.artifacts !== undefined && (!Array.isArray(input.artifacts) || input.artifacts.some((item) => !item || typeof item !== 'object' || typeof item.name !== 'string' || !item.name))) {
+      throw contractError('RECEIPT_PARAM_INVALID', 'artifacts must be an array of { name, ref|checksum }')
+    }
+    if (input.versionRefs !== undefined && (!input.versionRefs || typeof input.versionRefs !== 'object' || Array.isArray(input.versionRefs))) {
+      throw contractError('RECEIPT_PARAM_INVALID', 'versionRefs must be an object')
+    }
+    if (input.failureFingerprint !== undefined && input.failureFingerprint !== null && (typeof input.failureFingerprint !== 'object' || Array.isArray(input.failureFingerprint))) {
+      throw contractError('RECEIPT_PARAM_INVALID', 'failureFingerprint must be an object or null')
+    }
+    if (node === 'structure') {
+      if (input.workContract !== undefined) {
+        const contract = validateWorkContract(input.workContract)
+        next.workContract = structuredClone(contract)
+        next.workContractChecksum = stableJsonChecksumV1(contract)
+        next.blueprintConfirmed = input.confirm === true
+      }
+      if (input.structureContract !== undefined) {
+        next.structureContract = validateStructureContract(input.structureContract)
+      }
+      if (input.workContractRef !== undefined) {
+        next.workContractRef = validateWorkContractRef(input.workContractRef)
+      }
+      if (next.workContract && next.blueprintConfirmed !== true) {
+        throw contractError('WORK_CONTRACT_NOT_CONFIRMED', 'generate requires a confirmed work contract: complete structure with workContract and confirm=true')
+      }
+    }
+    const versionRefs = { ...(input.versionRefs && typeof input.versionRefs === 'object' ? input.versionRefs : {}) }
+    if (node === 'structure' && next.workContractChecksum) versionRefs.workContractChecksum = next.workContractChecksum
+    const receipt = productionReceipt({
+      state,
+      node,
+      status: receiptStatus,
+      qaStatus,
+      checks,
+      evidence: proof,
+      actualBindings: input.actualBindings,
+      artifacts: input.artifacts,
+      versionRefs,
+      failureFingerprint: input.failureFingerprint !== undefined ? input.failureFingerprint : failureFingerprint,
+      rollbackTo,
+      workContractRef: next.workContractRef,
+    })
+    next.productionReceipts = appendReceipt(next, receipt)
+    if (node === 'validate' && receiptStatus === 'blocked') {
+      next.nodes.validate = 'blocked'
+      next.phase = 'blocked'
+      next.rollbackTarget = rollbackTo
+      next.failure = { code: 'QA_FAILED', message: boundedText(input.reason || 'validation failed') }
+      return next
+    }
     next.nodes[node] = 'completed'
     const following = nextNode(node)
     if (following) {
@@ -258,7 +455,23 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
     next.phase = 'blocked'
     next.nodes[state.currentNode] = 'blocked'
     next.rollbackTarget = rollbackTo
-    next.failure = { code: boundedText(input.code || 'BLOCKED', 80), message: boundedText(input.reason || 'blocked') }
+    const blockCode = boundedText(input.code || 'BLOCKED', 80)
+    next.failure = { code: blockCode, message: boundedText(input.reason || 'blocked') }
+    // G2+: blocked receipts carry the structured failure fingerprint so a
+    // blocked run is diagnosable from the JSONL log alone.
+    next.productionReceipts = appendReceipt(next, productionReceipt({
+      state,
+      node: state.currentNode,
+      status: 'blocked',
+      qaStatus: 'blocked',
+      checks: list(input.qaChecks),
+      evidence: evidence(input.evidence),
+      artifacts: Array.isArray(input.artifacts) ? input.artifacts : [],
+      versionRefs: input.versionRefs && typeof input.versionRefs === 'object' && !Array.isArray(input.versionRefs) ? input.versionRefs : {},
+      failureFingerprint: input.failureFingerprint !== undefined ? input.failureFingerprint : { error_code: blockCode },
+      rollbackTo,
+      workContractRef: state.workContractRef ?? null,
+    }))
     return next
   }
 
@@ -288,7 +501,10 @@ export function renderStateContext(state, currentTurn = null) {
   const provinces = governance?.provinces?.join('+') || '未映射'
   const ministries = governance?.ministries?.join('+') || '未映射'
   const gate = governance?.gate || '当前节点 Gate 未定义'
-  const overlay = `province=${provinces}; ministry=${ministries}; gate=${gate}`
+  const workContractChecksum = state.workContractChecksum ? String(state.workContractChecksum).slice(0, 8) : 'none'
+  const blueprint = state.blueprintConfirmed === true ? 'confirmed' : (state.blueprintConfirmed === false ? 'draft' : 'none')
+  const receipts = Array.isArray(state.productionReceipts) ? state.productionReceipts.length : 0
+  const overlay = `province=${provinces}; ministry=${ministries}; gate=${gate}; work_contract=${workContractChecksum}; blueprint=${blueprint}; receipts=${receipts}`
   const continuousUntilTerminal = state.outputContract?.continuousUntilTerminal === true
   const silentUntilTerminal = state.outputContract?.silentUntilTerminal === true
   if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) {

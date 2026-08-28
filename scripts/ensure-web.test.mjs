@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { join, resolve } from 'node:path'
@@ -124,6 +124,81 @@ test('ensure-web fails closed when the Avengers model-default patch cannot run',
   }
 })
 
+test('ensure-web repairs missing profile local links from the offline frozen lock exactly once', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-profile-links-'))
+  const dshHome = join(root, '.dsh')
+  const profile = join(dshHome, 'profiles', 'web')
+  const source = join(dshHome, 'extensions', 'example')
+  const entry = join(profile, 'node_modules', '@local', 'example')
+  const pnpmArgs = join(root, 'pnpm-args.txt')
+  const fakePnpm = join(root, 'pnpm')
+  const hostArgs = join(root, 'host-args.json')
+  const binPath = join(dshHome, 'install', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  const shrimpDependency = join(dshHome, 'extensions', 'shrimp-shell', 'node_modules', '@deepseek-ai', 'dsh-tools', 'package.json')
+  const knowledgeDependency = join(dshHome, 'extensions', 'dsh-knowledge-manager', 'node_modules', '@deepseek-ai', 'dsh-tools', 'package.json')
+  try {
+    mkdirSync(resolve(binPath, '..'), { recursive: true })
+    mkdirSync(resolve(shrimpDependency, '..'), { recursive: true })
+    mkdirSync(resolve(knowledgeDependency, '..'), { recursive: true })
+    mkdirSync(source, { recursive: true })
+    mkdirSync(resolve(entry, '..'), { recursive: true })
+    mkdirSync(join(dshHome, 'scripts'), { recursive: true })
+    writeFileSync(join(source, 'package.json'), '{"name":"@local/example"}\n')
+    writeFileSync(join(profile, 'package.json'), JSON.stringify({ dependencies: { '@local/example': `link:${source}` } }))
+    writeFileSync(join(profile, 'pnpm-lock.yaml'), 'lockfileVersion: 6\n')
+    writeFileSync(binPath, `require('node:fs').writeFileSync(${JSON.stringify(hostArgs)}, JSON.stringify(process.argv.slice(2)))\n`)
+    writeFileSync(shrimpDependency, '{"name":"@deepseek-ai/dsh-tools"}\n')
+    writeFileSync(knowledgeDependency, '{"name":"@deepseek-ai/dsh-tools"}\n')
+    for (const name of ['patch-subagent-selected-route.mjs', 'patch-avengers-model-default.mjs', 'patch-client-command-actions.mjs', 'replay-custom-ui-patches.mjs']) {
+      writeFileSync(join(dshHome, 'scripts', name), 'process.exit(0)\n')
+    }
+    writeFileSync(fakePnpm, [
+      '#!/bin/bash',
+      `printf '%s\\n' "$*" >> ${JSON.stringify(pnpmArgs)}`,
+      'mkdir -p "$HOME/.dsh/profiles/web/node_modules/@local"',
+      'ln -s "$HOME/.dsh/extensions/example" "$HOME/.dsh/profiles/web/node_modules/@local/example"',
+    ].join('\n'))
+    chmodSync(fakePnpm, 0o755)
+    const env = { ...process.env, HOME: root, DSH_PNPM_BIN: fakePnpm }
+    const first = spawnSync('/bin/bash', [ensureWeb], { cwd: root, env: { ...env, DSH_PORT: '65433' }, encoding: 'utf8', timeout: 5000 })
+    assert.equal(first.status, 0, first.stderr || first.stdout)
+    assert.equal(realpathSync(entry), realpathSync(source))
+    assert.equal(readFileSync(pnpmArgs, 'utf8').trim(), 'install --offline --frozen-lockfile --ignore-scripts')
+    assert.deepEqual(JSON.parse(waitForFile(hostArgs)), ['web', '--no-open'])
+
+    const second = spawnSync('/bin/bash', [ensureWeb], { cwd: root, env: { ...env, DSH_PORT: '65434' }, encoding: 'utf8', timeout: 5000 })
+    assert.equal(second.status, 0, second.stderr || second.stdout)
+    assert.equal(readFileSync(pnpmArgs, 'utf8').trim().split('\n').length, 1, 'aligned links must not rerun pnpm')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('ensure-web fails closed when a declared profile local source is missing', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-profile-source-missing-'))
+  const dshHome = join(root, '.dsh')
+  const profile = join(dshHome, 'profiles', 'web')
+  const binPath = join(dshHome, 'install', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  try {
+    mkdirSync(resolve(binPath, '..'), { recursive: true })
+    mkdirSync(profile, { recursive: true })
+    writeFileSync(binPath, 'process.exit(0)\n')
+    writeFileSync(join(profile, 'package.json'), JSON.stringify({ dependencies: { '@local/missing': `link:${join(dshHome, 'extensions', 'missing')}` } }))
+    const result = spawnSync('/bin/bash', [ensureWeb], {
+      cwd: root,
+      env: { ...process.env, HOME: root, DSH_PORT: '65435' },
+      encoding: 'utf8',
+      timeout: 5000,
+    })
+    assert.equal(result.status, 1, result.stderr || result.stdout)
+    const log = readFileSync(join(dshHome, 'web.log'), 'utf8')
+    assert.match(log, /PROFILE_LOCAL_SOURCE_MISSING/)
+    assert.match(log, /PROFILE_LOCAL_LINKS_MISSING/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('ensure-web reload signature covers the complete CyberMarcus and Avengers runtime seam', () => {
   const source = readFileSync(ensureWeb, 'utf8')
   for (const path of [
@@ -146,6 +221,10 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/model.mjs',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/cordis.patch.yml',
+    '$HOME/.dsh/extensions/dsh-webbridge/package.json',
+    '$HOME/.dsh/extensions/dsh-webbridge/index.js',
+    '$HOME/.dsh/extensions/dsh-webbridge/cordis.patch.yml',
+    '$HOME/.dsh/extensions/dsh-webbridge/native-host/nm-host.js',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified',
@@ -156,17 +235,30 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-jobs/lib/client.js',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js',
+    '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-tool/lib/client.js',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-host-apiproxy/lib/index.js',
     '$HOME/.dsh/scripts/ensure-web',
     '$HOME/.dsh/scripts/start-local-model-runtime',
     '$HOME/.dsh/scripts/patch-subagent-selected-route.mjs',
     '$HOME/.dsh/scripts/patch-avengers-model-default.mjs',
     '$HOME/.dsh/scripts/patch-client-command-actions.mjs',
+    '$HOME/.dsh/scripts/patch-tool-call-presentation-titles.mjs',
     '$HOME/.dsh/scripts/replay-custom-ui-patches.mjs',
     '$HOME/.dsh/scripts/patch-llm-image-downcast.mjs',
     '$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs',
     '$HOME/.dsh/scripts/daily-git-commit.mjs',
 ]) assert.match(source, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), path)
+})
+
+test('ensure-web validates goal-first contracts before stopping a healthy Host', () => {
+  const source = readFileSync(ensureWeb, 'utf8')
+  assert.match(source, /GOAL_FIRST_PREFLIGHT=.*goal-first-state-machine\.test\.mjs/)
+  assert.match(source, /node --test "\$GOAL_FIRST_PREFLIGHT"/)
+  assert.match(source, /goal-first preflight failed; keeping current Host/)
+  assert.ok(
+    source.indexOf('node --test "$GOAL_FIRST_PREFLIGHT"') < source.indexOf('"$HOME/.dsh/scripts/stop"'),
+    'candidate validation must run before the current Host is stopped',
+  )
 })
 
 test('大神 local model bootstrap uses the project model root without compatibility symlinks', () => {
@@ -183,6 +275,9 @@ test('ensure-web replays reviewed client UI patches before Host startup', () => 
   const source = readFileSync(ensureWeb, 'utf8')
   assert.match(source, /scripts\/replay-custom-ui-patches\.mjs" --apply/)
   assert.match(source, /custom UI patch replay failed; refusing to start Host/)
+  assert.match(source, /TOOL_TITLE_PATCH="\$HOME\/\.dsh\/scripts\/patch-tool-call-presentation-titles\.mjs"/)
+  assert.match(source, /node "\$TOOL_TITLE_PATCH" --apply/)
+  assert.match(source, /tool presentation title patch failed; refusing to start Host/)
   assert.match(source, /patch-avengers-model-default\.mjs" --apply/)
   assert.match(source, /Avengers model-default patch failed; refusing to start Host/)
 })

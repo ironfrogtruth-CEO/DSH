@@ -11,6 +11,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const inject = ['slots', 'commandUi']
     const OPEN_EVENT = 'shrimp:tank-open'
+    const COMPOSER_WORKBENCH_EVENT = 'dsh:composer-workbench'
     const AUTO_DISCOVERY_INTERVAL_MS = 12_000
     const HIDDEN_AUTO_DISCOVERY_INTERVAL_MS = 30_000
     const FULL_SUMMARY_REFRESH_INTERVAL_MS = 4_000
@@ -311,14 +312,40 @@ window.__ModuleLoader__.load({
         current = limit
         limit = Number(current.limit || 6)
       }
-      if (source.length <= limit) return source.map((node) => ({ node }))
+      const maxVisible = Math.max(1, Number.isFinite(Number(limit)) ? Number(limit) : 6)
+      if (source.length <= maxVisible) return source.map((node) => ({ node }))
       const currentId = typeof current === 'string' ? current : first(current?.currentNodeId, current?.nodeId, current?.id, current?.currentNode)
       let currentIndex = currentId ? source.findIndex((node) => node?.id === currentId || node?.node_id === currentId || node?.name === currentId || node?.node_name === currentId) : -1
-      if (currentIndex < 0) currentIndex = source.findIndex((node) => ['running', 'processing', 'queued', 'failed', 'blocked'].includes(normalizeStatus(node?.status || node?.state || node?.lifecycle_status)))
-      const required = [...new Set([0, source.length - 1, ...(currentIndex < 0 ? [] : [currentIndex - 1, currentIndex, currentIndex + 1])])].filter((index) => index >= 0 && index < source.length)
-      const center = currentIndex < 0 ? 0 : currentIndex
-      const fill = Array.from({ length: source.length }, (_, index) => index).filter((index) => !required.includes(index)).sort((left, right) => (Math.abs(left - center) - Math.abs(right - center)) || left - right)
-      const indexes = [...required, ...fill.slice(0, Math.max(0, limit - required.length))].sort((left, right) => left - right)
+      const nodeState = (node) => normalizeStatus(node?.state || node?.status || node?.lifecycle_status)
+      const runningIndexes = source
+        .map((node, index) => ({ node, index }))
+        .filter(({ node }) => nodeState(node) === 'running' || normalizeStatus(node?.status || node?.state || node?.lifecycle_status) === 'running')
+        .map(({ index }) => index)
+      if (currentIndex < 0) currentIndex = runningIndexes[0] ?? source.findIndex((node) => ['processing', 'queued', 'failed', 'blocked'].includes(nodeState(node)))
+      const focusIndex = currentIndex < 0 ? (runningIndexes[0] ?? 0) : currentIndex
+      const required = []
+      const addRequired = (index) => {
+        if (index >= 0 && index < source.length && !required.includes(index)) required.push(index)
+      }
+      // Keep first, last, current and every running node visible. A stale
+      // currentNodeId must never hide the node that is actually running.
+      addRequired(0)
+      addRequired(source.length - 1)
+      addRequired(currentIndex)
+      for (const index of runningIndexes) addRequired(index)
+      const preferred = []
+      const addPreferred = (index) => {
+        if (index >= 0 && index < source.length && !required.includes(index) && !preferred.includes(index)) preferred.push(index)
+      }
+      for (let distance = 1; distance < source.length; distance += 1) {
+        addPreferred(focusIndex - distance)
+        addPreferred(focusIndex + distance)
+      }
+      const fill = Array.from({ length: source.length }, (_, index) => index)
+        .filter((index) => !required.includes(index) && !preferred.includes(index))
+        .sort((left, right) => (Math.abs(left - focusIndex) - Math.abs(right - focusIndex)) || left - right)
+      const visibleCount = Math.max(maxVisible, required.length)
+      const indexes = [...required, ...preferred, ...fill].slice(0, visibleCount).sort((left, right) => left - right)
       const output = []
       let previous = -1
       for (const index of indexes) {
@@ -343,13 +370,27 @@ window.__ModuleLoader__.load({
 
     const formatProgress = (value) => value == null ? '' : `${Math.round(Number(value))}%`
     const statusLabel = (status) => STATUS_LABELS[normalizeStatus(status)] || normalizeStatus(status)
-    const pointerAvoid = (event) => {
-      const target = event.currentTarget
-      const rect = target.getBoundingClientRect()
-      const offset = (event.clientX - (rect.left + rect.width / 2)) / Math.max(rect.width / 2, 1)
-      target.style.setProperty('--swimmer-avoid', `${Math.max(-5, Math.min(5, Math.round(offset * 5)))}px`)
+
+    function ShrimpMark({ color }) {
+      return h('svg', {
+        className: 'dsh-shrimp-tank-idle-mark',
+        viewBox: '0 0 48 32',
+        role: 'img',
+        'aria-label': '虾缸标识',
+        focusable: 'false',
+      },
+      h('path', { d: 'M8 20c4-10 16-14 25-8 4 3 6 6 8 10-5-2-10-2-14 1-5 4-12 3-19-3Z', fill: 'none', stroke: color, 'stroke-width': '2.4', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }),
+      h('path', { d: 'M13 22c-3 4-6 5-10 4', fill: 'none', stroke: color, 'stroke-width': '2.4', 'stroke-linecap': 'round' }),
+      h('circle', { cx: '37', cy: '7', r: '2.8', fill: '#e15f59' }),
+      )
     }
-    const clearPointerAvoid = (event) => event.currentTarget.style.removeProperty('--swimmer-avoid')
+
+    const idleIdentityParts = (identity) => {
+      const name = publishedNameOf(identity) || '未命名虾'
+      const marker = name.indexOf('@')
+      if (marker <= 0) return { primary: name, owner: '' }
+      return { primary: name.slice(0, marker).trim() || name, owner: name.slice(marker).trim() }
+    }
 
     function IdleView({ shrimps }) {
       const entries = Array.isArray(shrimps) ? shrimps : []
@@ -357,13 +398,20 @@ window.__ModuleLoader__.load({
       return h('section', { className: 'dsh-shrimp-tank-idle', 'aria-label': '虾缸中的虾' },
         h('p', { className: 'dsh-shrimp-tank-idle-hint' }, '现在没有虾在运行'),
         h('div', { className: 'dsh-shrimp-tank-pond', 'aria-label': '已发布虾' },
-          h('ul', { className: 'dsh-shrimp-tank-swimmers' }, entries.map((identity, index) => h('li', {
-            key: publishedRefOf(identity) || identity.name || index,
-            className: `dsh-shrimp-tank-swimmer${index < 4 ? ` is-path-${index + 1}` : ''}`,
-            style: { '--swimmer-color': IDLE_COLORS[index % IDLE_COLORS.length], '--swimmer-delay': `${index * -0.9}s` },
-            onPointerMove: index < 4 ? pointerAvoid : undefined,
-            onPointerLeave: index < 4 ? clearPointerAvoid : undefined,
-          }, h('span', { className: 'dsh-shrimp-tank-swimmer-shrimp', role: 'img', 'aria-label': `${publishedNameOf(identity)} 虾` }, '🦐'), h('span', { className: 'dsh-shrimp-tank-swimmer-name' }, publishedNameOf(identity)))))
+          h('ul', { className: 'dsh-shrimp-tank-idle-grid' }, entries.map((identity, index) => {
+            const parts = idleIdentityParts(identity)
+            const color = IDLE_COLORS[index % IDLE_COLORS.length]
+            return h('li', {
+              key: publishedRefOf(identity) || identity.name || identity.title || index,
+              className: 'dsh-shrimp-tank-idle-card',
+              style: { '--idle-color': color },
+              title: publishedNameOf(identity),
+            },
+            h('span', { className: 'dsh-shrimp-tank-idle-card-mark', 'aria-hidden': true }, h(ShrimpMark, { color })),
+            h('span', { className: 'dsh-shrimp-tank-idle-card-copy' }, h('strong', null, parts.primary), parts.owner ? h('span', null, parts.owner) : null),
+            h('span', { className: 'dsh-shrimp-tank-idle-card-state' }, '待命'),
+            )
+          }))
         ),
       )
     }
@@ -377,7 +425,7 @@ window.__ModuleLoader__.load({
         const node = entry.node
         const running = node.state === 'running'
         const stateText = node.state === 'done' ? '已完成' : running ? `${formatProgress(node.progress) ? `${formatProgress(node.progress)} · ` : ''}运行中` : node.state === 'queued' ? '排队中' : node.state === 'failed' ? '失败' : node.state === 'blocked' ? '已阻断' : statusLabel(node.status)
-        return h('div', { key: node.id || index, className: `dsh-shrimp-tank-stepper-item is-${node.state}`, role: 'listitem', title: node.failure || node.blocked || node.name || stateText },
+        return h('div', { key: node.id || index, className: `dsh-shrimp-tank-stepper-item is-${node.state}`, role: 'listitem', 'aria-current': running ? 'step' : undefined, title: node.failure || node.blocked || node.name || stateText },
           h('span', { className: 'dsh-shrimp-tank-stepper-dot', 'aria-hidden': true }),
           h('div', { className: 'dsh-shrimp-tank-stepper-label' }, h('strong', null, node.name || '未命名节点'), h('span', null, stateText)),
         )
@@ -392,7 +440,7 @@ window.__ModuleLoader__.load({
       const currentNode = group.summaryError ? '' : summary.currentNode
       return h('article', { className: 'dsh-shrimp-tank-run-summary', 'data-run-status': status, 'data-run-id': runIdOf(group.run) || undefined },
         h('div', { className: 'dsh-shrimp-tank-summary-head' },
-          h('span', { className: 'dsh-shrimp-tank-summary-shrimp', role: 'img', 'aria-label': `${group.name} 虾` }, '🦐'),
+          h('span', { className: 'dsh-shrimp-tank-summary-shrimp', role: 'img', 'aria-label': `${group.name} 虾` }, h(ShrimpMark, { color: '#3d83e6' })),
           h('div', { className: 'dsh-shrimp-tank-summary-title' }, h('h3', null, group.name), h('span', { className: `dsh-shrimp-tank-badge is-${status}` }, statusLabel(status))),
           summary.progress != null ? h('strong', { className: 'dsh-shrimp-tank-progress' }, formatProgress(summary.progress)) : null,
         ),
@@ -472,6 +520,15 @@ window.__ModuleLoader__.load({
         window.addEventListener(OPEN_EVENT, onOpen)
         return () => window.removeEventListener(OPEN_EVENT, onOpen)
       }, [sessionId, forceOpen])
+
+      React.useEffect(() => {
+        const onWorkbenchSwitch = (event) => {
+          const detail = event?.detail && typeof event.detail === 'object' ? event.detail : {}
+          if (detail.panel === 'plan') close()
+        }
+        window.addEventListener(COMPOSER_WORKBENCH_EVENT, onWorkbenchSwitch)
+        return () => window.removeEventListener(COMPOSER_WORKBENCH_EVENT, onWorkbenchSwitch)
+      }, [close])
 
       React.useEffect(() => {
         if (!open) return undefined
@@ -636,7 +693,7 @@ window.__ModuleLoader__.load({
         .dsh-shrimp-tank-segment:hover,.dsh-shrimp-tank-segment.is-selected{border-color:var(--dsw-alias-button-info-fill,#3d83e6);background:color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 10%,transparent);color:var(--dsw-alias-label-primary)}
         .dsh-shrimp-tank-run-summary{display:flex;flex-direction:column;gap:9px;min-width:0}
         .dsh-shrimp-tank-summary-head{display:flex;align-items:center;gap:9px;min-width:0}
-        .dsh-shrimp-tank-summary-shrimp{display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;font-size:19px;line-height:24px}
+        .dsh-shrimp-tank-summary-shrimp{display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px}.dsh-shrimp-tank-summary-shrimp .dsh-shrimp-tank-idle-mark{width:28px;height:20px}
         .dsh-shrimp-tank-summary-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;flex:1}.dsh-shrimp-tank-summary-title h3{margin:0;color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px;font-weight:600}
         .dsh-shrimp-tank-badge{padding:3px 8px;border-radius:999px;font-size:11px;line-height:17px;white-space:nowrap}
         .dsh-shrimp-tank-badge.is-running,.dsh-shrimp-tank-badge.is-processing,.dsh-shrimp-tank-badge.is-trialing,.dsh-shrimp-tank-badge.is-queued{color:#2c9a68;background:#35a56f18}
@@ -645,31 +702,29 @@ window.__ModuleLoader__.load({
         .dsh-shrimp-tank-progress{flex:none;color:#ee785f;font-size:16px;font-variant-numeric:tabular-nums}
         .dsh-shrimp-tank-progress-bar{height:4px;border-radius:999px;background:var(--dsw-alias-border-l3);overflow:hidden}.dsh-shrimp-tank-progress-bar span{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-state-business-primary,#35a56f);transition:width .2s ease}
         .dsh-shrimp-tank-current{margin:0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}
-        .dsh-shrimp-tank-stepper{display:flex;align-items:stretch;gap:0;min-width:0;margin:2px 0 0;padding:5px 1px 6px;overflow-x:auto;scrollbar-width:thin}
-        .dsh-shrimp-tank-stepper-item{display:flex;flex:0 0 110px;flex-direction:column;gap:4px;min-width:100px;padding:4px 10px 2px;border-block-start:1px solid var(--dsw-alias-border-l2);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--dsw-alias-state-business-primary,#35a56f) 9%,transparent),transparent);background-size:200% 100%;background-repeat:no-repeat}
+        .dsh-shrimp-tank-stepper{box-sizing:border-box;display:flex;align-items:stretch;justify-content:space-between;gap:0;width:100%;min-width:0;margin:2px 0 0;padding:5px 12px 6px;overflow-x:auto;scrollbar-width:thin}
+        .dsh-shrimp-tank-stepper-item{box-sizing:border-box;display:flex;flex:0 0 110px;flex-direction:column;gap:4px;min-width:100px;padding:4px 10px 2px;border:1px solid transparent;border-block-start-color:var(--dsw-alias-border-l2);border-radius:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--dsw-alias-state-business-primary,#35a56f) 9%,transparent),transparent);background-size:200% 100%;background-repeat:no-repeat}
         .dsh-shrimp-tank-stepper-item:first-child{border-block-start-color:transparent}.dsh-shrimp-tank-stepper-item + .dsh-shrimp-tank-stepper-item{margin-inline-start:-1px}
         .dsh-shrimp-tank-stepper-dot{width:9px;height:9px;flex:none;border:2px solid var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2));border-radius:50%;background:var(--dsw-alias-label-caption)}
         .dsh-shrimp-tank-stepper-label{display:flex;flex-direction:column;gap:1px;min-width:0}.dsh-shrimp-tank-stepper-label strong{min-width:0;color:var(--dsw-alias-label-primary);font-size:11px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsh-shrimp-tank-stepper-label span{color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:15px;white-space:nowrap}
-        .dsh-shrimp-tank-stepper-item.is-done .dsh-shrimp-tank-stepper-dot{background:#35a56f}.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot,.dsh-shrimp-tank-stepper-item.is-queued .dsh-shrimp-tank-stepper-dot{background:#3d83e6}.dsh-shrimp-tank-stepper-item.is-failed .dsh-shrimp-tank-stepper-dot,.dsh-shrimp-tank-stepper-item.is-blocked .dsh-shrimp-tank-stepper-dot{background:#d84c45}.dsh-shrimp-tank-stepper-ellipsis{display:flex;flex:0 0 18px;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:18px}
+        .dsh-shrimp-tank-stepper-item.is-done .dsh-shrimp-tank-stepper-dot{background:#35a56f}.dsh-shrimp-tank-stepper-item.is-running{border-color:var(--dsw-alias-button-info-fill,#3d83e6);border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 8%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2))),color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 18%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2))),color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 8%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2))));background-size:200% 100%;box-shadow:0 0 0 2px rgba(61,131,230,.22),0 5px 14px rgba(61,131,230,.22)}.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot{background:var(--dsw-alias-button-info-fill,#3d83e6);box-shadow:0 0 0 4px rgba(61,131,230,.2),0 0 10px rgba(61,131,230,.34)}.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-label strong,.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-label span{color:var(--dsw-alias-button-info-fill,#3d83e6);font-weight:600}.dsh-shrimp-tank-stepper-item.is-queued .dsh-shrimp-tank-stepper-dot{background:var(--dsw-alias-label-caption)}.dsh-shrimp-tank-stepper-item.is-failed .dsh-shrimp-tank-stepper-dot,.dsh-shrimp-tank-stepper-item.is-blocked .dsh-shrimp-tank-stepper-dot{background:#d84c45}.dsh-shrimp-tank-stepper-ellipsis{display:flex;flex:0 0 18px;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary);font-size:18px}
         .dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot{animation:dsh-shrimp-stepper-pulse 1.8s ease-in-out infinite}.dsh-shrimp-tank-stepper-item.is-running{animation:dsh-shrimp-stepper-highlight 2s ease-in-out infinite}
         @keyframes dsh-shrimp-stepper-pulse{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.18)}}
         @keyframes dsh-shrimp-stepper-highlight{0%,100%{background-position:0 0}50%{background-position:100% 0}}
         .dsh-shrimp-tank-empty,.dsh-shrimp-tank-node-unavailable{margin:0;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:18px}.dsh-shrimp-tank-node-unavailable{color:#d99532}
         .dsh-shrimp-tank-message{margin:0;padding:6px 9px;border-radius:8px;background:var(--dsw-alias-bg-base,rgba(128,128,128,.06));font-size:11px;line-height:17px;overflow-wrap:anywhere}
-        .dsh-shrimp-tank-pond{min-height:82px;padding:8px;border:1px solid color-mix(in srgb,#6f9d9a 18%,var(--dsw-alias-border-l2));border-radius:14px;background:radial-gradient(circle at 18% 20%,color-mix(in srgb,#6f9d9a 11%,transparent),transparent 28%),linear-gradient(145deg,color-mix(in srgb,#6f9d9a 5%,transparent),color-mix(in srgb,#8f86ad 4%,transparent));overflow:hidden}
-        .dsh-shrimp-tank-swimmers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0 0;padding:0;list-style:none}
-        .dsh-shrimp-tank-swimmer{box-sizing:border-box;display:flex;align-items:center;gap:7px;min-width:0;padding:6px 9px;border:1px solid color-mix(in srgb,var(--swimmer-color) 20%,var(--dsw-alias-border-l2));border-radius:999px;background:color-mix(in srgb,var(--swimmer-color) 6%,transparent);color:var(--dsw-alias-label-primary);transform:translate3d(var(--swimmer-avoid,0px),0,0);animation-duration:7.2s;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-delay:var(--swimmer-delay)}
-        .dsh-shrimp-tank-swimmer.is-path-1{animation-name:dsh-shrimp-swim-one}.dsh-shrimp-tank-swimmer.is-path-2{animation-name:dsh-shrimp-swim-two}.dsh-shrimp-tank-swimmer.is-path-3{animation-name:dsh-shrimp-swim-three}.dsh-shrimp-tank-swimmer.is-path-4{animation-name:dsh-shrimp-swim-four}
-        .dsh-shrimp-tank-swimmer:hover{transform:translate3d(calc(var(--swimmer-avoid,0px) + 4px),-1px,0)}
-        .dsh-shrimp-tank-swimmer-shrimp{display:inline-block;flex:none;font-size:22px;line-height:24px;filter:saturate(1.1)}
-        .dsh-shrimp-tank-swimmer-dot{width:10px;height:10px;flex:none;border-radius:50%;background:var(--swimmer-color);box-shadow:0 0 0 4px color-mix(in srgb,var(--swimmer-color) 14%,transparent)}
-        .dsh-shrimp-tank-swimmer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550}
-        @keyframes dsh-shrimp-swim-one{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) + 12px),-5px,0)}}
-        @keyframes dsh-shrimp-swim-two{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) - 9px),-3px,0)}}
-        @keyframes dsh-shrimp-swim-three{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) + 6px),-8px,0)}}
-        @keyframes dsh-shrimp-swim-four{0%,100%{transform:translate3d(var(--swimmer-avoid,0px),0,0)}50%{transform:translate3d(calc(var(--swimmer-avoid,0px) - 13px),-2px,0)}}
-        @media(max-width:760px){.dsh-shrimp-tank-header{padding:8px 11px}.dsh-shrimp-tank-body{padding:9px 11px 11px}.dsh-shrimp-tank-stepper-item{flex-basis:104px;min-width:100px}.dsh-shrimp-tank-swimmers{gap:7px}}
-        @media(prefers-reduced-motion:reduce){.dsh-shrimp-tank-swimmer,.dsh-shrimp-tank-stepper-item,.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot{animation:none!important;transform:none!important}.dsh-shrimp-tank-progress-bar span{transition:none!important}.dsh-shrimp-tank-swimmer:hover{transform:none!important}}
+        .dsh-shrimp-tank-pond{min-height:92px;padding:13px;border:1px solid color-mix(in srgb,#6f9d9a 22%,var(--dsw-alias-border-l2));border-radius:18px;background:radial-gradient(circle at 18% 20%,color-mix(in srgb,#6f9d9a 12%,transparent),transparent 30%),linear-gradient(145deg,color-mix(in srgb,#6f9d9a 6%,transparent),color-mix(in srgb,#8f86ad 5%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.07);overflow:hidden}
+        .dsh-shrimp-tank-idle-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+        .dsh-shrimp-tank-idle-card{box-sizing:border-box;display:flex;align-items:center;gap:9px;min-width:0;min-height:92px;padding:11px;border:1px solid color-mix(in srgb,var(--idle-color) 30%,var(--dsw-alias-border-l2));border-radius:15px;background:color-mix(in srgb,var(--idle-color) 9%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2)));color:var(--dsw-alias-label-primary);transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+        .dsh-shrimp-tank-idle-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--idle-color) 58%,var(--dsw-alias-border-l2));box-shadow:0 5px 14px color-mix(in srgb,var(--idle-color) 18%,transparent)}
+        .dsh-shrimp-tank-idle-card-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;width:42px;height:42px;border-radius:12px;background:color-mix(in srgb,var(--idle-color) 14%,transparent)}
+        .dsh-shrimp-tank-idle-mark{display:block;width:34px;height:25px;overflow:visible}
+        .dsh-shrimp-tank-idle-card-copy{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}.dsh-shrimp-tank-idle-card-copy strong{min-width:0;overflow:hidden;color:var(--dsw-alias-label-primary);font-size:13px;line-height:19px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}.dsh-shrimp-tank-idle-card-copy span{min-width:0;overflow:hidden;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:16px;text-overflow:ellipsis;white-space:nowrap}
+        .dsh-shrimp-tank-idle-card-state{align-self:flex-start;flex:none;padding:2px 6px;border:1px solid color-mix(in srgb,var(--idle-color) 34%,transparent);border-radius:6px;color:color-mix(in srgb,var(--idle-color) 78%,var(--dsw-alias-label-primary));font-size:10px;line-height:15px;white-space:nowrap}
+        @media(max-width:680px){.dsh-shrimp-tank-idle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:440px){.dsh-shrimp-tank-idle-grid{grid-template-columns:1fr}}
+        @media(max-width:760px){.dsh-shrimp-tank-header{padding:8px 11px}.dsh-shrimp-tank-body{padding:9px 11px 11px}.dsh-shrimp-tank-stepper-item{flex-basis:104px;min-width:100px}.dsh-shrimp-tank-pond{padding:10px}.dsh-shrimp-tank-idle-card{min-height:88px;padding:10px}}
+        @media(prefers-reduced-motion:reduce){.dsh-shrimp-tank-stepper-item,.dsh-shrimp-tank-stepper-item.is-running .dsh-shrimp-tank-stepper-dot{animation:none!important;transform:none!important}.dsh-shrimp-tank-progress-bar span{transition:none!important}.dsh-shrimp-tank-idle-card{transition:none!important}.dsh-shrimp-tank-idle-card:hover{transform:none!important}}
       `
       document.getElementById(style.id)?.remove()
       document.head.appendChild(style)

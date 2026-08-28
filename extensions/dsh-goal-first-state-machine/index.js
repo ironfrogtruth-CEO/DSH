@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { createInitialState, extractOutputContract, renderStateContext, transitionState, userText } from './machine.js'
 import { GoalFirstStateError, GoalFirstStateStore } from './state-store.js'
 import { enforceOneSentenceStream } from './stream-contract.js'
+import { goalFirstCardTitle } from './tool-cards.js'
 
 export const name = 'dsh-goal-first-state-machine'
 export const inject = ['tools', 'agents', 'sessions', 'llm']
@@ -31,6 +32,29 @@ async function runtimeExport(packageName, exportName) {
 
 function outputSchema() {
   return { type: 'object', additionalProperties: true, properties: { ok: { type: 'boolean', required: true }, code: { type: 'string' }, error: { type: 'string' } } }
+}
+
+export function transitionParameters() {
+  return {
+    expectedRevision: { type: 'integer', required: true },
+    action: { type: 'string', required: true, enum: ['record_goal', 'complete_node', 'pause', 'block', 'resume'] },
+    node: { type: 'string' },
+    goalContract: { type: 'object', additionalProperties: true },
+    qaStatus: { type: 'string', enum: ['passed', 'failed'] },
+    qaChecks: { type: 'array' },
+    evidence: { type: 'array' },
+    rollbackTo: { type: 'string' },
+    code: { type: 'string' },
+    reason: { type: 'string' },
+    workContract: { type: 'object', additionalProperties: true },
+    structureContract: { type: 'object', additionalProperties: true },
+    confirm: { type: 'boolean' },
+    actualBindings: { type: 'object', additionalProperties: true },
+    artifacts: { type: 'array' },
+    versionRefs: { type: 'object', additionalProperties: true },
+    failureFingerprint: { type: 'object', additionalProperties: true },
+    workContractRef: { type: 'object', additionalProperties: true },
+  }
 }
 
 function boundedJson(value, limit = 12_000) {
@@ -83,9 +107,11 @@ function rehydrateOutputContract(state, latestText, sourceEventSeq) {
   const current = state.outputContract && typeof state.outputContract === 'object' ? state.outputContract : {}
   const fields = ['continuousUntilTerminal', 'silentUntilTerminal']
   const missing = fields.some((field) => typeof current[field] !== 'boolean')
+  const contractFields = ['workContract', 'workContractChecksum', 'blueprintConfirmed', 'structureContract', 'workContractRef', 'productionReceipts']
+  const missingContract = contractFields.some((field) => state[field] === undefined)
   const latest = latestText ? extractOutputContract(latestText) : null
   const explicitUpgrade = latest?.continuousUntilTerminal === true || latest?.silentUntilTerminal === true
-  if (!missing && !explicitUpgrade) return null
+  if (!missing && !explicitUpgrade && !missingContract) return null
   const inferred = missing
     ? extractOutputContract([latestText, goalContractText(state.goalContract)].filter(Boolean).join('\n'))
     : latest
@@ -102,8 +128,15 @@ function rehydrateOutputContract(state, latestText, sourceEventSeq) {
       changed = true
     }
   }
+  const next = { ...state, outputContract }
+  for (const field of contractFields) {
+    if (next[field] === undefined) {
+      next[field] = field === 'productionReceipts' ? [] : null
+      changed = true
+    }
+  }
   return changed
-    ? { ...state, outputContract, sourceEventSeq: Math.max(Number(sourceEventSeq || 0), Number(state.sourceEventSeq || 0)), updatedAt: Date.now() }
+    ? { ...next, sourceEventSeq: Math.max(Number(sourceEventSeq || 0), Number(state.sourceEventSeq || 0)), updatedAt: Date.now() }
     : null
 }
 
@@ -113,6 +146,37 @@ function isExportLike(exec) {
   if (!/(?:shell|bash|exec|command|terminal|run)/.test(nameText)) return false
   const command = String(exec?.arguments?.command || exec?.arguments?.cmd || exec?.arguments?.script || '').toLowerCase()
   return /(?:^|\s)(?:export|publish|deliver|package|pdf|pptx)(?:\s|$)/.test(command) || /(?:npm\s+publish|git\s+push|pandoc\b|wkhtmltopdf\b)/.test(command)
+}
+
+// Structure write gate: while the SOP task is still in route/parse/structure,
+// only read-only and diagnostic tool calls may run. Mutating file tools and
+// write-style bash are denied with STRUCTURE_WRITE_BLOCKED until the blueprint
+// is confirmed. The deny is conservative: `2>&1`, `=>` and `&>` are not treated
+// as file redirects, and git read commands stay allowed.
+function isBashWrite(command) {
+  const commandText = String(command || '')
+  if (/sed\s+-i\b/.test(commandText)) return true
+  if (/(?:^|[\s;&|])rm\s+/.test(commandText)) return true
+  if (/(?:^|[\s;&|])mv\s+/.test(commandText)) return true
+  if (/(?:^|[\s;&|])cp\s+/.test(commandText)) return true
+  if (/\bgit\s+(?:commit|push|reset|clean)\b/.test(commandText)) return true
+  if (/(?:^|[\s;&|])touch\s+/.test(commandText)) return true
+  if (/(?:^|[\s;&|])mkdir\s+/.test(commandText)) return true
+  if (/(?:^|[\s;&|])chmod\s+/.test(commandText)) return true
+  if (/\bcurl\b[^|;&]*\s-X\s+(?:POST|PUT|DELETE)\b/.test(commandText)) return true
+  if (/\b(?:npm|pnpm|yarn)\s+(?:install|i|ci|add|remove|uninstall)\b/.test(commandText)) return true
+  if (/\bpip\s+install\b/.test(commandText)) return true
+  if (/\bsqlite3\b/.test(commandText) && !/mode=ro/.test(commandText)) return true
+  if (/(?:^|[^0-9=>])>(>)?\s*[^\s|&;]*/.test(commandText)) return true
+  return false
+}
+
+function isStructureWriteBlocked(exec) {
+  const nameText = String(exec?.name || '').toLowerCase()
+  if (/str_replace_editor|(?:^|_)(?:edit|write)$/.test(nameText)) return true
+  if (!/(?:shell|bash|exec|command|terminal|run)/.test(nameText)) return false
+  const command = String(exec?.arguments?.command || exec?.arguments?.cmd || exec?.arguments?.script || '')
+  return isBashWrite(command)
 }
 
 export async function apply(ctx, config = {}) {
@@ -138,24 +202,13 @@ export async function apply(ctx, config = {}) {
         return { ok: true, state: await store.load(agent.id) }
       } catch (error) { return stateError(error) }
     },
-    presentCall() { return { card: 'generic', title: 'Read goal-first state' } },
+    presentCall() { return { card: 'generic', title: goalFirstCardTitle('get') } },
   })
 
   register({
     name: 'goal_first_state_transition',
     description: 'Advance or pause the Host-enforced goal-first state using revision CAS. Nodes are sequential; ordinary tasks allow one transition per turn, while continuousUntilTerminal tasks may continue with evidence-backed sequential transitions in the same turn. Failed QA blocks and export requires passed QA.',
-    parameters: {
-      expectedRevision: { type: 'integer', required: true },
-      action: { type: 'string', required: true, enum: ['record_goal', 'complete_node', 'pause', 'block', 'resume'] },
-      node: { type: 'string' },
-      goalContract: { type: 'object', additionalProperties: true },
-      qaStatus: { type: 'string', enum: ['passed', 'failed'] },
-      qaChecks: { type: 'array' },
-      evidence: { type: 'array' },
-      rollbackTo: { type: 'string' },
-      code: { type: 'string' },
-      reason: { type: 'string' },
-    },
+    parameters: transitionParameters(),
     timeoutMs: 10_000,
     async execute(args) {
       try {
@@ -163,13 +216,20 @@ export async function apply(ctx, config = {}) {
         const current = await store.load(agent.id)
         if (!current) throw new GoalFirstStateError('STATE_NOT_FOUND', 'goal-first state is not initialized')
         if (args.expectedRevision !== current.revision) throw new GoalFirstStateError('STATE_REVISION_CONFLICT', `expected revision ${args.expectedRevision}, current revision is ${current.revision}`)
+        // G2+: tolerate legacy callers that pass the structured failure
+        // fingerprint as a JSON string; parse it into the object the machine
+        // records on blocked receipts. Unparseable strings keep failing the
+        // machine's existing object-or-null validation.
+        if (typeof args?.failureFingerprint === 'string' && args.failureFingerprint.trim()) {
+          try { args.failureFingerprint = JSON.parse(args.failureFingerprint) } catch { /* rejected downstream */ }
+        }
         const at = position(agent.session)
         const candidate = transitionState(current, args, at)
         const state = await store.append(agent.id, candidate, args.expectedRevision)
         return { ok: true, state }
       } catch (error) { return stateError(error) }
     },
-    presentCall(args) { return { card: 'generic', title: `Goal-first ${args.action || 'transition'}` } },
+    presentCall(args) { return { card: 'generic', title: goalFirstCardTitle(args?.action, args?.node) } },
   })
 
   ctx.on('agent/pre-step', async ({ agent, messages, turn, signal }, next) => {
@@ -204,10 +264,16 @@ export async function apply(ctx, config = {}) {
   })
 
   ctx.on('tools/pre-execute', async (exec, next) => {
-    if (!exec?.agent || !isExportLike(exec) || exec.name.startsWith('goal_first_state_')) return next()
+    if (!exec?.agent || exec.name.startsWith('goal_first_state_')) return next()
     const state = await store.load(exec.agent.id)
-    if (!state || state.classification !== 'sop_required' || state.qa.status === 'passed') return next()
-    return { kind: 'deny', reason: `goal-first QA gate blocks ${exec.name}: validate must pass before export` }
+    if (!state || state.classification !== 'sop_required') return next()
+    if (isExportLike(exec) && state.qa.status !== 'passed') {
+      return { kind: 'deny', reason: `goal-first QA gate blocks ${exec.name}: validate must pass before export` }
+    }
+    if (state.phase === 'active' && ['route', 'parse', 'structure'].includes(state.currentNode) && isStructureWriteBlocked(exec)) {
+      return { kind: 'deny', code: 'STRUCTURE_WRITE_BLOCKED', reason: `蓝图通过前只允许只读与诊断: ${exec.name} 被结构写门禁拦截` }
+    }
+    return next()
   })
 
   ctx.on('agent/turn-stopping', async ({ agent, turn, signal }) => {

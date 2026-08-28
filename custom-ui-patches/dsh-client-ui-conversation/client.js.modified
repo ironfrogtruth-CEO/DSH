@@ -4217,9 +4217,9 @@ window.__ModuleLoader__.load({
 						className: EnterBehaviorRow_module_css_default.title,
 						children: t("settings.enter.title")
 					}), (0, react_jsx_runtime.jsx)("div", {
-						className: EnterBehaviorRow_module_css_default.desc,
-						children: t("settings.enter.description")
-					})]
+					className: EnterBehaviorRow_module_css_default.desc,
+					children: t("settings.enter.description")
+				})]
 				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
 					open,
 					onClose: () => {
@@ -6362,10 +6362,15 @@ window.__ModuleLoader__.load({
 			"details.input": "输入",
 			"details.output": "输出",
 			"details.running": "运行中…",
+			"todo.brand": "CyberMarcus",
 			"todo.title": "任务",
 			"todo.progress.done": "{done} 已完成",
 			"todo.progress.active": "{active} 进行中",
 			"todo.progress.pending": "{pending} 待处理",
+			"todo.status.completed": "已完成",
+			"todo.status.active": "进行中",
+			"todo.status.pending": "待处理",
+			"todo.steps.hidden": "个步骤已折叠",
 			"todo.rowTitle": "更新任务清单",
 			"todo.completed": "{done}/{total} 已完成",
 			"chat.loadingHistory": "载入历史…",
@@ -6535,10 +6540,15 @@ window.__ModuleLoader__.load({
 			"details.input": "Input",
 			"details.output": "Output",
 			"details.running": "Running…",
+			"todo.brand": "CyberMarcus",
 			"todo.title": "To-dos",
 			"todo.progress.done": "{done} completed",
 			"todo.progress.active": "{active} in progress",
 			"todo.progress.pending": "{pending} pending",
+			"todo.status.completed": "Done",
+			"todo.status.active": "In progress",
+			"todo.status.pending": "Pending",
+			"todo.steps.hidden": "steps collapsed",
 			"todo.rowTitle": "Update to-do list",
 			"todo.completed": "{done}/{total} completed",
 			"chat.loadingHistory": "Loading history…",
@@ -6645,22 +6655,67 @@ window.__ModuleLoader__.load({
 			tag.textContent = css$9;
 			document.head.appendChild(tag);
 		}
+		// [local-mod] CyberMarcus plan strip: the existing todos projection is
+		// rendered as a compact horizontal stepper for ordinary conversations.
+		// Keep the style local to this registration so the host's other panels are
+		// unaffected and the same active-state language can be shared with shrimp.
+		const cyberPlanCss = ".dshCyberPlan_root{box-sizing:border-box;width:calc(100% - var(--dsh-composer-side-clearance) - var(--dsh-composer-side-clearance) - var(--dsh-composer-dock-inset) - var(--dsh-composer-dock-inset) - var(--dsh-composer-dock-inset) - var(--dsh-composer-dock-inset));max-width:calc(var(--dsh-composer-card-max-width) - var(--dsh-composer-dock-inset) - var(--dsh-composer-dock-inset) - var(--dsh-composer-dock-inset) - var(--dsh-composer-dock-inset));border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-specific-tip);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border-radius:12px;flex:none;margin:0 auto;overflow:hidden}.dshCyberPlan_body{flex-direction:column;gap:8px;padding:8px 12px 10px;display:flex}.dshCyberPlan_header{text-align:left;cursor:pointer;background:0 0;border:none;align-items:center;gap:9px;width:100%;min-width:0;padding:0;color:var(--dsw-alias-label-primary);display:flex}.dshCyberPlan_header:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:6px}.dshCyberPlan_brand{color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:24px;flex:none}.dshCyberPlan_task{min-width:0;color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;flex:1;font-size:13px;line-height:24px}.dshCyberPlan_progress{min-width:0;color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;flex:none;font-size:12px;line-height:20px}.dshCyberPlan_chevron{color:var(--dsw-alias-label-tertiary);flex:none;place-items:center;display:grid}.dshCyberPlan_progressTrack{height:4px;border-radius:999px;background:var(--dsw-alias-border-l3);overflow:hidden}.dshCyberPlan_progressFill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-state-business-primary);transition:width .2s ease}.dshCyberPlan_list{box-sizing:border-box;align-items:stretch;gap:8px;width:100%;min-width:0;max-height:104px;margin:0;padding:0;list-style:none;display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}.dshCyberPlan_list::-webkit-scrollbar{display:none}.dshCyberPlan_item{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);border-radius:10px;min-width:110px;min-height:72px;color:var(--dsw-alias-label-secondary);flex:1 1 0;flex-direction:column;justify-content:space-between;gap:6px;padding:9px 10px 8px;display:flex;position:relative;overflow:hidden}.dshCyberPlan_item[data-status=in_progress]{border:1.5px solid var(--dsw-alias-state-business-primary);background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-state-business-primary) 8%,var(--dsw-alias-bg-base)),color-mix(in srgb,var(--dsw-alias-state-business-primary) 20%,var(--dsw-alias-bg-base)),color-mix(in srgb,var(--dsw-alias-state-business-primary) 8%,var(--dsw-alias-bg-base)));background-size:200% 100%;box-shadow:0 0 0 1px color-mix(in srgb,var(--dsw-alias-state-business-primary) 18%,transparent),var(--dsw-shadow-lv2);animation:dsh-cyber-plan-highlight 2s ease-in-out infinite}.dshCyberPlan_item[data-status=completed]{color:var(--dsw-alias-label-secondary)}.dshCyberPlan_item[data-status=pending]{color:var(--dsw-alias-label-tertiary)}.dshCyberPlan_stepHead{align-items:center;gap:7px;min-width:0;display:flex}.dshCyberPlan_dot{box-sizing:border-box;background:var(--dsw-alias-label-caption);border:1px solid var(--dsw-alias-label-caption);border-radius:50%;width:8px;height:8px;flex:none}.dshCyberPlan_item[data-status=completed] .dshCyberPlan_dot{background:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_dot{background:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--dsw-alias-state-business-primary) 22%,transparent);animation:dsh-cyber-plan-pulse 1.8s ease-in-out infinite}.dshCyberPlan_stepNumber{color:var(--dsw-alias-label-caption);font-size:11px;line-height:16px;flex:none}.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_stepNumber{color:var(--dsw-alias-state-business-primary);font-weight:600}.dshCyberPlan_stepTitle{min-width:0;color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;font-size:13px;font-weight:500;line-height:20px}.dshCyberPlan_item[data-status=pending] .dshCyberPlan_stepTitle{color:var(--dsw-alias-label-tertiary);font-weight:400}.dshCyberPlan_stepStatus{color:var(--dsw-alias-label-caption);font-size:11px;line-height:16px;white-space:nowrap}.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_stepStatus{color:var(--dsw-alias-state-business-primary);font-weight:500}.dshCyberPlan_ellipsis{box-sizing:border-box;min-width:28px;min-height:72px;color:var(--dsw-alias-label-caption);flex:0 0 28px;align-items:center;justify-content:center;border:1px dashed var(--dsw-alias-border-l1);border-radius:10px;font-size:16px;line-height:20px;display:flex}.dshCyberPlan_ellipsis:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}@keyframes dsh-cyber-plan-pulse{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.18)}}@keyframes dsh-cyber-plan-highlight{0%,100%{background-position:0 0}50%{background-position:100% 0}}@media (max-width:520px){.dshCyberPlan_body{padding-inline:8px}.dshCyberPlan_item{min-width:96px;padding-inline:8px}.dshCyberPlan_progress{display:none}}@media (prefers-reduced-motion:reduce){.dshCyberPlan_item[data-status=in_progress],.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_dot{animation:none!important;transform:none!important}.dshCyberPlan_progressFill{transition:none!important}.dshCyberPlan_item[data-status=in_progress]{box-shadow:0 0 0 1px color-mix(in srgb,var(--dsw-alias-state-business-primary) 18%,transparent),var(--dsw-shadow-lv2)}}";
+		const cyberPlanTagId = "@deepseek-ai/dsh-client-ui-conversation/CyberPlan.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(cyberPlanTagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+			tag.dataset.pluginCss = cyberPlanTagId;
+			tag.textContent = cyberPlanCss;
+			document.head.appendChild(tag);
+		}
+		// [local-mod] Fuse the plan strip to the following composer card, matching
+		// QueueDock's dock/panel posture without changing the queue or hero slots.
+		const cyberPlanDockCss = ".dshCyberPlan_root{box-sizing:border-box;width:calc(100% - (var(--dsh-composer-side-clearance,16px) * 2));max-width:var(--dsh-composer-card-max-width,780px);margin:0 auto calc(var(--dsh-composer-stack-gap,6px) * -1);padding:0;border:1px solid var(--dsw-alias-border-l2);border-block-end-color:transparent;border-radius:22px 22px 0 0;background:var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-base)));box-shadow:var(--dsw-shadow-lv2,0 8px 24px rgba(0,0,0,.12));position:relative;z-index:2;overflow:hidden}[data-composer-seat]:has(.dshCyberPlan_root)>:has(>[data-slot=\"conversation.input.dock\"]>.dshCyberPlan_root){gap:0;--dsh-composer-stack-gap:0px}[data-composer-seat]:has(.dshCyberPlan_root) [data-composer-card]{border-radius:0 0 22px 22px}.dshCyberPlan_body{gap:0;padding:0}.dshCyberPlan_header{box-sizing:border-box;min-height:44px;padding:8px 14px;border-block-end:1px solid var(--dsw-alias-border-l3,var(--dsw-alias-border-l2))}.dshCyberPlan_taskRow{box-sizing:border-box;align-items:center;gap:8px;min-width:0;min-height:36px;padding:8px 14px 4px;display:flex}.dshCyberPlan_taskLabel{min-width:0;color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;font-size:14px;font-weight:600;line-height:22px;flex:1}.dshCyberPlan_taskStatus{color:var(--dsw-alias-state-business-primary);white-space:nowrap;border:1px solid color-mix(in srgb,var(--dsw-alias-state-business-primary) 36%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 12%,transparent);border-radius:999px;padding:1px 7px;font-size:11px;font-weight:500;line-height:18px;flex:none}.dshCyberPlan_taskStatus:empty{display:none}.dshCyberPlan_progressTrack{width:calc(100% - 28px);margin:0 14px 8px}.dshCyberPlan_list{width:calc(100% - 28px);margin:0 14px 10px}.dshCyberPlan_root[data-task-title=\"\"] .dshCyberPlan_taskRow{display:none}@media (max-width:520px){.dshCyberPlan_header{padding-inline:11px}.dshCyberPlan_taskRow{padding-inline:11px}.dshCyberPlan_progressTrack,.dshCyberPlan_list{width:calc(100% - 22px);margin-inline:11px}}";
+		const cyberPlanDockTagId = "@deepseek-ai/dsh-client-ui-conversation/CyberPlanDock.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(cyberPlanDockTagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+			tag.dataset.pluginCss = cyberPlanDockTagId;
+			tag.textContent = cyberPlanDockCss;
+			document.head.appendChild(tag);
+		}
+		// [local-mod] Visual parity with the shrimp run stepper plus a single
+		// composer workbench. When the shrimp panel is open, CyberMarcus becomes
+		// a one-line switcher instead of stacking a second full panel.
+		const cyberPlanParityCss = ".dshCyberPlan_list{justify-content:space-between;gap:0;max-height:none;padding:5px 12px 6px}.dshCyberPlan_item{flex:0 0 110px;min-width:100px;min-height:50px;justify-content:flex-start;gap:4px;padding:4px 10px 2px;border:1px solid transparent;border-block-start-color:var(--dsw-alias-border-l2);border-radius:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--dsw-alias-state-business-primary,#35a56f) 9%,transparent),transparent);background-size:200% 100%;background-repeat:no-repeat;box-shadow:none}.dshCyberPlan_item:first-child{border-block-start-color:transparent}.dshCyberPlan_item+.dshCyberPlan_item{margin-inline-start:-1px}.dshCyberPlan_dot{width:9px;height:9px;border:2px solid var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2));flex:none}.dshCyberPlan_stepLabel{display:flex;flex-direction:column;gap:1px;min-width:0}.dshCyberPlan_stepTitle{font-size:11px;line-height:16px;font-weight:600}.dshCyberPlan_stepStatus{font-size:10px;line-height:15px}.dshCyberPlan_item[data-status=in_progress]{border:1px solid var(--dsw-alias-button-info-fill,#3d83e6);border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 8%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2))),color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 18%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2))),color-mix(in srgb,var(--dsw-alias-button-info-fill,#3d83e6) 8%,var(--dsw-specific-input-major,var(--dsw-alias-bg-layer-2))));background-size:200% 100%;box-shadow:0 0 0 2px rgba(61,131,230,.22),0 5px 14px rgba(61,131,230,.22)}.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_dot{background:var(--dsw-alias-button-info-fill,#3d83e6);box-shadow:0 0 0 4px rgba(61,131,230,.2),0 0 10px rgba(61,131,230,.34)}.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_stepTitle,.dshCyberPlan_item[data-status=in_progress] .dshCyberPlan_stepStatus{color:var(--dsw-alias-button-info-fill,#3d83e6);font-weight:600}.dshCyberPlan_item[data-status=completed] .dshCyberPlan_dot{background:#35a56f;border-color:#35a56f}.dshCyberPlan_ellipsis{flex:0 0 18px;min-width:18px;min-height:50px;border:0;border-radius:0;font-size:18px}.dshCyberPlan_taskStatus{color:#2c9a68;border-color:#35a56f32;background:#35a56f18}[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card)>:has(>[data-slot=\"conversation.input.dock\"]){gap:0;--dsh-composer-stack-gap:0px}[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dshCyberPlan_root{margin-bottom:0;border-block-end-color:transparent;border-radius:22px 22px 0 0;box-shadow:none}[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dshCyberPlan_taskRow,[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dshCyberPlan_progressTrack,[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dshCyberPlan_list{display:none}[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dsh-shrimp-tank-card{margin-top:0;margin-bottom:0;border-block-start-color:transparent;border-radius:0;box-shadow:none}[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) [data-composer-card]{border-radius:0 0 22px 22px}";
+		const cyberPlanParityTagId = "@deepseek-ai/dsh-client-ui-conversation/CyberPlanParity.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(cyberPlanParityTagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+			tag.dataset.pluginCss = cyberPlanParityTagId;
+			tag.textContent = cyberPlanParityCss;
+			document.head.appendChild(tag);
+		}
+		const cyberPlanStackFixCss = "[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dshCyberPlan_root,[data-composer-seat]:has(.dshCyberPlan_root):has(.dsh-shrimp-tank-card) .dsh-shrimp-tank-card{margin-bottom:calc(var(--dsh-composer-stack-gap,6px) * -1)}";
+		const cyberPlanStackFixTagId = "@deepseek-ai/dsh-client-ui-conversation/CyberPlanStackFix.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(cyberPlanStackFixTagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+			tag.dataset.pluginCss = cyberPlanStackFixTagId;
+			tag.textContent = cyberPlanStackFixCss;
+			document.head.appendChild(tag);
+		}
 		var TodoPanel_module_css_default = {
-			"body": "lXshSW_body",
-			"chevron": "lXshSW_chevron",
-			"content": "lXshSW_content",
-			"glyph": "lXshSW_glyph",
-			"glyphCompleted": "lXshSW_glyphCompleted",
-			"glyphPending": "lXshSW_glyphPending",
-			"glyphProgress": "lXshSW_glyphProgress",
-			"header": "lXshSW_header",
-			"item": "lXshSW_item",
-			"lead": "lXshSW_lead",
-			"list": "lXshSW_list",
-			"progress": "lXshSW_progress",
-			"root": "lXshSW_root",
-			"title": "lXshSW_title",
-			"todo-progress-spin": "lXshSW_todo-progress-spin"
+			"body": "dshCyberPlan_body",
+			"chevron": "dshCyberPlan_chevron",
+			"content": "dshCyberPlan_stepTitle",
+			"glyph": "dshCyberPlan_dot",
+			"glyphCompleted": "dshCyberPlan_dot",
+			"glyphPending": "dshCyberPlan_dot",
+			"glyphProgress": "dshCyberPlan_dot",
+			"header": "dshCyberPlan_header",
+			"item": "dshCyberPlan_item",
+			"lead": "dshCyberPlan_brand",
+			"list": "dshCyberPlan_list",
+			"progress": "dshCyberPlan_progress",
+			"root": "dshCyberPlan_root",
+			"title": "dshCyberPlan_task",
+			"todo-progress-spin": "dshCyberPlan_dot"
 		};
 		//#endregion
 		//#region lib/types/client/skeleton/TodoPanel.js
@@ -6749,7 +6804,51 @@ window.__ModuleLoader__.load({
 				default: return assertNever(status);
 			}
 		}
-		/** Header summary: "·"-joined per-status counts; zero-count segments are omitted as noise (a non-empty list keeps at least one). */
+		const CYBERMARCUS_BRAND = "CyberMarcus";
+		const COMPOSER_WORKBENCH_EVENT = "dsh:composer-workbench";
+		const GENERIC_TASK_TITLES = /* @__PURE__ */ new Set([
+			"新会话",
+			"新对话",
+			"新任务",
+			"任务",
+			"聊天",
+			"对话",
+			"未命名",
+			"无标题",
+			"untitled",
+			"newchat",
+			"chat",
+			"task",
+			"cybermarcus"
+		]);
+		/** Keep ordinary task labels short without splitting surrogate pairs or emoji. */
+		function cleanTaskTitle(value) {
+			if (typeof value !== "string") return "";
+			let title = value.normalize("NFC").replace(/\s+/gu, " ").trim();
+			const stripEdges = (input) => input.replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "").trim();
+				title = stripEdges(title);
+				title = title.replace(/^CyberMarcus(?:\s+in\s+Chrome)?[\s:：·—_-]*/iu, "");
+				// Session summaries often retain a polite request prefix or a channel
+			// label. Remove only those wrappers; the remaining words are user data.
+			title = title.replace(/^(?:(?:请|麻烦|帮我|帮忙|请帮我|请帮忙|可以帮我|能否|能不能|我想要|想要|需要)(?:你|帮我|帮忙|完成|处理|做|分析|生成|撰写)?[\s:：,，-]*)+/u, "");
+			title = title.replace(/^[^:：@]{1,24}@[^\s:：]{1,24}[:：]\s*/u, "");
+			title = stripEdges(title);
+			return Array.from(title).slice(0, 10).join("");
+		}
+		function isGenericTaskTitle(title) {
+			const key = title.toLocaleLowerCase().replace(/[\s\p{P}\p{S}]/gu, "");
+			return key === "" || GENERIC_TASK_TITLES.has(key);
+		}
+		/** Stable fallback: prefer the live step, then the first pending step. */
+		function fallbackTaskTitle(todos) {
+			const candidate = todos.find((item) => item.status === "in_progress") ?? todos.find((item) => item.status === "pending") ?? todos[0];
+			return cleanTaskTitle(candidate?.content) || "执行任务";
+		}
+		function resolvedTaskTitle(todos, summaryTitle) {
+			const summary = cleanTaskTitle(summaryTitle);
+			return !isGenericTaskTitle(summary) ? summary : fallbackTaskTitle(todos);
+		}
+		/** Header summary: status counts only; ordinary plans have no fabricated percentage. */
 		function progressLabel(todos, t) {
 			const done = todos.filter((item) => item.status === "completed").length;
 			const active = todos.filter((item) => item.status === "in_progress").length;
@@ -6760,13 +6859,67 @@ window.__ModuleLoader__.load({
 				...pending > 0 ? [t("todo.progress.pending", { pending })] : []
 			].join(" · ");
 		}
-		function TodoPanel({ todos, t }) {
-			const [collapsed, setCollapsed] = (0, react.useState)(true);
+		/** The bar represents completed steps only; an active step is not guessed. */
+		function planProgressPercent(todos) {
+			if (todos.length === 0) return 0;
+			const done = todos.filter((item) => item.status === "completed").length;
+			return Math.round(done / todos.length * 100);
+		}
+		function todoStatusLabel(status, t) {
+			switch (status) {
+				case "completed": return t("todo.status.completed");
+				case "in_progress": return t("todo.status.active");
+				case "pending": return t("todo.status.pending");
+				/* v8 ignore next -- closed TodoItem status union */
+				default: return assertNever(status);
+			}
+		}
+		/**
+		* Preserve the first/current-neighbors/last geometry. Every active step is
+		* an anchor, so a running node can never be hidden behind the ellipsis.
+		*/
+		function compactTodoItems(todos) {
+			if (todos.length <= 6) return todos.map((item, index) => ({ kind: "todo", item, index, key: `todo-${index}` }));
+			const activeIndexes = todos.flatMap((item, index) => item.status === "in_progress" ? [index] : []);
+			const currentIndexes = activeIndexes.length > 0 ? activeIndexes : [todos.findIndex((item) => item.status !== "completed")].filter((index) => index >= 0);
+			const keep = /* @__PURE__ */ new Set([0, todos.length - 1]);
+			for (const index of currentIndexes) {
+				keep.add(index - 1);
+				keep.add(index);
+				keep.add(index + 1);
+			}
+			const indexes = [...keep].filter((index) => index >= 0 && index < todos.length).sort((left, right) => left - right);
+			const result = [];
+			let previous = -1;
+			for (const index of indexes) {
+				if (index > previous + 1) result.push({ kind: "ellipsis", count: index - previous - 1, key: `ellipsis-${previous + 1}-${index - 1}` });
+				result.push({ kind: "todo", item: todos[index], index, key: `todo-${index}` });
+				previous = index;
+			}
+			if (previous < todos.length - 1) result.push({ kind: "ellipsis", count: todos.length - previous - 1, key: `ellipsis-${previous + 1}-${todos.length - 1}` });
+			return result;
+		}
+		function TodoPanel({ todos, t, taskTitle }) {
+			const hasActive = todos.some((item) => item.status === "in_progress");
+			const allCompleted = todos.length > 0 && todos.every((item) => item.status === "completed");
+			const [collapsed, setCollapsed] = (0, react.useState)(allCompleted);
+			const previousActive = (0, react.useRef)(hasActive);
+			(0, react.useEffect)(() => {
+				if (hasActive && !previousActive.current) setCollapsed(false);
+				previousActive.current = hasActive;
+			}, [hasActive]);
 			if (todos.length === 0) return null;
+			const label = resolvedTaskTitle(todos, taskTitle);
+			const displayItems = compactTodoItems(todos);
+			const taskStatus = hasActive ? t("todo.status.active") : allCompleted ? t("todo.status.completed") : null;
+			const completion = planProgressPercent(todos);
 			return (0, react_jsx_runtime.jsx)("section", {
 				className: TodoPanel_module_css_default.root,
 				"data-testid": "todo-panel",
-				"aria-label": t("todo.title"),
+				"data-cybermarcus-plan": "",
+				"data-task-title": label,
+				"data-has-active": hasActive,
+				"aria-label": `${CYBERMARCUS_BRAND}：${label}`,
 				children: (0, react_jsx_runtime.jsxs)("div", {
 					className: TodoPanel_module_css_default.body,
 					children: [(0, react_jsx_runtime.jsxs)("button", {
@@ -6774,50 +6927,86 @@ window.__ModuleLoader__.load({
 						className: TodoPanel_module_css_default.header,
 						"aria-expanded": !collapsed,
 						onClick: () => {
+							if (typeof document !== "undefined" && document.querySelector(".dsh-shrimp-tank-card") !== null) {
+								window.dispatchEvent(new CustomEvent(COMPOSER_WORKBENCH_EVENT, { detail: { panel: "plan" } }));
+								setCollapsed(false);
+								return;
+							}
 							setCollapsed((v) => !v);
 						},
-						children: [
-							(0, react_jsx_runtime.jsx)("span", {
-								className: TodoPanel_module_css_default.lead,
-								"aria-hidden": true,
-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChecklistOutline14, {})
-							}),
-							(0, react_jsx_runtime.jsx)("span", {
-								className: TodoPanel_module_css_default.title,
-								children: t("todo.title")
-							}),
-							(0, react_jsx_runtime.jsx)("span", {
-								className: TodoPanel_module_css_default.progress,
-								children: progressLabel(todos, t)
+							children: [
+								(0, react_jsx_runtime.jsx)("span", {
+									className: TodoPanel_module_css_default.lead,
+									children: CYBERMARCUS_BRAND
+								}),
+								(0, react_jsx_runtime.jsx)("span", {
+									className: TodoPanel_module_css_default.progress,
+									children: progressLabel(todos, t)
 							}),
 							(0, react_jsx_runtime.jsx)("span", {
 								className: TodoPanel_module_css_default.chevron,
 								"aria-hidden": true,
 								children: collapsed ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronUpOutline14, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {})
-							})
-						]
-					}), !collapsed && (0, react_jsx_runtime.jsx)("ul", {
-						className: TodoPanel_module_css_default.list,
-						children: todos.map((item) => (0, react_jsx_runtime.jsxs)("li", {
-							className: TodoPanel_module_css_default.item,
-							"data-status": item.status,
+								})
+							]
+						}), (0, react_jsx_runtime.jsxs)("div", {
+							className: "dshCyberPlan_taskRow",
+							"data-task-row": "",
 							children: [(0, react_jsx_runtime.jsx)("span", {
-								className: TodoPanel_module_css_default.glyph,
-								"aria-hidden": true,
-								children: (0, react_jsx_runtime.jsx)(StatusGlyph, { status: item.status })
-							}), (0, react_jsx_runtime.jsx)("span", {
-								className: TodoPanel_module_css_default.content,
-								children: item.content
+								className: "dshCyberPlan_taskLabel",
+								"data-task-title-label": "",
+								children: label
+							}), taskStatus !== null && (0, react_jsx_runtime.jsx)("span", {
+								className: "dshCyberPlan_taskStatus",
+								children: taskStatus
 							})]
-						}, item.content))
-					})]
-				})
+						}), !collapsed && (0, react_jsx_runtime.jsx)("div", {
+							className: "dshCyberPlan_progressTrack",
+							role: "progressbar",
+							"aria-label": `${label}进度`,
+							"aria-valuemin": 0,
+							"aria-valuemax": 100,
+							"aria-valuenow": completion,
+							children: (0, react_jsx_runtime.jsx)("span", {
+								className: "dshCyberPlan_progressFill",
+								style: { width: `${completion}%` }
+							})
+						}), !collapsed && (0, react_jsx_runtime.jsx)("ul", {
+						className: TodoPanel_module_css_default.list,
+						"data-plan-steps": "",
+						children: displayItems.map((entry) => entry.kind === "ellipsis" ? (0, react_jsx_runtime.jsx)("li", {
+							className: "dshCyberPlan_ellipsis",
+							"aria-label": `${entry.count} ${t("todo.steps.hidden")}`,
+							children: "…"
+						}, entry.key) : (0, react_jsx_runtime.jsxs)("li", {
+							className: TodoPanel_module_css_default.item,
+							"data-status": entry.item.status,
+							"data-step-index": entry.index,
+							"aria-current": entry.item.status === "in_progress" ? "step" : void 0,
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: "dshCyberPlan_dot",
+								"aria-hidden": true
+							}), (0, react_jsx_runtime.jsxs)("div", {
+								className: "dshCyberPlan_stepLabel",
+								children: [(0, react_jsx_runtime.jsx)("strong", {
+									className: "dshCyberPlan_stepTitle",
+									children: entry.item.content
+								}), (0, react_jsx_runtime.jsx)("span", {
+									className: "dshCyberPlan_stepStatus",
+									children: `${entry.index + 1} · ${todoStatusLabel(entry.item.status, t)}`
+								})]
+							})]
+						}, entry.key))
+						})
+					]
+					})
 			});
 		}
 		/** Dock adapter: reads the host-computed 'todos' projection (whole list; absent or null renders nothing). */
-		function TodoDock({ useProjection, t }) {
+		function TodoDock({ useProjection, t, taskTitle }) {
 			return (0, react_jsx_runtime.jsx)(TodoPanel, {
 				todos: useProjection("todos") ?? [],
+				taskTitle,
 				t
 			});
 		}
@@ -7325,6 +7514,10 @@ window.__ModuleLoader__.load({
 			const inputState = useInput((s) => s);
 			const cwd = useSessions((s) => sessionId === void 0 ? void 0 : s.byId[sessionId]?.cwd);
 			const summaryBlank = useSessions((s) => sessionId === void 0 ? void 0 : s.byId[sessionId]?.blank);
+			const taskTitle = useSessions((s) => {
+				const summary = sessionId === void 0 ? void 0 : s.byId[sessionId];
+				return summary?.displayTitle ?? summary?.title;
+			});
 			const workspaces = useWorkspaces((s) => s);
 			const composerBlock = useComposerBlock((block) => block);
 			const [pickerOpen, setPickerOpen] = (0, react.useState)(false);
@@ -7356,7 +7549,8 @@ window.__ModuleLoader__.load({
 			const hero = sessionId === void 0 || composerPhase === "blank" && (openState === "open" || summaryBlank === true);
 			const zone = session === void 0 || inputState === void 0 ? void 0 : {
 				session,
-				input: inputState
+				input: inputState,
+				taskTitle
 			};
 			const chipTitle = pendingWorkspace?.title ?? (sessionId === void 0 ? void 0 : sessionWorkspace?.title ?? (workspaces.phase === "ready" || cwd === void 0 || cwd === "" ? void 0 : workspaceLabel(cwd)));
 			const heroWorkspaceRow = (0, react_jsx_runtime.jsxs)("div", {
@@ -7484,6 +7678,60 @@ window.__ModuleLoader__.load({
 			return left.length === right.length && left.every((item, index) => {
 				const other = right.at(index);
 				return other !== void 0 && item.id === other.id && item.displayTitle === other.displayTitle;
+			});
+		}
+		const chromeOperationCss = ".dshChromeOperation{box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 9px;border:1px solid color-mix(in srgb,#35a56f 42%,var(--dsw-alias-border-l2));border-radius:999px;background:#35a56f14;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:20px;white-space:nowrap;cursor:pointer}.dshChromeOperation:hover{border-color:#35a56f;background:#35a56f22}.dshChromeOperation:focus-visible{outline:2px solid var(--dsw-alias-button-info-fill,#3d83e6);outline-offset:2px}.dshChromeOperation:disabled{cursor:wait;opacity:.68}.dshChromeOperationDot{width:7px;height:7px;border-radius:50%;background:#35a56f;box-shadow:0 0 0 4px #35a56f20;animation:dsh-chrome-operation-pulse 1.6s ease-in-out infinite}@keyframes dsh-chrome-operation-pulse{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.12)}}@media(prefers-reduced-motion:reduce){.dshChromeOperationDot{animation:none!important}}";
+		const chromeOperationTagId = "@deepseek-ai/dsh-client-ui-conversation/ChromeOperation.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(chromeOperationTagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+			tag.dataset.pluginCss = chromeOperationTagId;
+			tag.textContent = chromeOperationCss;
+			document.head.appendChild(tag);
+		}
+		function ChromeOperationIndicator() {
+			const [operation, setOperation] = (0, react.useState)(null);
+			const [activating, setActivating] = (0, react.useState)(false);
+			(0, react.useEffect)(() => {
+				let alive = true;
+				let timer = null;
+				const read = async () => {
+					try {
+						const response = await fetch("/api/webbridge/status", { cache: "no-store" });
+						const value = await response.json();
+						if (alive) setOperation(value?.chromeOperating && Number.isFinite(Number(value?.operation?.tabId)) ? value.operation : null);
+					} catch {
+						if (alive) setOperation(null);
+					} finally {
+						if (alive) timer = window.setTimeout(read, document.hidden ? 2500 : 800);
+					}
+				};
+				void read();
+				return () => {
+					alive = false;
+					if (timer !== null) window.clearTimeout(timer);
+				};
+			}, []);
+			if (operation === null) return null;
+			return (0, react_jsx_runtime.jsxs)("button", {
+				type: "button",
+				className: "dshChromeOperation",
+				"data-chrome-operation": "",
+				disabled: activating,
+				title: "进入正在操作的 Chrome 标签页",
+				onClick: async () => {
+					setActivating(true);
+					try {
+						await fetch("/api/webbridge/activate", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ protocol: 2, tabId: Number(operation.tabId) })
+						});
+					} finally {
+						setActivating(false);
+					}
+				},
+				children: [(0, react_jsx_runtime.jsx)("span", { className: "dshChromeOperationDot", "aria-hidden": true }), "Chrome操作中"]
 			});
 		}
 		/**
@@ -10109,6 +10357,12 @@ window.__ModuleLoader__.load({
 				})
 			}, EnterBehaviorRow));
 			const chatScrollPositions = /* @__PURE__ */ new Map();
+			ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
+				name: "conversation.session.header.actions",
+				id: "chrome-operation",
+				order: 80,
+				locale: NS
+			}, ChromeOperationIndicator));
 			// [local-mod] 完整视图列表(含轨迹,供 setView 激活)与 tabs 行显示列表(过滤轨迹)分离
 			const allViews = () => {
 				const tabs = [];

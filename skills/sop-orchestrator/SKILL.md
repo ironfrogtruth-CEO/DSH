@@ -81,6 +81,8 @@ Load registry files only when needed:
 
 Use registry IDs in plans and QA reports. Do not hide selections inside generation logic. For render workflows, preserve framework/template/component/asset IDs in intermediate contracts and final artifacts when possible.
 
+For tasks needing an executable production blueprint or durable node receipts, load `plan-before-action` after `structure`; it owns the `cybermarcus_work_contract.v1` and `production_receipt.v1` schemas.
+
 ## Confirmation Gates
 
 Stop for user confirmation when a completed node materially changes downstream work:

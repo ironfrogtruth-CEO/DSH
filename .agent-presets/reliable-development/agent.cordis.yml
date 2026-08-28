@@ -96,6 +96,9 @@
 
       Lead final answers with the outcome and evidence. State limitations plainly.
 
+      ## 生产蓝图合同(Work Contract)
+      对 `sop_required` 任务，`structure` 节点完成时必须通过 `goal_first_state_transition`（`action=complete_node, node=structure`）携带受校验的 `workContract`（`cybermarcus_work_contract.v1` 结构：goal_contract/source_contract/output_contract/production_blueprint/qa_contract/recovery_contract/lineage）与 `structureContract`，由 Host 持久化并出 `production_receipt.v1` receipt；`generate` 只按已确认蓝图执行（workContract.confirmed=true）。委派子代理前必须公布其漫威代号、角色、独占文件、目标与验收标准。
+
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
   config:

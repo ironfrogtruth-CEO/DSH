@@ -1,13 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
 import { appendFile, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { apply } from './index.js'
-import { classifyTask, createInitialState, extractOutputContract, governanceForNode, renderStateContext, transitionState } from './machine.js'
+import { apply, transitionParameters } from './index.js'
+import { classifyTask, createInitialState, extractOutputContract, FAILURE_FINGERPRINT_KEYS, governanceForNode, renderStateContext, transitionState, validateStructureContract, validateWorkContract } from './machine.js'
 import { GoalFirstStateStore } from './state-store.js'
 import { enforceOneSentenceStream, rewriteOneSentenceChunks } from './stream-contract.js'
+import { goalFirstCardTitle } from './tool-cards.js'
+import { stableJsonChecksumV1, stableJsonStringifyV1 } from './stable-json.js'
+
+const deployedRequire = createRequire(join(import.meta.dirname, '../../install/goal-first-schema-test.cjs'))
+const { parameterSchemaSpecToJsonSchema } = deployedRequire('@deepseek-ai/dsh-tools')
 
 function goalContract() {
   return {
@@ -78,6 +84,14 @@ test('output contract captures continuous final-delivery instructions without ch
   assert.match(renderStateContext(phasedAfterTransition, 1), /finish the response now/i)
 })
 
+test('deployed DSH schema compiler accepts the real transition tool parameters', () => {
+  const schema = parameterSchemaSpecToJsonSchema(transitionParameters())
+  assert.equal(schema.type, 'object')
+  assert.equal(schema.properties.failureFingerprint.type, 'object')
+  assert.equal(schema.properties.failureFingerprint.additionalProperties, true)
+  assert.deepEqual(schema.required, ['expectedRevision', 'action'])
+})
+
 test('append-only store isolates sessions, replays after restart, ignores torn tail, and enforces CAS', async () => {
   const fixture = await temporaryStore()
   try {
@@ -105,14 +119,14 @@ test('state transition is sequential and validate gate controls export', () => {
   assert.doesNotMatch(renderStateContext(state, 1), /Call goal_first_state_transition/)
   assert.throws(() => transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['same-turn'] }, { turn: 1, sourceEventSeq: 3 }), /only one goal-first state transition is allowed per turn/)
   assert.throws(() => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['x'] }, { turn: ++turn, sourceEventSeq: 3 }), /cannot complete node structure/)
-  for (const node of ['parse', 'structure', 'generate']) state = transitionState(state, { action: 'complete_node', node, evidence: [`${node} ok`] }, { turn: ++turn, sourceEventSeq: 4 })
+  for (const node of ['parse', 'structure', 'generate']) state = transitionState(state, { action: 'complete_node', node, evidence: [`${node} ok`], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: ++turn, sourceEventSeq: 4 })
   const failed = transitionState(state, { action: 'complete_node', node: 'validate', evidence: ['failed check'], qaStatus: 'failed', rollbackTo: 'generate', reason: 'test failed' }, { turn: ++turn, sourceEventSeq: 5 })
   assert.equal(failed.phase, 'blocked')
   assert.equal(failed.rollbackTarget, 'generate')
-  state = transitionState(state, { action: 'complete_node', node: 'validate', evidence: ['tests passed'], qaStatus: 'passed', qaChecks: ['unit'] }, { turn: ++turn, sourceEventSeq: 5 })
+  state = transitionState(state, { action: 'complete_node', node: 'validate', evidence: ['tests passed'], qaStatus: 'passed', qaChecks: ['unit'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: ++turn, sourceEventSeq: 5 })
   assert.equal(state.currentNode, 'export')
   assert.deepEqual(state.governance, governanceForNode('export'))
-  state = transitionState(state, { action: 'complete_node', node: 'export', evidence: ['artifact hash'] }, { turn: ++turn, sourceEventSeq: 6 })
+  state = transitionState(state, { action: 'complete_node', node: 'export', evidence: ['artifact hash'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: ++turn, sourceEventSeq: 6 })
   assert.equal(state.currentNode, 'review')
   assert.deepEqual(state.governance, governanceForNode('review'))
 })
@@ -321,17 +335,17 @@ test('continuous Host hook steers after a same-turn transition and permits evide
     assert.equal(state.repair.attempts, 1)
 
     for (const node of ['parse', 'structure', 'generate']) {
-      const next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node, evidence: [`${node} ok`] })
+      const next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node, evidence: [`${node} ok`], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
       assert.equal(next.ok, true)
       state = next.state
     }
-    let next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'validate', evidence: ['qa ok'], qaStatus: 'passed' })
+    let next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'validate', evidence: ['qa ok'], qaStatus: 'passed', actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
     assert.equal(next.ok, true)
     state = next.state
-    next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'export', evidence: ['artifact hash'] })
+    next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'export', evidence: ['artifact hash'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
     assert.equal(next.ok, true)
     state = next.state
-    next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'review', evidence: ['final review complete'] })
+    next = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'review', evidence: ['final review complete'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
     assert.equal(next.ok, true)
     state = next.state
     assert.equal(state.phase, 'complete')
@@ -377,7 +391,7 @@ test('Host transition tool enforces revision and QA-passed export gate allows ex
     let result = await transition.execute({ expectedRevision: state.revision, action: 'record_goal', goalContract: goalContract() })
     assert.equal(result.ok, true)
     assert.equal(result.state.currentNode, 'parse')
-    const stale = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'parse', evidence: ['ok'] })
+    const stale = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'parse', evidence: ['ok'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
     assert.equal(stale.code, 'STATE_REVISION_CONFLICT')
 
     state = result.state
@@ -385,15 +399,359 @@ test('Host transition tool enforces revision and QA-passed export gate allows ex
     for (const node of ['parse', 'structure', 'generate']) {
       turn += 1
       agent.session.events.push({ type: 'step/start', data: { turn, step: 1 } })
-      result = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node, evidence: [`${node} ok`] })
+      result = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node, evidence: [`${node} ok`], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
       state = result.state
     }
     turn += 1
     agent.session.events.push({ type: 'step/start', data: { turn, step: 1 } })
-    result = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'validate', evidence: ['qa ok'], qaStatus: 'passed' })
+    result = await transition.execute({ expectedRevision: state.revision, action: 'complete_node', node: 'validate', evidence: ['qa ok'], qaStatus: 'passed', actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] })
     state = result.state
     const preExecute = runtime.listeners.get('tools/pre-execute')[0]
     const allowed = await preExecute({ agent, name: 'pdf_export', arguments: {} }, async () => ({ kind: 'allow' }))
     assert.equal(allowed.kind, 'allow')
   } finally { await fixture.cleanup() }
+})
+
+function validWorkContract() {
+  return {
+    schema: 'cybermarcus_work_contract.v1',
+    goal_contract: { problem: 'p', audience_action: 'a', deliverables: ['d'], minimum_deliverable: 'm' },
+    source_contract: { truth_sources: [], derived_outputs: [], debug_notes: [], pollution_risks: [], knowledge_versions: [] },
+    output_contract: {},
+    production_blueprint: { task_mode: 'one_off_complex', nodes: [{ node_id: 'n', goal: 'g', dependencies: [], inputs: [], outputs: ['o'], qa_gate: {}, rollback_to: null }] },
+    qa_contract: { node_gates: [], final_acceptance: [], release_conditions: [] },
+    recovery_contract: { rollback_points: ['r'], max_retries: 1, failure_fingerprint_fields: ['node'] },
+    lineage: {},
+  }
+}
+
+test('stable-json v1 canonicalizes the F1 fixture with the exact anchor checksum', () => {
+  const input = { b: [3, 1, 2], a: '张三', n: { z: true, y: null, x: -1.5 }, arr: [{ k: 2, j: '甲' }, { k: 1, j: '乙' }] }
+  assert.equal(stableJsonStringifyV1(input), '{"a":"张三","arr":[{"j":"甲","k":2},{"j":"乙","k":1}],"b":[3,1,2],"n":{"x":-1.5,"y":null,"z":true}}')
+  assert.equal(stableJsonChecksumV1(input), 'f517ca29dc2763987e6746056240404ac6a36b9d0f7a5e24b431ba4cd55f1f68')
+})
+
+test('stable-json v1 canonicalizes the F2 fixture with integer floats, -0 and raw UTF-8', () => {
+  const input = { p: 2.0, q: -0.0, s: '换行\n引号"', u: 'emoji🦐' }
+  assert.equal(stableJsonStringifyV1(input), '{"p":2,"q":0,"s":"换行\\n引号\\"","u":"emoji🦐"}')
+  assert.equal(stableJsonChecksumV1(input), 'c6c127cd354b72d642bd2a0e9140c81eb0231bac27be6dfdb9a83a13fa507ce0')
+})
+
+test('createInitialState carries the four production-contract fields with null/empty defaults', () => {
+  const state = createInitialState({ sessionId: 'init-fields', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  assert.equal(state.workContract, null)
+  assert.equal(state.structureContract, null)
+  assert.equal(state.workContractRef, null)
+  assert.deepEqual(state.productionReceipts, [])
+})
+
+test('record_goal persists a route production receipt into the JSONL store', async () => {
+  const fixture = await temporaryStore()
+  try {
+    const store = fixture.store
+    let state = await store.append('receipt-session', createInitialState({ sessionId: 'receipt-session', text: '实现复杂插件并测试导出', sourceEventSeq: 1 }), 0)
+    state = await store.append('receipt-session', transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 }), state.revision)
+    assert.equal(state.productionReceipts.length, 1)
+    const receipt = state.productionReceipts[0]
+    assert.equal(receipt.schema, 'production_receipt.v1')
+    assert.equal(receipt.node_id, 'route')
+    assert.equal(receipt.status, 'completed')
+    assert.equal(receipt.input_checksum, state.taskFingerprint)
+    assert.equal(receipt.version_refs.schemaVersion, 1)
+    assert.deepEqual(receipt.qa_result, { status: 'passed', checks: ['goal contract recorded'] })
+    assert.equal(receipt.evidence.length, 1)
+    assert.equal(receipt.failure_fingerprint, null)
+    assert.equal(receipt.rollback_to, null)
+    const reopened = new GoalFirstStateStore(fixture.root)
+    const persisted = await reopened.load('receipt-session')
+    assert.equal(persisted.productionReceipts.length, 1)
+    assert.equal(persisted.productionReceipts[0].node_id, 'route')
+    assert.equal(persisted.productionReceipts[0].input_checksum, persisted.taskFingerprint)
+  } finally { await fixture.cleanup() }
+})
+
+test('complete_node appends isomorphic receipts and validate failure records a blocked receipt', () => {
+  let state = createInitialState({ sessionId: 'receipt-nodes', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  state = transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['source map locked'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 2, sourceEventSeq: 3 })
+  assert.equal(state.productionReceipts.length, 2)
+  const parseReceipt = state.productionReceipts[1]
+  assert.equal(parseReceipt.node_id, 'parse')
+  assert.equal(parseReceipt.status, 'completed')
+  assert.equal(parseReceipt.qa_result.status, 'passed')
+  assert.ok(parseReceipt.evidence.length >= 1)
+  state = transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['blueprint locked'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 3, sourceEventSeq: 4 })
+  state = transitionState(state, { action: 'complete_node', node: 'generate', evidence: ['artifact built'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 4, sourceEventSeq: 5 })
+  const failed = transitionState(state, { action: 'complete_node', node: 'validate', evidence: ['qa evidence'], qaStatus: 'failed', qaChecks: ['unit'], rollbackTo: 'generate', reason: 'test failed' }, { turn: 5, sourceEventSeq: 6 })
+  const blockedReceipt = failed.productionReceipts.at(-1)
+  assert.equal(blockedReceipt.node_id, 'validate')
+  assert.equal(blockedReceipt.status, 'blocked')
+  assert.equal(blockedReceipt.qa_result.status, 'failed')
+  assert.equal(blockedReceipt.rollback_to, 'generate')
+  assert.ok(blockedReceipt.failure_fingerprint)
+})
+
+test('structure validates workContract, stores its checksum, and blocks unconfirmed entry into generate', () => {
+  let state = createInitialState({ sessionId: 'work-contract', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  state = transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['ok'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 2, sourceEventSeq: 3 })
+  assert.throws(
+    () => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], workContract: { schema: 'wrong' } }, { turn: 3, sourceEventSeq: 4 }),
+    (error) => error.code === 'WORK_CONTRACT_INVALID',
+  )
+  const missingKey = validWorkContract()
+  delete missingKey.lineage
+  assert.throws(
+    () => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], workContract: missingKey }, { turn: 3, sourceEventSeq: 4 }),
+    (error) => error.code === 'WORK_CONTRACT_INVALID',
+  )
+  assert.throws(
+    () => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], workContract: validWorkContract(), confirm: false }, { turn: 3, sourceEventSeq: 4 }),
+    (error) => error.code === 'WORK_CONTRACT_NOT_CONFIRMED',
+  )
+  state = transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], workContract: validWorkContract(), confirm: true, actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 3, sourceEventSeq: 4 })
+  assert.equal(state.currentNode, 'generate')
+  assert.deepEqual(state.workContract, validWorkContract())
+  assert.equal(state.workContractChecksum, stableJsonChecksumV1(validWorkContract()))
+  assert.equal(state.workContractChecksum.length, 64)
+  assert.equal(state.blueprintConfirmed, true)
+})
+
+test('structureContract validation rejects bad version and malformed ref, and records valid refs', () => {
+  let state = createInitialState({ sessionId: 'structure-contract', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  state = transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['ok'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 2, sourceEventSeq: 3 })
+  assert.throws(
+    () => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], structureContract: { contract_version: 0 } }, { turn: 3, sourceEventSeq: 4 }),
+    (error) => error.code === 'STRUCTURE_CONTRACT_INVALID',
+  )
+  assert.throws(
+    () => transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], structureContract: { contract_version: 1, ref: { uri: 'x' } } }, { turn: 3, sourceEventSeq: 4 }),
+    (error) => error.code === 'STRUCTURE_CONTRACT_INVALID',
+  )
+  assert.throws(
+    () => validateWorkContract('not-an-object'),
+    (error) => error.code === 'WORK_CONTRACT_INVALID',
+  )
+  assert.throws(
+    () => validateStructureContract({ contract_version: -1 }),
+    (error) => error.code === 'STRUCTURE_CONTRACT_INVALID',
+  )
+  state = transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], structureContract: { contract_version: 2, ref: { uri: 'file://blueprint.json', sha256: 'a'.repeat(64) } }, actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 3, sourceEventSeq: 4 })
+  assert.equal(state.currentNode, 'generate')
+  assert.deepEqual(state.structureContract, { contract_version: 2, ref: { uri: 'file://blueprint.json', sha256: 'a'.repeat(64) } })
+  assert.equal(state.workContractRef, null)
+})
+
+test('renderStateContext appends work_contract, blueprint, and receipts to the SOP overlay', () => {
+  let state = createInitialState({ sessionId: 'render-contract', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  assert.match(renderStateContext(state), /work_contract=none; blueprint=none; receipts=0/)
+  state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  assert.match(renderStateContext(state), /receipts=1/)
+  state = transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['ok'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 2, sourceEventSeq: 3 })
+  state = transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['ok'], workContract: validWorkContract(), confirm: true, structureContract: { contract_version: 1, text: 'plan' }, actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 3, sourceEventSeq: 4 })
+  const context = renderStateContext(state)
+  assert.match(context, /work_contract=[0-9a-f]{8}; blueprint=confirmed; receipts=3/)
+  const draft = { ...state, workContract: null, workContractChecksum: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', blueprintConfirmed: false }
+  assert.match(renderStateContext(draft), /work_contract=01234567; blueprint=draft; receipts=3/)
+})
+
+test('tool cards map every action and node to Chinese titles and wire into presentCall', async () => {
+  assert.equal(goalFirstCardTitle('get'), '读取工作合同')
+  assert.equal(goalFirstCardTitle('record_goal'), '建立目标合同')
+  assert.equal(goalFirstCardTitle('complete_node', 'parse'), '核对真源')
+  assert.equal(goalFirstCardTitle('complete_node', 'structure'), '锁定生产蓝图')
+  assert.equal(goalFirstCardTitle('complete_node', 'generate'), '按蓝图执行')
+  assert.equal(goalFirstCardTitle('complete_node', 'validate'), '执行QA')
+  assert.equal(goalFirstCardTitle('complete_node', 'export'), '交付产出')
+  assert.equal(goalFirstCardTitle('complete_node', 'review'), '复盘核对')
+  assert.equal(goalFirstCardTitle('pause'), '暂停待确认')
+  assert.equal(goalFirstCardTitle('block'), '阻断回滚')
+  assert.equal(goalFirstCardTitle('resume'), '恢复执行')
+  assert.equal(goalFirstCardTitle('complete_node', 'unknown'), 'Goal-first 状态迁移')
+  assert.equal(goalFirstCardTitle('mystery'), 'Goal-first 状态迁移')
+  const fixture = await temporaryStore()
+  try {
+    const runtime = fakeRuntime(fixture.root)
+    await apply(runtime.ctx, runtime.config)
+    const getTool = runtime.registered.find((tool) => tool.name === 'goal_first_state_get')
+    assert.deepEqual(getTool.presentCall(), { card: 'generic', title: '读取工作合同' })
+    const transitionTool = runtime.registered.find((tool) => tool.name === 'goal_first_state_transition')
+    assert.deepEqual(transitionTool.presentCall({ action: 'complete_node', node: 'structure' }), { card: 'generic', title: '锁定生产蓝图' })
+    assert.deepEqual(transitionTool.presentCall({ action: 'record_goal' }), { card: 'generic', title: '建立目标合同' })
+  } finally { await fixture.cleanup() }
+})
+
+test('structure write gate allows read-only and diagnostic tool calls', async () => {
+  const fixture = await temporaryStore()
+  try {
+    const runtime = fakeRuntime(fixture.root)
+    await apply(runtime.ctx, runtime.config)
+    const agent = { id: 'gate-allow-session', session: { events: [{ type: 'step/start', data: { turn: 1, step: 1 } }], seq: 2 }, steer() {} }
+    runtime.sessions.set(agent.id, agent.session)
+    runtime.setAgent(agent)
+    const store = new GoalFirstStateStore(fixture.root)
+    await store.append(agent.id, createInitialState({ sessionId: agent.id, text: '实现复杂插件并测试导出', sourceEventSeq: 1 }), 0)
+    const preExecute = runtime.listeners.get('tools/pre-execute')[0]
+    const allowed = [
+      { name: 'read', arguments: { file_path: '/x' } },
+      { name: 'goal_first_state_get', arguments: {} },
+      { name: 'bash', arguments: { command: 'git status' } },
+      { name: 'bash', arguments: { command: 'pytest -q' } },
+      { name: 'bash', arguments: { command: 'node --test x.test.mjs' } },
+      { name: 'bash', arguments: { command: 'git log --oneline | tail -5' } },
+      { name: 'bash', arguments: { command: 'sqlite3 "file:db.sqlite?mode=ro" "SELECT 1"' } },
+    ]
+    for (const exec of allowed) {
+      const decision = await preExecute({ agent, ...exec }, async () => ({ kind: 'allow' }))
+      assert.equal(decision.kind, 'allow', `${exec.name} ${JSON.stringify(exec.arguments)} must be allowed`)
+    }
+  } finally { await fixture.cleanup() }
+})
+
+test('structure write gate blocks mutating tools and write-style bash with STRUCTURE_WRITE_BLOCKED', async () => {
+  const fixture = await temporaryStore()
+  try {
+    const runtime = fakeRuntime(fixture.root)
+    await apply(runtime.ctx, runtime.config)
+    const agent = { id: 'gate-deny-session', session: { events: [{ type: 'step/start', data: { turn: 1, step: 1 } }], seq: 2 }, steer() {} }
+    runtime.sessions.set(agent.id, agent.session)
+    runtime.setAgent(agent)
+    const store = new GoalFirstStateStore(fixture.root)
+    await store.append(agent.id, createInitialState({ sessionId: agent.id, text: '实现复杂插件并测试导出', sourceEventSeq: 1 }), 0)
+    const preExecute = runtime.listeners.get('tools/pre-execute')[0]
+    const blocked = [
+      { name: 'edit', arguments: { file_path: '/x' } },
+      { name: 'write', arguments: { file_path: '/x' } },
+      { name: 'str_replace_editor', arguments: { file_path: '/x' } },
+      { name: 'bash', arguments: { command: 'echo x > /tmp/a.txt' } },
+      { name: 'bash', arguments: { command: 'sed -i s/a/b/ f.txt' } },
+      { name: 'bash', arguments: { command: 'rm -rf /tmp/x' } },
+      { name: 'bash', arguments: { command: 'git commit -m x' } },
+    ]
+    for (const exec of blocked) {
+      const decision = await preExecute({ agent, ...exec }, async () => ({ kind: 'allow' }))
+      assert.equal(decision.kind, 'deny', `${exec.name} ${JSON.stringify(exec.arguments)} must be denied`)
+      assert.equal(decision.code, 'STRUCTURE_WRITE_BLOCKED')
+    }
+  } finally { await fixture.cleanup() }
+})
+
+test('production receipts cap at 50 and drop the oldest', () => {
+  let state = createInitialState({ sessionId: 'receipt-cap', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  state = { ...state, productionReceipts: Array.from({ length: 50 }, (_, index) => ({ node_id: `seed-${index}` })) }
+  state = transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['ok'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn: 2, sourceEventSeq: 3 })
+  assert.equal(state.productionReceipts.length, 50)
+  assert.equal(state.productionReceipts[0].node_id, 'seed-1')
+  assert.equal(state.productionReceipts.at(-1).node_id, 'parse')
+})
+
+test('pre-step rehydrates missing production-contract fields together with output fields in one append', async () => {
+  const fixture = await temporaryStore()
+  try {
+    const runtime = fakeRuntime(fixture.root)
+    await apply(runtime.ctx, runtime.config)
+    const events = [{ type: 'step/start', data: { turn: 2, step: 1 } }]
+    const agent = { id: 'legacy-contract-fields', session: { events, seq: 2 }, steer() {} }
+    runtime.sessions.set(agent.id, agent.session)
+    runtime.setAgent(agent)
+    const store = new GoalFirstStateStore(fixture.root)
+    const legacy = createInitialState({ sessionId: agent.id, text: '实现复杂插件并测试导出' })
+    delete legacy.outputContract.continuousUntilTerminal
+    delete legacy.outputContract.silentUntilTerminal
+    delete legacy.workContract
+    delete legacy.structureContract
+    delete legacy.workContractRef
+    delete legacy.productionReceipts
+    await store.append(agent.id, legacy, 0)
+    const preStep = runtime.listeners.get('agent/pre-step')[0]
+    const user = { role: 'user', id: 'u', source: { kind: 'user' }, content: [{ type: 'text', text: '继续执行当前任务。' }] }
+    await preStep({ agent, messages: [user], turn: 2, step: 1, signal: new AbortController().signal }, async () => ({ kind: 'enter', messages: [user] }))
+    const state = await store.load(agent.id)
+    assert.equal(state.revision, 2)
+    assert.equal(state.workContract, null)
+    assert.equal(state.structureContract, null)
+    assert.equal(state.workContractRef, null)
+    assert.deepEqual(state.productionReceipts, [])
+    assert.equal(state.outputContract.continuousUntilTerminal, false)
+    assert.equal(state.outputContract.silentUntilTerminal, false)
+  } finally { await fixture.cleanup() }
+})
+
+test('validate failure receipt persists a structured eight-key failure_fingerprint readable from JSONL', async () => {
+  const fixture = await temporaryStore()
+  try {
+    const store = fixture.store
+    let state = await store.append('fingerprint-session', createInitialState({ sessionId: 'fingerprint-session', text: '实现复杂插件并测试导出', sourceEventSeq: 1 }), 0)
+    state = await store.append('fingerprint-session', transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 }), state.revision)
+    let turn = 1
+    for (const node of ['parse', 'structure', 'generate']) {
+      turn += 1
+      state = await store.append('fingerprint-session', transitionState(state, { action: 'complete_node', node, evidence: [`${node} ok`], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }, { turn, sourceEventSeq: 3 }), state.revision)
+    }
+    turn += 1
+    state = await store.append('fingerprint-session', transitionState(state, { action: 'complete_node', node: 'validate', evidence: ['qa failed'], qaStatus: 'failed', qaChecks: ['unit'], rollbackTo: 'generate', reason: 'test failed', actualBindings: { provider: 'deepseek-official', model: 'deepseek-v4-flash' }, artifacts: [{ name: 'qa-report', checksum: 'sha256:qa' }] }, { turn, sourceEventSeq: 4 }), state.revision)
+    assert.equal(state.phase, 'blocked')
+    const receipt = state.productionReceipts.at(-1)
+    assert.equal(receipt.status, 'blocked')
+    assert.equal(receipt.rollback_to, 'generate')
+    assert.equal(typeof receipt.failure_fingerprint, 'string')
+    const parsed = JSON.parse(receipt.failure_fingerprint)
+    assert.deepEqual(Object.keys(parsed).sort(), [...FAILURE_FINGERPRINT_KEYS].sort())
+    assert.equal(parsed.input_checksum, state.taskFingerprint)
+    assert.equal(parsed.contract_checksum, 'none')
+    assert.equal(parsed.provider_model, 'deepseek-official/deepseek-v4-flash')
+    assert.equal(parsed.node_id, 'validate')
+    assert.equal(parsed.error_code, 'QA_FAILED')
+    assert.deepEqual(parsed.artifact_checksums, ['sha256:qa'])
+    assert.ok(parsed.workflow_version)
+    assert.ok(parsed.capability_version)
+    const reopened = new GoalFirstStateStore(fixture.root)
+    const persisted = await reopened.load('fingerprint-session')
+    const persistedReceipt = persisted.productionReceipts.at(-1)
+    assert.equal(typeof persistedReceipt.failure_fingerprint, 'string')
+    assert.deepEqual(JSON.parse(persistedReceipt.failure_fingerprint), parsed)
+    assert.equal(persistedReceipt.input_checksum, persisted.taskFingerprint)
+    const passingState = transitionState(
+      { ...state, phase: 'active', nodes: { ...state.nodes, validate: 'in_progress' }, rollbackTarget: null, failure: null },
+      { action: 'complete_node', node: 'validate', evidence: ['tests passed'], qaStatus: 'passed', qaChecks: ['unit'], actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] },
+      { turn: turn + 1, sourceEventSeq: 5 },
+    )
+    assert.equal(passingState.productionReceipts.at(-1).failure_fingerprint, null)
+  } finally { await fixture.cleanup() }
+})
+
+test('transition tool parameter schema keeps failureFingerprint as a plain object with no type arrays anywhere', () => {
+  const params = transitionParameters()
+  assert.equal(params.failureFingerprint.type, 'object')
+  assert.equal(Array.isArray(params.failureFingerprint.type), false)
+  for (const [name, spec] of Object.entries(params)) {
+    assert.equal(Array.isArray(spec.type), false, `parameter ${name} must not use a type array`)
+    assert.ok(['object', 'string', 'integer', 'number', 'boolean', 'array'].includes(spec.type), `parameter ${name} has unsupported type ${spec.type}`)
+  }
+  const schema = parameterSchemaSpecToJsonSchema(params)
+  assert.equal(schema.type, 'object')
+  assert.equal(schema.properties.failureFingerprint.type, 'object')
+})
+
+test('block transition appends a blocked receipt carrying the structured failure fingerprint', () => {
+  let state = createInitialState({ sessionId: 'block-receipt', text: '实现复杂插件并测试导出', sourceEventSeq: 1 })
+  state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 2 })
+  state = transitionState(state, { action: 'block', rollbackTo: 'route', code: 'MISSING_SOURCE', reason: 'truth source unavailable', evidence: ['missing source'], failureFingerprint: { error_code: 'MISSING_SOURCE', provider_model: 'none' } }, { turn: 2, sourceEventSeq: 3 })
+  assert.equal(state.phase, 'blocked')
+  assert.equal(state.failure.code, 'MISSING_SOURCE')
+  const receipt = state.productionReceipts.at(-1)
+  assert.equal(receipt.status, 'blocked')
+  assert.equal(receipt.node_id, 'parse')
+  assert.equal(receipt.rollback_to, 'route')
+  assert.equal(receipt.input_checksum, state.taskFingerprint)
+  const parsed = JSON.parse(receipt.failure_fingerprint)
+  assert.deepEqual(Object.keys(parsed).sort(), [...FAILURE_FINGERPRINT_KEYS].sort())
+  assert.equal(parsed.error_code, 'MISSING_SOURCE')
+  assert.equal(parsed.node_id, 'parse')
+  assert.equal(parsed.provider_model, 'none')
+  assert.deepEqual(parsed.artifact_checksums, [])
+  const defaulted = transitionState(state, { action: 'block', rollbackTo: 'route', reason: 'blocked again' }, { turn: 3, sourceEventSeq: 4 })
+  assert.equal(JSON.parse(defaulted.productionReceipts.at(-1).failure_fingerprint).error_code, 'BLOCKED')
 })

@@ -24,6 +24,10 @@ export const PATCHES = Object.freeze([
   packageName,
   source: `custom-ui-patches/${packageName}/client.js.modified`,
   target: `install/node_modules/@deepseek-ai/${packageName}/lib/client.js`,
+})).concat(Object.freeze({
+  packageName: 'shrimp-shell',
+  source: 'custom-ui-patches/shrimp-shell/client.js.modified',
+  target: 'extensions/shrimp-shell/client.js',
 })))
 
 // The current rc.2 subagent bundle intentionally keeps the reviewed upstream

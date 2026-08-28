@@ -41,6 +41,15 @@ test('locked baseline reports clean and atomically repairs reviewed drift', asyn
   }
 })
 
+test('shrimp-shell locked snapshot participates in startup replay', () => {
+  const row = PATCHES.find((item) => item.packageName === 'shrimp-shell')
+  assert.deepEqual(row, {
+    packageName: 'shrimp-shell',
+    source: 'custom-ui-patches/shrimp-shell/client.js.modified',
+    target: 'extensions/shrimp-shell/client.js',
+  })
+})
+
 test('apply rolls back earlier bundle writes when a later write fails', async () => {
   const root = fixture()
   try {

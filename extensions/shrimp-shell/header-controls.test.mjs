@@ -35,16 +35,22 @@ test('Git 工具自身也具备 HMR 后的固定高度与不可拉伸合同', as
   assert.match(source, /\.dsh-git-trigger svg\{[^}]*width:16px;height:16px;flex:0 0 16px/)
 })
 
-test('品牌垂直微调只移动虾缸 wordmark，不改变 Delivery 或收起态图标', async () => {
+test('深浅主题的 wordmark 与 Delivery 共用同一视觉中线', async () => {
   const [source, custom] = await Promise.all([
     readFile(shrimpClientPath, 'utf8'),
     readFile(customClientPath, 'utf8'),
   ])
-  assert.match(source, /\.shrimp-harness-brand::before \{ transform: translateY\(6px\); \}/)
+  assert.match(source, /--shrimp-wordmark-y: 6px; --shrimp-delivery-y: -4px/)
+  assert.match(source, /body\[data-ds-dark-theme\] \.shrimp-harness-brand \{ --shrimp-delivery-y: 2\.5px; \}/)
+  assert.match(source, /\.shrimp-harness-brand::before \{ transform: translateY\(var\(--shrimp-wordmark-y\)\); \}/)
   assert.match(source, /wordmark-dark-cropped\.png/)
   assert.match(source, /wordmark-light-cropped\.png/)
   assert.match(source, /\.shrimp-rail-brand::before/)
   assert.match(source, /content: 'DELIVERY'/)
-  assert.match(source, /transform: translate\(-2px, -3px\)/)
+  assert.match(source, /transform: translate\(-2px, var\(--shrimp-delivery-y\)\)/)
+  assert.match(source, /min-width: 80px; height: 28px; padding: 0 10px; border-radius: 6px/)
+  assert.match(source, /font: 650 9\.5px\/1 ui-sans-serif/)
+  assert.match(source, /letter-spacing: \.14em/)
+  assert.doesNotMatch(source, /transform: translate\(-2px, -(?:3|4)px\)/)
   assert.equal(custom, source, '正式 shrimp client 与 custom patch 必须同步')
 })

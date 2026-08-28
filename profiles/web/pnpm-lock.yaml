@@ -4,76 +4,79 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-importers:
-
-  .:
-    dependencies:
-      '@dsh-market/plugin':
-        specifier: ^0.2.1
-        version: 0.2.1
-      '@local/dsh-browser':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-browser
-        version: link:../../extensions/dsh-browser
-      '@local/dsh-code-intelligence':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-code-intelligence
-        version: link:../../extensions/dsh-code-intelligence
-      '@local/dsh-compaction-v2':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-compaction-v2
-        version: link:../../extensions/dsh-compaction-v2
-      '@local/dsh-cross-session':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-cross-session
-        version: link:../../extensions/dsh-cross-session
-      '@local/dsh-dsbalance':
-        specifier: link:/Users/marcus/.dsh/extensions/dsbalance-bundle
-        version: link:../../extensions/dsbalance-bundle
-      '@local/dsh-evals':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-evals
-        version: link:../../extensions/dsh-evals
-      '@local/dsh-frontend-qa':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-frontend-qa
-        version: link:../../extensions/dsh-frontend-qa
-      '@local/dsh-git':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-git
-        version: link:../../extensions/dsh-git
-      '@local/dsh-goal-first-state-machine':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine
-        version: link:../../extensions/dsh-goal-first-state-machine
-      '@local/dsh-imessage-bridge':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-imessage-bridge
-        version: link:../../extensions/dsh-imessage-bridge
-      '@local/dsh-intelligence':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-intelligence
-        version: link:../../extensions/dsh-intelligence
-      '@local/dsh-knowledge-manager':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-knowledge-manager
-        version: link:../../extensions/dsh-knowledge-manager
-      '@local/dsh-local-route-policy':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-local-route-policy
-        version: link:../../extensions/dsh-local-route-policy
-      '@local/dsh-memory':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-memory
-        version: link:../../extensions/dsh-memory
-      '@local/dsh-screen':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-screen
-        version: link:../../extensions/dsh-screen
-      '@local/dsh-shrimp-run-status':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-shrimp-run-status
-        version: link:../../extensions/dsh-shrimp-run-status
-      '@local/dsh-shrimp-shell':
-        specifier: link:/Users/marcus/.dsh/extensions/shrimp-shell
-        version: link:../../extensions/shrimp-shell
-      '@local/dsh-tool-policy':
-        specifier: link:/Users/marcus/.dsh/extensions/dsh-tool-policy
-        version: link:../../extensions/dsh-tool-policy
-      '@local/zhipu-media':
-        specifier: link:/Users/marcus/.dsh/extensions/zhipu-media
-        version: link:../../extensions/zhipu-media
-      deepseek-idesign:
-        specifier: ^0.2.2
-        version: 0.2.2
-      deepseek-ippt:
-        specifier: ^0.1.2
-        version: 0.1.2
+dependencies:
+  '@dsh-market/plugin':
+    specifier: ^0.2.1
+    version: 0.2.1
+  '@local/dsh-browser':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-browser
+    version: link:../../extensions/dsh-browser
+  '@local/dsh-code-intelligence':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-code-intelligence
+    version: link:../../extensions/dsh-code-intelligence
+  '@local/dsh-compaction-v2':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-compaction-v2
+    version: link:../../extensions/dsh-compaction-v2
+  '@local/dsh-cross-session':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-cross-session
+    version: link:../../extensions/dsh-cross-session
+  '@local/dsh-dsbalance':
+    specifier: link:/Users/marcus/.dsh/extensions/dsbalance-bundle
+    version: link:../../extensions/dsbalance-bundle
+  '@local/dsh-evals':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-evals
+    version: link:../../extensions/dsh-evals
+  '@local/dsh-frontend-qa':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-frontend-qa
+    version: link:../../extensions/dsh-frontend-qa
+  '@local/dsh-git':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-git
+    version: link:../../extensions/dsh-git
+  '@local/dsh-goal-first-state-machine':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-goal-first-state-machine
+    version: link:../../extensions/dsh-goal-first-state-machine
+  '@local/dsh-imessage-bridge':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-imessage-bridge
+    version: link:../../extensions/dsh-imessage-bridge
+  '@local/dsh-intelligence':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-intelligence
+    version: link:../../extensions/dsh-intelligence
+  '@local/dsh-knowledge-manager':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-knowledge-manager
+    version: link:../../extensions/dsh-knowledge-manager
+  '@local/dsh-local-route-policy':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-local-route-policy
+    version: link:../../extensions/dsh-local-route-policy
+  '@local/dsh-memory':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-memory
+    version: link:../../extensions/dsh-memory
+  '@local/dsh-screen':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-screen
+    version: link:../../extensions/dsh-screen
+  '@local/dsh-shrimp-run-status':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-shrimp-run-status
+    version: link:../../extensions/dsh-shrimp-run-status
+  '@local/dsh-shrimp-shell':
+    specifier: link:/Users/marcus/.dsh/extensions/shrimp-shell
+    version: link:../../extensions/shrimp-shell
+  '@local/dsh-tool-policy':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-tool-policy
+    version: link:../../extensions/dsh-tool-policy
+  '@local/dsh-webbridge':
+    specifier: link:/Users/marcus/.dsh/extensions/dsh-webbridge
+    version: link:../../extensions/dsh-webbridge
+  '@local/zhipu-media':
+    specifier: link:/Users/marcus/.dsh/extensions/zhipu-media
+    version: link:../../extensions/zhipu-media
+  deepseek-idesign:
+    specifier: ^0.2.2
+    version: 0.2.2
+  deepseek-ippt:
+    specifier: ^0.1.2
+    version: 0.1.2
+  dsh-codex-port:
+    specifier: github:STARDUSTLC666/dsh-codex-port
+    version: github.com/STARDUSTLC666/dsh-codex-port/f909ab3465fb22178c8383e58698a901f5deae12
 
 packages:
 
@@ -145,4 +148,20 @@ packages:
   /fuse.js@7.5.0:
     resolution: {integrity: sha512-sQtrEfA+ez/3G0cCZecF70oqpCRttCexYUG4mUrtWL49ULUzUyxokt5kyqwtKzj1270RaKih+hcP3qLcumccow==}
     engines: {node: '>=10'}
+    dev: false
+
+  /yaml@2.9.0:
+    resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+    dev: false
+
+  github.com/STARDUSTLC666/dsh-codex-port/f909ab3465fb22178c8383e58698a901f5deae12:
+    resolution: {tarball: https://codeload.github.com/STARDUSTLC666/dsh-codex-port/tar.gz/f909ab3465fb22178c8383e58698a901f5deae12}
+    name: dsh-codex-port
+    version: 0.2.0
+    engines: {node: '>=22'}
+    requiresBuild: true
+    dependencies:
+      yaml: 2.9.0
     dev: false

@@ -762,6 +762,23 @@
         "skill_management"
       ],
       "description": "将通用写作 Skill 产出的内容转换为适合微信公众号平台发布的格式和风格。"
+    },
+    {
+      "skill_id": "plan-before-action",
+      "name": "plan-before-action",
+      "path": "/Users/marcus/.dsh/skills/plan-before-action",
+      "portable_path": "skills/plan-before-action",
+      "path_kind": "local_absolute_with_portable_fallback",
+      "availability": "installed_local",
+      "selection_priority": 6,
+      "roles": [
+        "catch_shrimp",
+        "production_blueprint",
+        "production_receipt",
+        "reusable_workflow",
+        "work_contract"
+      ],
+      "description": "谋定后动：Use when a complex task needs an executable production blueprint, durable node receipts, repeatability assessment, catch-shrimp design, or an authorized run of an existing shrimp. Do not use for trivial one-step answers. Schemas: references/cybermarcus_work_contract.v1.schema.json and references/production_receipt.v1.schema.json."
     }
   ]
 }

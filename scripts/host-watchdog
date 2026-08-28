@@ -10,8 +10,21 @@ PORT="${DSH_PORT:-3080}"
 URL="http://127.0.0.1:$PORT/"
 LOG="$ROOT/logs/host-watchdog.log"
 STATE="$ROOT/scripts/host-service-state"
-APP_PATH="${DSH_APP_PATH:-/Users/marcus/Desktop/大神.app}"
-APP_BINARY="${DSH_APP_BINARY:-$APP_PATH/Contents/MacOS/大神}"
+APP_PATH="${DSH_APP_PATH:-}"
+if [ -z "$APP_PATH" ]; then
+  if [ -d "/Applications/大神.app" ]; then
+    APP_PATH="/Applications/大神.app"
+  elif [ -d "$HOME/Desktop/大神.app" ]; then
+    APP_PATH="$HOME/Desktop/大神.app"
+  elif [ -d "$HOME/Desktop/CyberMarcus.app" ]; then
+    APP_PATH="$HOME/Desktop/CyberMarcus.app"
+  else
+    # Keep a deterministic diagnostic target when the App is not installed.
+    APP_PATH="/Applications/大神.app"
+  fi
+fi
+APP_NAME="$(basename "$APP_PATH" .app)"
+APP_BINARY="${DSH_APP_BINARY:-$APP_PATH/Contents/MacOS/$APP_NAME}"
 OPEN_CMD="${DSH_OPEN_CMD:-/usr/bin/open}"
 BACKGROUND_SENTINEL="$ROOT/private/background-launch"
 mkdir -p "$ROOT/logs"

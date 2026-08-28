@@ -271,7 +271,8 @@ test('DeepSeek 即使误报图片能力也固定走识图桥', async () => {
 test('视觉桥作为 profile 最后一个 LLM middleware，不绕过 goal-first/checkpoint', () => {
   const profile = JSON.parse(readFileSync(new URL('../../profiles/web/package.json', import.meta.url), 'utf8'))
   const bundles = profile && profile.dsh && profile.dsh.profile && profile.dsh.profile.bundles
-  assert.equal(bundles.at(-1), '@local/dsh-shrimp-shell')
+  const llmMiddlewares = bundles.filter((name) => ['@local/dsh-goal-first-state-machine', '@local/dsh-shrimp-shell'].includes(name))
+  assert.deepEqual(llmMiddlewares, ['@local/dsh-goal-first-state-machine', '@local/dsh-shrimp-shell'])
 })
 
 test('本地模型即使声明原生图片能力也固定走统一视觉桥', async () => {
@@ -470,7 +471,9 @@ test('虾缸代理允许编码冒号的运行产物路径，但拒绝任意外�
 test('虾缸品牌与状态灯保留已验收的桌面合同', () => {
   const client = readFileSync(new URL('./client.js', import.meta.url), 'utf8')
   assert.match(client, /content: 'DELIVERY'/)
-  assert.match(client, /transform: translate\(-2px, -4px\)/)
+  assert.match(client, /--shrimp-delivery-y: -4px/)
+  assert.match(client, /--shrimp-delivery-y: 2\.5px/)
+  assert.match(client, /transform: translate\(-2px, var\(--shrimp-delivery-y\)\)/)
   assert.match(client, /let indicatorItems = \[\]/)
   assert.match(client, /markBlockedSeen\(item\.ref, item\.signal_stamps\.blocked\)/)
   assert.match(client, /normalized\.signals\.blocked \|\| normalized\.signals\.artifacts_ready/)

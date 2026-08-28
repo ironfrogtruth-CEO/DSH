@@ -57,6 +57,10 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
    - 轨迹、心跳、Git、项目与产物固定为 36px 单行胶囊，SVG 固定 16px，禁止 stretch、折行或变成大卡片
    - utilities 容器在窄宽度下保持横向布局并允许收纳；MutationObserver 在刷新/HMR 后重新核对合同
    - 真实验收覆盖 1440、1024、800 三种宽度，验证 `extensions/shrimp-shell/header-controls.test.mjs`
+13. **通用工具卡使用 Host 业务标题**(`dsh-client-ui-tool`):
+   - `card=generic` 时优先显示 Host `presentCall()` 提供的标题，例如“建立目标合同”“锁定生产蓝图”“执行QA”，不暴露 `goal_first_state_transition` 等 wire name
+   - Bash/Read/Diff/Terminal 等专用卡不受影响
+   - 通过 `scripts/patch-tool-call-presentation-titles.mjs --apply` 在 rc.2 基线上幂等重放；版本或锚点漂移时 fail-closed
 
 ## 文件说明
 

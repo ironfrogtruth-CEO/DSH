@@ -79,3 +79,11 @@ test('watchdog and ensure-web encode one-listener locking and no KeepAlive launc
   assert.match(plist, /<integer>30<\/integer>/)
   assert.match(readFileSync(installScript, 'utf8'), /launchctl bootstrap/)
 })
+
+test('watchdog discovers the installed App before stale Desktop copies', () => {
+  const source = readFileSync(watchdog, 'utf8')
+  assert.match(source, /-d "\/Applications\/大神\.app"/)
+  assert.match(source, /APP_PATH="\/Applications\/大神\.app"/)
+  assert.match(source, /APP_NAME="\$\(basename "\$APP_PATH" \.app\)"/)
+  assert.doesNotMatch(source, /DSH_APP_PATH:-\/Users\/marcus\/Desktop\/大神\.app/)
+})

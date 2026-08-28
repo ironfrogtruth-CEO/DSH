@@ -45,3 +45,5 @@ description: 三省六部治理层：把 goal-first-control 的七节点映射�
 ## 完成判定
 
 完成前回读 `goal_contract`：每项标记 `met`、`partial` 或 `not met`。实现、聚焦测试、全回归、实时用户流和生产就绪必须分开报告。任何 Gate 没有对应证据，都不能写成“已完成”。
+
+可复用/虾缸任务叠加 `plan-before-action`，保持会话状态与 Workflow 运行态分离。

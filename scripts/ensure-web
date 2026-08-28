@@ -7,8 +7,13 @@ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
 LOG="$HOME/.dsh/web.log"
 STATE="$HOME/.dsh/.web-load-signature"
+GOAL_FIRST_PREFLIGHT="$HOME/.dsh/extensions/dsh-goal-first-state-machine/goal-first-state-machine.test.mjs"
 PRIVATE="$HOME/.dsh/private"
 LOCK_DIR="$PRIVATE/ensure-web.lock"
+PROFILE_DIR="$HOME/.dsh/profiles/web"
+PROFILE_PACKAGE="$PROFILE_DIR/package.json"
+PROFILE_NODE_MODULES="$PROFILE_DIR/node_modules"
+PNPM_BIN="${DSH_PNPM_BIN:-/usr/local/bin/pnpm}"
 mkdir -p "$HOME/.dsh" "$PRIVATE"
 
 # mkdir is atomic on macOS. This closes the app/watchdog race where two
@@ -45,12 +50,86 @@ release_lock() {
   fi
 }
 
+# The profile manifest can name a local bundle while node_modules still holds
+# an older/missing link (the WebView then opens blank because Host boot exits
+# before binding 3080). Validate every declared link: dependency before boot;
+# repair only from the existing lock/store and never contact the network.
+check_profile_local_links() {
+  [ -f "$PROFILE_PACKAGE" ] || return 0
+  /usr/local/bin/node - "$PROFILE_PACKAGE" "$PROFILE_NODE_MODULES" <<'NODE'
+const fs = require('node:fs')
+const path = require('node:path')
+
+const packagePath = process.argv[2]
+const nodeModules = process.argv[3]
+let manifest
+try {
+  manifest = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+} catch (error) {
+  console.error(`PROFILE_PACKAGE_INVALID\t${packagePath}\t${error.message}`)
+  process.exit(3)
+}
+
+let sourceMissing = false
+let linkMissing = false
+for (const [name, specifier] of Object.entries(manifest.dependencies || {})) {
+  if (typeof specifier !== 'string' || !specifier.startsWith('link:')) continue
+  const rawSource = specifier.slice('link:'.length)
+  const source = path.isAbsolute(rawSource)
+    ? path.resolve(rawSource)
+    : path.resolve(path.dirname(packagePath), rawSource)
+  const entry = path.join(nodeModules, ...name.split('/'))
+  if (!fs.existsSync(source)) {
+    sourceMissing = true
+    console.error(`PROFILE_LOCAL_SOURCE_MISSING\t${name}\t${source}`)
+    continue
+  }
+  try {
+    if (!fs.existsSync(entry) || fs.realpathSync(entry) !== fs.realpathSync(source)) {
+      linkMissing = true
+      console.error(`PROFILE_LOCAL_LINK_MISSING\t${name}\t${entry}`)
+    }
+  } catch {
+    linkMissing = true
+    console.error(`PROFILE_LOCAL_LINK_MISSING\t${name}\t${entry}`)
+  }
+}
+process.exit(sourceMissing ? 3 : linkMissing ? 2 : 0)
+NODE
+}
+
+ensure_profile_local_links() {
+  check_profile_local_links >>"$LOG" 2>&1
+  local status=$?
+  [ "$status" -eq 0 ] && return 0
+  if [ "$status" -ne 2 ]; then
+    echo "$(date '+%F %T') ensure-web: PROFILE_LOCAL_LINKS_MISSING source/package invalid; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  if [ ! -x "$PNPM_BIN" ]; then
+    echo "$(date '+%F %T') ensure-web: PROFILE_LOCAL_LINKS_MISSING and pnpm unavailable; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  echo "$(date '+%F %T') ensure-web: PROFILE_LOCAL_LINKS_MISSING; repairing from offline frozen lock" >>"$LOG"
+  if ! (cd "$PROFILE_DIR" && "$PNPM_BIN" install --offline --frozen-lockfile --ignore-scripts) >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: PROFILE_LOCAL_LINKS_REPAIR_FAILED; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  if ! check_profile_local_links >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: PROFILE_LOCAL_LINKS_REPAIR_FAILED verification; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+}
+
 if ! acquire_lock; then
   exit 0
 fi
 
 if [ ! -f "$DSH_BIN" ]; then
   echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.1-rc.2 --save-exact" >>"$LOG"
+  exit 1
+fi
+if ! ensure_profile_local_links; then
   exit 1
 fi
 # 大神是本地模型的用户入口。启动 Host 前先把 Ollama、模型缓存与媒体
@@ -81,6 +160,16 @@ fi
 if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-client-command-actions.mjs" >>"$LOG" 2>&1; then
   echo "$(date '+%F %T') ensure-web: client command actions patch failed; refusing to start Host" >>"$LOG"
   exit 1
+fi
+# Generic ToolRow must render the Host-presented business title instead of
+# exposing wire tool names such as goal_first_state_transition. Minimal test
+# homes may omit this optional UI patch; an installed but failing patch blocks.
+TOOL_TITLE_PATCH="$HOME/.dsh/scripts/patch-tool-call-presentation-titles.mjs"
+if [ -f "$TOOL_TITLE_PATCH" ]; then
+  if ! /usr/local/bin/node "$TOOL_TITLE_PATCH" --apply >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: tool presentation title patch failed; refusing to start Host" >>"$LOG"
+    exit 1
+  fi
 fi
 # Reapply the reviewed UI bundle snapshots after install/package refreshes.
 # This keeps the per-session managed-job entry visible across upgrades.
@@ -152,6 +241,10 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/model.mjs" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-webbridge/package.json" \
+  "$HOME/.dsh/extensions/dsh-webbridge/index.js" \
+  "$HOME/.dsh/extensions/dsh-webbridge/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-webbridge/native-host/nm-host.js" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified" \
@@ -162,11 +255,13 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-jobs/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js" \
+	"$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-tool/lib/client.js" \
   "$HOME/.dsh/scripts/ensure-web" \
   "$HOME/.dsh/scripts/host-service-state" \
   "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" \
   "$HOME/.dsh/scripts/patch-avengers-model-default.mjs" \
   "$HOME/.dsh/scripts/patch-client-command-actions.mjs" \
+	"$HOME/.dsh/scripts/patch-tool-call-presentation-titles.mjs" \
   "$HOME/.dsh/scripts/replay-custom-ui-patches.mjs" \
   "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" \
   "$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs" \
@@ -192,6 +287,15 @@ LOADED=""
 if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   if [ "${DSH_FORCE_RESTART:-0}" != "1" ] && [ -n "$SIGNATURE" ] && [ "$SIGNATURE" = "$LOADED" ]; then
     exit 0
+  fi
+  # Validate the changed goal-first tool schema and state contracts before
+  # stopping a healthy Host.  This keeps the current 3080 listener alive when
+  # a candidate extension cannot be compiled by the deployed DSH runtime.
+  if [ -f "$GOAL_FIRST_PREFLIGHT" ]; then
+    if ! /usr/local/bin/node --test "$GOAL_FIRST_PREFLIGHT" >>"$LOG" 2>&1; then
+      echo "$(date '+%F %T') ensure-web: goal-first preflight failed; keeping current Host" >>"$LOG"
+      exit 1
+    fi
   fi
   echo "$(date '+%F %T') ensure-web: 检测到插件/适配器已更新，重载 Host" >>"$LOG"
   "$HOME/.dsh/scripts/stop" >>"$LOG" 2>&1

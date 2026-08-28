@@ -71,3 +71,5 @@ If a needed skill, tool, or model is unavailable, say so and choose a verified f
 Before declaring completion, read the goal contract back line by line and mark each item `met`, `partial`, or `not met`. Report implementation, focused checks, full regression, live acceptance, and production readiness as separate states. Name any unchecked edge and the safest next action.
 
 For the detailed seven-node contract, source classes, registries, status semantics, and rollback behavior, read `sop-orchestrator/SKILL.md` and only the references needed for the current task.
+
+当任务为 `sop_required` 且涉及可复用工作流、抓虾或虾运行时，在结构化完成后加载 `plan-before-action`，并通过 `goal_first_state_transition` 的受校验参数持久化 `workContract`/`structureContract`。

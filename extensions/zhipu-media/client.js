@@ -29,8 +29,16 @@ window.__ModuleLoader__.load({
     }
     function setProcessExpanded(value) {
       processExpanded = Boolean(value)
+      try { localStorage.setItem('dsh.zhipu.process', processExpanded ? '1' : '0') } catch (e) {}
       document.body.dataset.zpmProcess = processExpanded ? 'expanded' : 'compact'
       processListeners.forEach((listener) => listener())
+    }
+    function initProcessExpanded() {
+      // 从 localStorage 恢复开关状态(默认关闭=compact, 隐藏已完成 Think/ToolCall)
+      let value = false
+      try { value = localStorage.getItem('dsh.zhipu.process') === '1' } catch (e) {}
+      processExpanded = value
+      document.body.dataset.zpmProcess = value ? 'expanded' : 'compact'
     }
     function useProcessExpanded() {
       const [, force] = React.useReducer((x) => x + 1, 0)
@@ -57,8 +65,16 @@ window.__ModuleLoader__.load({
       '.zpm-tool-row .zpm-name { font-weight: 600; white-space: nowrap; }',
       '.zpm-tool-row .zpm-args { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary, #747982); }',
       '.zpm-tool-row .zpm-state { margin-left: auto; flex: 0 0 auto; }',
-      '.zpm-process-toggle { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--dsw-alias-label-secondary, #626870); font: 500 12px/1 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; cursor: pointer; white-space: nowrap; }',
-      '.zpm-process-toggle:hover, .zpm-process-toggle[data-expanded="true"] { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); color: var(--dsw-alias-label-primary, #1f2329); }',
+      '.zpm-process-switch { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 64px; height: 36px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-secondary, #626870); font: 500 12px/1 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; cursor: pointer; white-space: nowrap; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }',
+      '.zpm-process-switch:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.1)); }',
+      '.zpm-process-switch:active { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.16)); }',
+      '.zpm-process-switch:focus-visible { outline: 2px solid #5b8ff9; outline-offset: 2px; }',
+      '.zpm-switch-track { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 34px; height: 20px; border-radius: 999px; background: rgba(128,128,128,.38); transition: background .18s ease; }',
+      '.zpm-switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .18s cubic-bezier(.4,.0,.2,1); }',
+      '.zpm-process-switch[data-on="true"] .zpm-switch-track { background: #34c759; }',
+      '.zpm-process-switch[data-on="true"] .zpm-switch-thumb { transform: translateX(14px); }',
+      '.zpm-process-switch[data-on="true"] .zpm-switch-label { color: var(--dsw-alias-label-primary, #1f2329); }',
+      '.zpm-switch-label { line-height: 1; }',
       'body[data-zpm-process="compact"] [data-variant="think"][data-state="ok"] { display: none !important; }',
       'body[data-zpm-process="compact"] [data-chat-flow-kind="tool-call"]:not(.zpm-running-tool):not(:has(.zpm-gen-image)) { display: none !important; }',
       '.zpm-gen-image { border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.22)); border-radius: 12px; padding: 10px; background: var(--dsw-alias-bg-layer-1, rgba(128,128,128,.05)); }',
@@ -89,7 +105,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const slots = ctx.get('slots')
       if (!slots) return
-      setProcessExpanded(false)
+      initProcessExpanded()
       ctx.effect(() => () => { delete document.body.dataset.zpmProcess }, 'zhipu-media: process mode')
 
       const style = document.createElement('style')
@@ -515,21 +531,54 @@ window.__ModuleLoader__.load({
       window.addEventListener('keydown', onKey)
       ctx.effect(() => () => window.removeEventListener('keydown', onKey), 'zhipu-media: esc close')
 
-      /* ---------- 4) 全局过程记录开关：默认隐藏已完成 Think / ToolCall ---------- */
-      function ProcessToggle() {
-        const expanded = useProcessExpanded()
+      /* ---------- 4) 全局过程记录开关：默认隐藏已完成 Think / ToolCall ----------
+         顶部 utilities 区(轨迹左侧)的 iPhone 风格滑动开关:
+         打开 → 会话窗口展示详细过程(expanded); 关闭 → 隐藏(compact)。
+         取代原先每轮回复尾部的"过程"按钮(conversation.chat.assistant-actions)。 */
+      function ProcessSwitch() {
+        // 组件本地状态驱动视觉, 不与模块级 listeners 通知耦合:
+        // HMR/多实例下 listeners 通知可能丢失, 导致 data-on 不刷新(用户反馈"打开后无法关闭")。
+        const [expanded, setExpanded] = React.useState(processExpanded)
+        const lastPointerRef = React.useRef(0)
+        React.useEffect(() => {
+          const listener = () => setExpanded(processExpanded)
+          processListeners.add(listener)
+          return () => processListeners.delete(listener)
+        }, [])
+        const toggle = () => {
+          const next = !expanded
+          setExpanded(next)
+          setProcessExpanded(next)
+        }
+        // pointerdown 即时响应(macOS 触控板轻点也触发), preventDefault 阻止拖拽/文本选择;
+        // onClick 保留给键盘(Enter/Space), 通过时间戳去重避免 pointerdown+click 双触发。
+        const onPointerDown = (e) => {
+          e.preventDefault()
+          lastPointerRef.current = Date.now()
+          toggle()
+        }
+        const onClick = () => {
+          if (Date.now() - lastPointerRef.current < 500) return
+          toggle()
+        }
         return React.createElement('button', {
           type: 'button',
-          className: 'zpm-process-toggle',
-          'data-expanded': String(expanded),
-          'aria-pressed': expanded,
-          title: expanded ? '隐藏已完成的 Think 和工具调用' : '显示全部 Think 和工具调用',
-          onClick: () => setProcessExpanded(!expanded),
-        }, expanded ? '收起过程' : '过程')
+          className: 'zpm-process-switch',
+          role: 'switch',
+          'aria-checked': expanded,
+          'data-on': String(expanded),
+          title: expanded ? '已开启：展示详细过程（Think 与工具调用）' : '已关闭：隐藏详细过程（Think 与工具调用）',
+          onPointerDown,
+          onClick,
+        },
+          React.createElement('span', { className: 'zpm-switch-track', 'aria-hidden': true },
+            React.createElement('span', { className: 'zpm-switch-thumb' })),
+          React.createElement('span', { className: 'zpm-switch-label' }, '过程'),
+        )
       }
-      slots.inject('conversation.chat.assistant-actions', () => slots.register(
-        { name: 'conversation.chat.assistant-actions', id: 'zhipu-process-toggle', order: 90, label: '过程记录' },
-        () => React.createElement(ProcessToggle),
+      slots.inject('conversation.session.header.utilities', () => slots.register(
+        { name: 'conversation.session.header.utilities', id: 'zhipu-process-switch', order: 3, label: '过程记录' },
+        () => React.createElement(ProcessSwitch),
       ))
 
     }
