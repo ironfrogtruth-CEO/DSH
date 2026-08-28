@@ -49,6 +49,61 @@ const SHELL_TOOL_NAMES = new Set([
 ])
 const COMMAND_KEYS = new Set(['command', 'cmd', 'shell', 'script', 'argv', 'args'])
 
+const AVENGERS_PRESET_ID = 'avengers'
+const AVENGERS_CHILD_ROUTE = Object.freeze({
+  provider: 'zhipu-glm',
+  model: 'glm-5.3-flash',
+  reasoningEffort: 'medium',
+})
+const AVENGERS_PARENT_TOOLS = new Set([
+  'avenger',
+  'ask_user_question',
+  'create_goal',
+  'exit_plan_mode',
+  'get_goal',
+  'goal_first_state_get',
+  'goal_first_state_transition',
+  'interrupt_agent',
+  'list_agents',
+  'memory_checkpoint',
+  'memory_get',
+  'memory_list',
+  'memory_recall',
+  'memory_record',
+  'memory_save',
+  'memory_search',
+  'send_message',
+  'skill',
+  'todo_write',
+  'update_goal',
+])
+
+export function avengersAgentRole(agent) {
+  const header = agent?.session?.header
+  if (header?.agentPreset !== AVENGERS_PRESET_ID) return 'other'
+  return header.origin === 'subagent' || Number(header.delegationDepth || 0) > 0 ? 'child' : 'parent'
+}
+
+export function avengersParentToolDecision(exec) {
+  if (avengersAgentRole(exec?.agent) !== 'parent') return undefined
+  const toolName = String(exec?.name || '')
+  if (AVENGERS_PARENT_TOOLS.has(toolName)) return undefined
+  return {
+    kind: 'deny',
+    code: 'AVENGERS_PARENT_EXECUTION_BLOCKED',
+    reason: `Avengers 主代理只负责目标、派单、监督和验收；请把 ${toolName || '该操作'} 直接分配给 avenger 子代理执行`,
+  }
+}
+
+export function createAvengersRequestListener() {
+  return async function avengersRequestListener(payload, next) {
+    const resolved = await next()
+    if (avengersAgentRole(payload?.agent) !== 'child') return resolved
+    const { reasoningEffort: _inheritedEffort, ...withoutInheritedEffort } = resolved
+    return { ...withoutInheritedEffort, ...AVENGERS_CHILD_ROUTE }
+  }
+}
+
 function shellToolName(toolName) {
   const value = String(toolName ?? '').trim().toLowerCase()
   return SHELL_TOOL_NAMES.has(value) || /(?:^|[-_:])(?:bash|shell)(?:$|[-_:])/.test(value)
@@ -402,6 +457,8 @@ export async function apply(ctx, config) {
   }, 'list')
 
   const listener = async (exec, next) => {
+    const avengersDecision = avengersParentToolDecision(exec)
+    if (avengersDecision) return avengersDecision
     const detached = blockDetachedBackground ? detachedBackgroundReason(exec?.name || '', exec?.arguments || {}) : undefined
     const result = policy.evaluate(exec?.name || '', exec?.arguments || {}, detached ? { id: 'detached-background', decision: detached } : undefined)
     if (detached) return detached
@@ -410,13 +467,18 @@ export async function apply(ctx, config) {
   }
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => typeof ctx.on === 'function' ? ctx.on('tools/pre-execute', listener) : undefined, 'dsh-tool-policy: pre-execute policy')
+    ctx.effect(() => typeof ctx.on === 'function' ? ctx.on('agent/request', createAvengersRequestListener()) : undefined, 'dsh-tool-policy: Avengers child route')
   } else if (typeof ctx.on === 'function') {
     ctx.on('tools/pre-execute', listener)
+    ctx.on('agent/request', createAvengersRequestListener())
   }
   if (typeof ctx.provide === 'function') ctx.provide('dshToolPolicy', {
     policy,
     classifyToolCall,
     detachedBackgroundReason,
+    avengersAgentRole,
+    avengersParentToolDecision,
+    avengersChildRoute: { ...AVENGERS_CHILD_ROUTE },
     config: { ...normalizePolicyConfig(policy.config), blockDetachedBackground },
   })
   return undefined

@@ -4,7 +4,54 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { apply, classifyToolCall, detachedBackgroundReason, ToolPolicy } from './index.js'
+import {
+  apply,
+  avengersAgentRole,
+  avengersParentToolDecision,
+  classifyToolCall,
+  createAvengersRequestListener,
+  detachedBackgroundReason,
+  ToolPolicy,
+} from './index.js'
+
+function agent(preset, header = {}) {
+  return { session: { header: { agentPreset: preset, ...header } } }
+}
+
+test('Avengers role and parent execution gate are preset-scoped', async () => {
+  const parent = agent('avengers')
+  const child = agent('avengers', { origin: 'subagent', delegationDepth: 1 })
+  const cyberMarcus = agent('reliable-development')
+
+  assert.equal(avengersAgentRole(parent), 'parent')
+  assert.equal(avengersAgentRole(child), 'child')
+  assert.equal(avengersAgentRole(cyberMarcus), 'other')
+  for (const name of ['avenger', 'list_agents', 'send_message', 'interrupt_agent', 'ask_user_question', 'skill', 'todo_write', 'memory_recall', 'memory_checkpoint', 'goal_first_state_get', 'goal_first_state_transition', 'exit_plan_mode']) {
+    assert.equal(avengersParentToolDecision({ agent: parent, name }), undefined, name)
+  }
+  const denied = avengersParentToolDecision({ agent: parent, name: 'bash' })
+  assert.deepEqual(denied, {
+    kind: 'deny',
+    code: 'AVENGERS_PARENT_EXECUTION_BLOCKED',
+    reason: 'Avengers 主代理只负责目标、派单、监督和验收；请把 bash 直接分配给 avenger 子代理执行',
+  })
+  assert.equal(avengersParentToolDecision({ agent: child, name: 'bash' }), undefined)
+  assert.equal(avengersParentToolDecision({ agent: cyberMarcus, name: 'bash' }), undefined)
+})
+
+test('Avengers child requests are fixed to GLM Flash Medium without changing parent or CyberMarcus', async () => {
+  const listener = createAvengersRequestListener()
+  const inherited = { provider: 'deepseek-official', model: 'deepseek-v4-pro', reasoningEffort: 'high', maxTokens: 12_345 }
+  const child = await listener({ agent: agent('avengers', { origin: 'subagent', delegationDepth: 1 }) }, async () => inherited)
+  assert.deepEqual(child, {
+    provider: 'zhipu-glm',
+    model: 'glm-5.3-flash',
+    reasoningEffort: 'medium',
+    maxTokens: 12_345,
+  })
+  assert.equal(await listener({ agent: agent('avengers') }, async () => inherited), inherited)
+  assert.equal(await listener({ agent: agent('reliable-development') }, async () => inherited), inherited)
+})
 
 test('classifier recognizes built-ins, unknown shell, and ignores content fields', async () => {
   assert.equal(classifyToolCall('git_commit', { message: 'ok' }).category, 'destructive')

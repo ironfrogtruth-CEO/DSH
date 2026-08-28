@@ -70,6 +70,13 @@ if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" 
   echo "$(date '+%F %T') ensure-web: subagent route patch failed; refusing to start Host" >>"$LOG"
   exit 1
 fi
+# Avengers uses a session-local default-model tier so its V4 Pro parent does
+# not overwrite CyberMarcus or the process-wide default. Version/anchor drift
+# is a startup failure rather than permission to guess at an installed bundle.
+if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-avengers-model-default.mjs" --apply >>"$LOG" 2>&1; then
+  echo "$(date '+%F %T') ensure-web: Avengers model-default patch failed; refusing to start Host" >>"$LOG"
+  exit 1
+fi
 # client-only command action补丁(严格 rc.2 Gate,幂等)
 if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-client-command-actions.mjs" >>"$LOG" 2>&1; then
   echo "$(date '+%F %T') ensure-web: client command actions patch failed; refusing to start Host" >>"$LOG"
@@ -118,12 +125,15 @@ fi
 SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/settings.yaml" \
   "$HOME/.dsh/.agent-presets/reliable-development/preset.yml" \
+  "$HOME/.dsh/.agent-presets/avengers/preset.yml" \
+  "$HOME/.dsh/.agent-presets/avengers/agent.cordis.yml" \
   "$HOME/.dsh/profiles/web/package.json" \
   "$HOME/.dsh/container.manifest.yaml" \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/index.js" \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/machine.js" \
   "$HOME/.dsh/extensions/dsh-local-route-policy/index.js" \
   "$HOME/.dsh/extensions/dsh-local-route-policy/package.json" \
+  "$HOME/.dsh/extensions/dsh-tool-policy/index.js" \
   "$HOME/.dsh/extensions/dsh-knowledge-manager/package.json" \
   "$HOME/.dsh/extensions/dsh-knowledge-manager/index.js" \
   "$HOME/.dsh/extensions/dsh-knowledge-manager/client.js" \
@@ -155,6 +165,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/scripts/ensure-web" \
   "$HOME/.dsh/scripts/host-service-state" \
   "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" \
+  "$HOME/.dsh/scripts/patch-avengers-model-default.mjs" \
   "$HOME/.dsh/scripts/patch-client-command-actions.mjs" \
   "$HOME/.dsh/scripts/replay-custom-ui-patches.mjs" \
   "$HOME/.dsh/scripts/patch-llm-image-downcast.mjs" \
@@ -171,6 +182,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/shrimp-shell/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-agent-preset/lib/client.js" \
+  "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-host-apiproxy/lib/index.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js" \

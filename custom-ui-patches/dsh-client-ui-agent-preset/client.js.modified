@@ -595,13 +595,11 @@ window.__ModuleLoader__.load({
 		* @param presets - the roster the host answered with.
 		* @returns one option per selectable preset, in roster order.
 		*/
-		// [local-mod] The host roster remains the source of truth for mounting and for history,
-		// but the active UI exposes one supported preset. Keep this projection at
-		// the roster boundary so every picker and management card shares the same
-		// allow-list without changing the host API or any persisted session.
-		const VISIBLE_PRESET_ID = "reliable-development";
+		// [local-mod] Keep the complete Host roster visible. CyberMarcus is the
+		// default custom preset and Avengers is an additional mode; neither may
+		// hide the standard DeepSeek Harness presets or historical custom presets.
 		function visiblePresetRoster(presets) {
-			return presets.filter((preset) => preset.id === VISIBLE_PRESET_ID);
+			return presets;
 		}
 		function presetOptions(presets) {
 			return visiblePresetRoster(presets).filter((preset) => preset.broken === void 0).map((preset) => ({
@@ -1462,10 +1460,9 @@ window.__ModuleLoader__.load({
 					const { presets } = response.result.value;
 					const visiblePresets = visiblePresetRoster(presets);
 					this.fallback = visiblePresets.find((preset) => preset.isDefault)?.id ?? visiblePresets[0]?.id ?? "";
-					const sessionPreset = this.currentSession()?.agentPreset;
 					this.set({
 						options: presetOptions(presets),
-						current: this.staged ?? (sessionPreset === VISIBLE_PRESET_ID ? sessionPreset : this.fallback),
+						current: this.staged ?? this.currentSession()?.agentPreset ?? this.fallback,
 						error: null
 					});
 				} catch (error) {

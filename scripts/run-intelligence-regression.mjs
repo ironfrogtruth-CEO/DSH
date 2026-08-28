@@ -35,6 +35,13 @@ export const DEFAULT_FOCUSED_GROUPS = [
     evidenceLevel: 'reliable-development Compaction v2 isolation and model-policy contract',
     command: ({ root, nodePath }) => [nodePath, resolve(root, 'skills/reliable-development/scripts/verify_reliable_preset.mjs')],
   },
+  {
+    id: 'avengers-preset',
+    category: 'profile',
+    evidenceLevel: 'Avengers direct delegation, model route, governance, and isolation contract',
+    command: ({ root, nodePath }) => [nodePath, resolve(root, 'skills/reliable-development/scripts/verify_avengers_preset.mjs')],
+  },
+  { id: 'avengers-model-default', category: 'host', testPath: 'scripts/patch-avengers-model-default.test.mjs' },
   { id: 'ui-integrity-focused-test', category: 'integrity', testPath: 'scripts/verify-ui-integrity.test.mjs' },
   { id: 'host-architecture-focused-test', category: 'integrity', testPath: 'scripts/verify-host-architecture.test.mjs' },
   { id: 'upgrade-readiness-focused-test', category: 'integrity', testPath: 'scripts/verify-upgrade-readiness.test.mjs' },

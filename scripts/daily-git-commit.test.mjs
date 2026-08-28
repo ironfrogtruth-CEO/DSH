@@ -186,6 +186,6 @@ test('CLI accepts only dry-run', () => {
 test('daily quick validations cover the runtime seams before commit', () => {
   assert.deepEqual(
     QUICK_VALIDATIONS.map((check) => check.id),
-    ['reliable-preset', 'goal-first', 'dsh-git-heartbeat', 'shrimp-vision', 'local-route', 'subagent-route', 'ensure-web'],
+    ['reliable-preset', 'avengers-preset', 'avengers-model-default', 'goal-first', 'dsh-git-heartbeat', 'shrimp-vision', 'local-route', 'subagent-route', 'ensure-web'],
   )
 })

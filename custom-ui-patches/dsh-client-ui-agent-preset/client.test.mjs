@@ -15,7 +15,7 @@ function section(source, startNeedle, endNeedle) {
   return source.slice(start, end)
 }
 
-test('picker and settings project only reliable-development while the host roster stays broad', async () => {
+test('picker and settings preserve the complete Host roster and add Avengers without hiding built-ins', async () => {
   const [patched, installed] = await Promise.all([
     readFile(patchUrl, 'utf8'),
     readFile(installedUrl, 'utf8'),
@@ -25,25 +25,25 @@ test('picker and settings project only reliable-development while the host roste
 
   const helperSource = section(
     patched,
-    'const VISIBLE_PRESET_ID = "reliable-development";',
+    'function visiblePresetRoster(presets) {',
     '\n\t\tconst INITIAL$2',
   )
-  const helpers = Function(`${helperSource}; return { VISIBLE_PRESET_ID, visiblePresetRoster, presetOptions }`)()
+  const helpers = Function(`${helperSource}; return { visiblePresetRoster, presetOptions }`)()
   const roster = [
     { id: 'standard', trust: 'system' },
     { id: 'reliable-development', trust: 'user', isDefault: true },
-    { id: 'reliable-local', trust: 'user' },
+    { id: 'avengers', trust: 'user' },
+    { id: 'broken-custom', trust: 'user', broken: { message: 'fixture' } },
     { id: 'cordis', trust: 'system' },
   ]
 
-  assert.equal(helpers.VISIBLE_PRESET_ID, 'reliable-development')
   assert.deepEqual(
     helpers.visiblePresetRoster(roster).map((preset) => preset.id),
-    ['reliable-development'],
+    ['standard', 'reliable-development', 'avengers', 'broken-custom', 'cordis'],
   )
   assert.deepEqual(
     helpers.presetOptions(roster).map((preset) => preset.id),
-    ['reliable-development'],
+    ['standard', 'reliable-development', 'avengers', 'cordis'],
   )
   assert.match(patched, /const visiblePresets = visiblePresetRoster\(presets\);\n\s*const \[first\] = visiblePresets/)
   assert.match(patched, /currentValue: visiblePresets\.find\(\(preset\) => preset\.isDefault\)\?\.id \?\? first\.id/)
@@ -57,6 +57,6 @@ test('historical reliable-local session labels display CyberMarcus while unknown
   assert.match(patched, /function agentPresetHeaderName\(presetId, resolvedName\)/)
   assert.match(patched, /presetId === "reliable-development" \|\| presetId === "reliable-local" \? "CyberMarcus" : resolvedName \?\? presetId/)
   assert.match(patched, /agentPresetHeaderName\(preset, text\?\.name\)/)
-  assert.match(patched, /const sessionPreset = this\.currentSession\(\)\?\.agentPreset;/)
-  assert.match(patched, /sessionPreset === VISIBLE_PRESET_ID \? sessionPreset : this\.fallback/)
+	assert.match(patched, /current: this\.staged \?\? this\.currentSession\(\)\?\.agentPreset \?\? this\.fallback/)
+	assert.doesNotMatch(patched, /VISIBLE_PRESET_ID/)
 })

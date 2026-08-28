@@ -33,6 +33,8 @@ export const DEFAULT_CRITICAL_PATHS = Object.freeze([
   'profiles/web-intelligence/package.json',
   'profiles/web-intelligence/cordis.patch.yml',
   '.agent-presets/reliable-development/agent.cordis.yml',
+  '.agent-presets/avengers/preset.yml',
+  '.agent-presets/avengers/agent.cordis.yml',
   'extensions/shrimp-shell/index.js',
   'extensions/dsh-intelligence/index.js',
   'extensions/dsh-compaction-v2/engine.js',

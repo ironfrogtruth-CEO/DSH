@@ -46,8 +46,8 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
    - 图标: apps/menubar-logo.png → 大神.app/Contents/Resources/
    - 编译: swiftc -O -target arm64-apple-macosx12.0 -o 大神-arm64 大神.swift -framework Cocoa -framework WebKit -framework Speech -framework AVFoundation
 10. **Agent preset 选择器与管理页**(dsh-client-ui-agent-preset):
-   - 新会话 chip、设置项和管理卡片只显示 `reliable-development`；Host roster 与历史会话记录不改动
-   - 历史会话 header 仍按会话记录显示原 preset id；不把旧 `standard`/`code`/`minimal`/`cordis`/`reliable-local` 映射成当前 UI 名称
+   - 新会话 chip、设置项和管理卡片显示完整 Host roster，不隐藏 `standard`/`code`/`minimal`/`cordis` 等 DeepSeek Harness 原生模式
+   - 保留 CyberMarcus，新增 Avengers；已删除的 `reliable-local` 不再作为可选 preset，历史会话 header 仅保留名称兼容
    - `scripts/ensure-web` 已把该 bundle 纳入 load signature；升级后可用 `client.js.modified` 重放
 11. **侧栏未分组入口投影**(dsh-client-ui-workspace):
    - grouped sidebar 不渲染 `Ungrouped` 行；Host/API 返回的松散会话、flat 模式和搜索数据不改动

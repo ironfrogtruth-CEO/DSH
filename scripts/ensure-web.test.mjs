@@ -43,6 +43,7 @@ test('大神.app uses ensure-web and ensure-web suppresses the external browser'
     writeFileSync(dependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs'), 'process.exit(0)\n', 'utf8')
+    writeFileSync(join(dshHome, 'scripts', 'patch-avengers-model-default.mjs'), 'process.exit(0)\n', 'utf8')
     writeFileSync(join(dshHome, 'scripts', 'patch-client-command-actions.mjs'), 'process.exit(0)\n', 'utf8')
     writeFileSync(join(dshHome, 'scripts', 'replay-custom-ui-patches.mjs'), 'process.exit(0)\n', 'utf8')
 
@@ -93,16 +94,49 @@ test('ensure-web fails closed when the selected-route patch cannot run', () => {
   }
 })
 
-test('ensure-web reload signature covers the complete CyberMarcus/runtime seam', () => {
+test('ensure-web fails closed when the Avengers model-default patch cannot run', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-avengers-route-fail-'))
+  const dshHome = join(root, '.dsh')
+  const binPath = join(dshHome, 'install', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  const dependencyPath = join(dshHome, 'extensions', 'shrimp-shell', 'node_modules', '@deepseek-ai', 'dsh-tools', 'package.json')
+  const knowledgeDependencyPath = join(dshHome, 'extensions', 'dsh-knowledge-manager', 'node_modules', '@deepseek-ai', 'dsh-tools', 'package.json')
+  try {
+    mkdirSync(resolve(binPath, '..'), { recursive: true })
+    mkdirSync(resolve(dependencyPath, '..'), { recursive: true })
+    mkdirSync(resolve(knowledgeDependencyPath, '..'), { recursive: true })
+    mkdirSync(join(dshHome, 'scripts'), { recursive: true })
+    writeFileSync(binPath, 'process.exit(0)\n', 'utf8')
+    writeFileSync(dependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
+    writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
+    writeFileSync(join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs'), 'process.exit(0)\n', 'utf8')
+    writeFileSync(join(dshHome, 'scripts', 'patch-avengers-model-default.mjs'), 'process.exit(9)\n', 'utf8')
+
+    const result = spawnSync('/bin/bash', [ensureWeb], {
+      cwd: root,
+      env: { ...process.env, HOME: root, DSH_PORT: '65442' },
+      encoding: 'utf8',
+      timeout: 5000,
+    })
+    assert.equal(result.status, 1, result.stderr || result.stdout)
+    assert.match(readFileSync(join(dshHome, 'web.log'), 'utf8'), /Avengers model-default patch failed; refusing to start Host/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('ensure-web reload signature covers the complete CyberMarcus and Avengers runtime seam', () => {
   const source = readFileSync(ensureWeb, 'utf8')
   for (const path of [
     '$HOME/.dsh/settings.yaml',
     '$HOME/.dsh/.agent-presets/reliable-development/preset.yml',
+    '$HOME/.dsh/.agent-presets/avengers/preset.yml',
+    '$HOME/.dsh/.agent-presets/avengers/agent.cordis.yml',
     '$HOME/.dsh/profiles/web/package.json',
     '$HOME/.dsh/container.manifest.yaml',
     '$HOME/.dsh/extensions/dsh-goal-first-state-machine/index.js',
     '$HOME/.dsh/extensions/dsh-goal-first-state-machine/machine.js',
     '$HOME/.dsh/extensions/dsh-local-route-policy/index.js',
+    '$HOME/.dsh/extensions/dsh-tool-policy/index.js',
     '$HOME/.dsh/extensions/dsh-knowledge-manager/package.json',
     '$HOME/.dsh/extensions/dsh-knowledge-manager/index.js',
     '$HOME/.dsh/extensions/dsh-knowledge-manager/client.js',
@@ -122,9 +156,11 @@ test('ensure-web reload signature covers the complete CyberMarcus/runtime seam',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-jobs/lib/client.js',
     '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js',
+    '$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-host-apiproxy/lib/index.js',
     '$HOME/.dsh/scripts/ensure-web',
     '$HOME/.dsh/scripts/start-local-model-runtime',
     '$HOME/.dsh/scripts/patch-subagent-selected-route.mjs',
+    '$HOME/.dsh/scripts/patch-avengers-model-default.mjs',
     '$HOME/.dsh/scripts/patch-client-command-actions.mjs',
     '$HOME/.dsh/scripts/replay-custom-ui-patches.mjs',
     '$HOME/.dsh/scripts/patch-llm-image-downcast.mjs',
@@ -147,6 +183,8 @@ test('ensure-web replays reviewed client UI patches before Host startup', () => 
   const source = readFileSync(ensureWeb, 'utf8')
   assert.match(source, /scripts\/replay-custom-ui-patches\.mjs" --apply/)
   assert.match(source, /custom UI patch replay failed; refusing to start Host/)
+  assert.match(source, /patch-avengers-model-default\.mjs" --apply/)
+  assert.match(source, /Avengers model-default patch failed; refusing to start Host/)
 })
 
 test('foreground ensure-web releases startup lock after bind while keeping the Host owner alive', async () => {
@@ -158,6 +196,7 @@ test('foreground ensure-web releases startup lock after bind while keeping the H
   const knowledgeDependencyPath = join(dshHome, 'extensions', 'dsh-knowledge-manager', 'node_modules', '@deepseek-ai', 'dsh-tools', 'package.json')
   const runnerPath = join(dshHome, 'scripts', 'run-web-pty.py')
   const subagentPatch = join(dshHome, 'scripts', 'patch-subagent-selected-route.mjs')
+  const avengersModelPatch = join(dshHome, 'scripts', 'patch-avengers-model-default.mjs')
   const commandActionsPatch = join(dshHome, 'scripts', 'patch-client-command-actions.mjs')
   const replayUiPatches = join(dshHome, 'scripts', 'replay-custom-ui-patches.mjs')
   let child
@@ -176,6 +215,7 @@ test('foreground ensure-web releases startup lock after bind while keeping the H
     writeFileSync(dependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(knowledgeDependencyPath, '{"name":"@deepseek-ai/dsh-tools"}\n', 'utf8')
     writeFileSync(subagentPatch, 'process.exit(0)\n', 'utf8')
+    writeFileSync(avengersModelPatch, 'process.exit(0)\n', 'utf8')
     writeFileSync(commandActionsPatch, 'process.exit(0)\n', 'utf8')
     writeFileSync(replayUiPatches, 'process.exit(0)\n', 'utf8')
     writeFileSync(runnerPath, readFileSync(join(repoRoot, 'scripts', 'run-web-pty.py')))

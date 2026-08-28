@@ -20,11 +20,22 @@ profile:
 agent:
   presets:
     - reliable-development          # CyberMarcus; 自有副本在 ~/.dsh/.agent-presets/reliable-development
+    - avengers                     # 直接委派模式；父 V4 Pro High，子 GLM-5.3-Flash Medium
   default: reliable-development
   model:
     provider: deepseek-official
     model: deepseek-v4-pro
     reasoningEffort: high
+  preset_routes:
+    avengers:
+      parent:
+        provider: deepseek-official
+        model: deepseek-v4-pro
+        reasoningEffort: high
+      child:
+        provider: zhipu-glm
+        model: glm-5.3-flash
+        reasoningEffort: medium
   permission: danger-full-access
   # CyberMarcus does not mount low-level live Cordis inspect/mount providers;
   # those are Host singletons. Configuration uses bash/fs plus doctor/profile/

@@ -54,6 +54,8 @@ export const PROTECTED_PATH_PATTERNS = Object.freeze([
 
 export const QUICK_VALIDATIONS = Object.freeze([
   Object.freeze({ id: 'reliable-preset', args: ['skills/reliable-development/scripts/verify_reliable_preset.mjs'] }),
+  Object.freeze({ id: 'avengers-preset', args: ['skills/reliable-development/scripts/verify_avengers_preset.mjs'] }),
+  Object.freeze({ id: 'avengers-model-default', args: ['--test', 'scripts/patch-avengers-model-default.test.mjs'] }),
   Object.freeze({ id: 'goal-first', args: ['--test', 'extensions/dsh-goal-first-state-machine/goal-first-state-machine.test.mjs'] }),
   Object.freeze({ id: 'dsh-git-heartbeat', args: ['--test', 'extensions/dsh-git/index.test.mjs', 'extensions/shrimp-shell/heartbeat-scheduler.test.mjs'] }),
   Object.freeze({ id: 'shrimp-vision', args: ['--test', 'extensions/shrimp-shell/vision.test.mjs'] }),
