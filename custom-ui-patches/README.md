@@ -4,8 +4,11 @@
 会话、任务、Skill、轨迹与 Session log 的 `client.js.original` /
 `client.js.modified` 已在 2026-08-24 迁移到 `0.1.1-rc.2`；升级前的
 rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版把入口从
-`header.actions` 改为 `header.lineage`，因此保留官方新版交互，不强行覆盖新版
-会话入口。
+`header.actions` 改为 `header.lineage`，当前已验证安装的 rc.2 Bundle（含
+`SubagentHeaderLineage`、`archiveSubagent` 和中英文归档文案）已固化为
+`client.js.rc2-archive.modified`，供启动前版本锁定重放。旧的
+`client.js.original` / `client.js.modified` 仍保留作历史回退材料，但不再作为
+子代理 rc.2 的重放源。
 
 ## 修改内容
 
@@ -22,7 +25,7 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
      读取真实子代理身份和生命周期，点击通过正式 `sessions.openSubagent` 地址进入对应子会话；
      并行子代理各自独立更新，状态结束后保留在信息流
 3. **按需出现的会话 header 后台任务入口**(dsh-client-ui-jobs):只在当前会话已有后台任务时出现，横向显示运行数、已运行/耗时和终态；不占主导航，也不把任务数据移出会话状态
-4. **子代理 tab**(dsh-client-ui-subagent):全视图子代理树,三色状态灯(绿=运行中/黄=等待中/灰=已完成),点击行不跳转
+4. **子代理 tab**(dsh-client-ui-subagent):全视图子代理树,三色状态灯(绿=运行中/黄=等待中/灰=已完成),点击行不跳转；rc.2 采用官方 lineage header，并提供“归档/中断并归档”(Archive/Interrupt & archive)动作
 5. **Skill tab**(dsh-client-ui-skill):全视图 skill 列表(名称+描述)
 6. **shrimp-shell 扩展**(~/.dsh/extensions/shrimp-shell/,升级不受影响):
    - 保留原虾缸 wordmark、首页虾形标志、DELIVERY 标识和 `Visible Workflow. Reliable Intelligence.` slogan
@@ -65,14 +68,20 @@ rc.8 完整运行时与补丁已收入离线回滚快照。子代理包在新版
 ## 文件说明
 
 每个包目录下:
-- `client.js.modified` — 修改后的 bundle(重新应用用这个)
+- `client.js.modified` — 普通包的修改后 bundle（重新应用用这个；子代理 rc.2 例外，见下方快照）
 - `client.js.original` — 修改前的原版(回滚用这个)
+
+`dsh-client-ui-subagent` 另有 `client.js.rc2-archive.modified`：这是当前
+`@deepseek-ai/dsh-client-ui-subagent@0.1.1-rc.2` 已验证安装 Bundle 的受版本锁定
+快照（SHA-256：`530dc01da4afdc564391eaf4e532bdedc51933dcadc80988a45f6226f526988c`），也是唯一用于 rc.2 启动重放的子代理源。它必须保留 loader id、lineage
+入口、`archiveSubagent` 和中英文归档文案；旧的 `client.js.modified` 不得重新接入
+重放脚本。
 
 shrimp-shell 还有 `index.js.modified` / `index.js.original`(host 端)。
 
 ## 如何重新应用(升级 DSH 后)
 
-先检查当前锁定版本是否完整应用：
+先检查当前锁定版本是否完整应用（包括 rc.2 子代理归档快照）：
 
 ```bash
 node /Users/marcus/.dsh/scripts/replay-custom-ui-patches.mjs --check
@@ -91,6 +100,9 @@ node /Users/marcus/.dsh/scripts/replay-custom-ui-patches.mjs --apply
 cp /Users/marcus/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified \
    /Users/marcus/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
 # ... 对每个包重复(client.js 修改后浏览器刷新即可生效,无需重启)
+
+# dsh-client-ui-subagent 必须由 replay-custom-ui-patches.mjs 使用
+# client.js.rc2-archive.modified 原子重放，不要手工复制旧 client.js.modified。
 
 # shrimp-shell 扩展不受 npm 升级影响,一般无需重放
 ```

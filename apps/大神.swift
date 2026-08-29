@@ -1,6 +1,8 @@
 // 大神 · 原生桌面应用 — DeepSeek Harness 界面外壳
 // 双击启动: 确保 dsh web 服务运行 → 弹出原生窗口加载 DSH 界面(不开浏览器)
 // 编译: swiftc -O -o 大神 大神.swift -framework Cocoa -framework WebKit -framework Speech -framework AVFoundation
+// ⚠️ 本机 DSH shell 跑在 Rosetta(x86_64), 上面默认命令会编出 Intel 二进制并触发 macOS "即将结束 Intel App 支持" 警告。
+// ✅ 必须用显式 arm64 目标: swiftc -O -target arm64-apple-macos13.0 -o 大神 大神.swift -framework Cocoa -framework WebKit -framework Speech -framework AVFoundation
 import Cocoa
 import WebKit
 import Speech
@@ -233,6 +235,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let showItem = NSMenuItem(title: "显示大神窗口", action: #selector(showMainWindow), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
+        // 托盘「刷新」: 仅重载 WKWebView 的 Web UI(浏览器级 ⌘R), 不触碰 host 进程。
+        let refreshItem = NSMenuItem(title: "刷新", action: #selector(reloadWebView), keyEquivalent: "r")
+        refreshItem.target = self
+        menu.addItem(refreshItem)
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "退出大神", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quitItem.target = NSApp
@@ -243,6 +249,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     @objc func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    // 托盘「刷新」(⌘R): 等同浏览器刷新, 只重载 WebView 页面, 不重启 host。
+    @objc func reloadWebView() {
+        webView?.reload()
     }
 
     // ---- 语音输入: macOS 系统语音识别(SFSpeechRecognizer),离线、中文 --

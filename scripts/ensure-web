@@ -4,7 +4,9 @@
 set -u
 PORT="${DSH_PORT:-3080}"
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-DSH_BIN="$HOME/.dsh/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
+INSTALL_DIR="$HOME/.dsh/install"
+INSTALL_NODE_MODULES="$INSTALL_DIR/node_modules"
+DSH_BIN="$INSTALL_NODE_MODULES/@deepseek-ai/dsh/lib/bin.js"
 LOG="$HOME/.dsh/web.log"
 STATE="$HOME/.dsh/.web-load-signature"
 GOAL_FIRST_PREFLIGHT="$HOME/.dsh/extensions/dsh-goal-first-state-machine/goal-first-state-machine.test.mjs"
@@ -14,6 +16,7 @@ PROFILE_DIR="$HOME/.dsh/profiles/web"
 PROFILE_PACKAGE="$PROFILE_DIR/package.json"
 PROFILE_NODE_MODULES="$PROFILE_DIR/node_modules"
 PNPM_BIN="${DSH_PNPM_BIN:-/usr/local/bin/pnpm}"
+NPM_BIN="${DSH_NPM_BIN:-/usr/local/bin/npm}"
 mkdir -p "$HOME/.dsh" "$PRIVATE"
 
 # mkdir is atomic on macOS. This closes the app/watchdog race where two
@@ -121,12 +124,104 @@ ensure_profile_local_links() {
   fi
 }
 
+# node-addon-require-builtin selects a platform-specific native binding before
+# Cordis can create its internal ModuleLoader. A package refresh under a
+# different macOS architecture can leave the opposite optional package in
+# node_modules, making ModuleLoader.fromInternal() empty and the WebView blank.
+# Only a real install that declares the entry package participates; lightweight
+# test homes and older migrations keep their existing startup behavior.
+check_internal_loader_binding() {
+  [ -f "$INSTALL_NODE_MODULES/node-addon-require-builtin/package.json" ] || return 0
+  /usr/local/bin/node - "$INSTALL_NODE_MODULES" <<'NODE'
+const fs = require('node:fs')
+const path = require('node:path')
+
+const nodeModules = process.argv[2]
+const entryPackage = path.join(nodeModules, 'node-addon-require-builtin')
+const entryManifestPath = path.join(entryPackage, 'package.json')
+if (!fs.existsSync(entryManifestPath)) process.exit(0)
+
+let entryManifest
+try {
+  entryManifest = JSON.parse(fs.readFileSync(entryManifestPath, 'utf8'))
+} catch (error) {
+  console.error(`DSH_NODE_ADDON_PACKAGE_INVALID\t${entryManifestPath}\t${error.message}`)
+  process.exit(3)
+}
+
+if (process.platform === 'darwin' && (process.arch === 'arm64' || process.arch === 'x64')) {
+  const bindingName = `node-addon-require-builtin-${process.platform}-${process.arch}`
+  const bindingManifestPath = path.join(nodeModules, bindingName, 'package.json')
+  if (!fs.existsSync(bindingManifestPath)) {
+    console.error(`DSH_NODE_ADDON_OPTIONAL_BINDING_MISSING\t${bindingName}\t${bindingManifestPath}\t${process.arch}`)
+    process.exit(2)
+  }
+  try {
+    const bindingManifest = JSON.parse(fs.readFileSync(bindingManifestPath, 'utf8'))
+    if (bindingManifest.name !== bindingName) {
+      console.error(`DSH_NODE_ADDON_OPTIONAL_BINDING_INVALID\t${bindingName}\t${bindingManifestPath}`)
+      process.exit(3)
+    }
+  } catch (error) {
+    console.error(`DSH_NODE_ADDON_OPTIONAL_BINDING_INVALID\t${bindingName}\t${error.message}`)
+    process.exit(3)
+  }
+}
+
+try {
+  const { createRequire } = require('node:module')
+  const requireFromInstall = createRequire(entryManifestPath)
+  const api = requireFromInstall('node-addon-require-builtin')
+  if (!api || typeof api.requireBuiltin !== 'function') throw new Error('requireBuiltin export is unavailable')
+  const loader = api.requireBuiltin('internal/modules/esm/loader')
+  if (loader === null || loader === undefined) throw new Error('internal ESM loader is empty')
+  const info = typeof api.getBindingInfo === 'function' ? api.getBindingInfo() : undefined
+  const binding = info && typeof info === 'object' ? `${info.mode || 'unknown'}/${info.backend || 'unknown'}/${info.abi || 'unknown'}` : 'unknown'
+  console.log(`DSH_NODE_ADDON_LOADER_OK\t${process.platform}\t${process.arch}\t${binding}`)
+} catch (error) {
+  console.error(`DSH_NODE_ADDON_LOADER_FAILED\t${process.platform}\t${process.arch}\t${error.message}`)
+  process.exit(3)
+}
+NODE
+}
+
+ensure_internal_loader_binding() {
+  [ -f "$INSTALL_NODE_MODULES/node-addon-require-builtin/package.json" ] || return 0
+  check_internal_loader_binding >>"$LOG" 2>&1
+  local status=$?
+  [ "$status" -eq 0 ] && return 0
+  if [ "$status" -ne 2 ]; then
+    echo "$(date '+%F %T') ensure-web: DSH_NODE_ADDON_LOADER_FAILED; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  if [ ! -f "$INSTALL_DIR/package-lock.json" ]; then
+    echo "$(date '+%F %T') ensure-web: DSH_NODE_ADDON_OPTIONAL_BINDING_REPAIR_BLOCKED package-lock missing; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  if [ ! -x "$NPM_BIN" ]; then
+    echo "$(date '+%F %T') ensure-web: DSH_NODE_ADDON_OPTIONAL_BINDING_MISSING and npm unavailable; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  echo "$(date '+%F %T') ensure-web: DSH_NODE_ADDON_OPTIONAL_BINDING_MISSING; repairing with npm optional dependencies" >>"$LOG"
+  if ! "$NPM_BIN" --prefix "$INSTALL_DIR" install --include=optional --ignore-scripts --no-audit --no-fund >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: DSH_NODE_ADDON_OPTIONAL_BINDING_REPAIR_FAILED; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+  if ! check_internal_loader_binding >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: DSH_NODE_ADDON_LOADER_FAILED after optional binding repair; refusing to start Host" >>"$LOG"
+    return 1
+  fi
+}
+
 if ! acquire_lock; then
   exit 0
 fi
 
 if [ ! -f "$DSH_BIN" ]; then
   echo "$(date '+%F %T') ensure-web: install 缺失,请执行 cd ~/.dsh/install && npm install @deepseek-ai/dsh@0.1.1-rc.2 --save-exact" >>"$LOG"
+  exit 1
+fi
+if ! ensure_internal_loader_binding; then
   exit 1
 fi
 if ! ensure_profile_local_links; then
@@ -248,7 +343,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified" \
-  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.rc2-archive.modified" \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-workspace/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified" \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified" \

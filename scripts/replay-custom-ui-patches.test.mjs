@@ -3,7 +3,15 @@ import assert from 'node:assert/strict'
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
-import { atomicWrite, BASELINE_VERSION, PATCHES, PROTECTED_BUNDLES, replayCustomUiPatches } from './replay-custom-ui-patches.mjs'
+import {
+  atomicWrite,
+  BASELINE_VERSION,
+  PATCHES,
+  SUBAGENT_ARCHIVE_MARKERS,
+  SUBAGENT_ARCHIVE_SNAPSHOT,
+  replayCustomUiPatches,
+  validateSubagentArchiveSnapshot,
+} from './replay-custom-ui-patches.mjs'
 
 const repoRoot = resolve(import.meta.dirname, '..')
 
@@ -16,10 +24,6 @@ function fixture(version = BASELINE_VERSION) {
     mkdirSync(resolve(root, row.target, '..'), { recursive: true })
     cpSync(join(repoRoot, row.source), join(root, row.source))
     cpSync(join(repoRoot, row.source), join(root, row.target))
-  }
-  for (const row of PROTECTED_BUNDLES) {
-    mkdirSync(resolve(root, row.target, '..'), { recursive: true })
-    cpSync(join(repoRoot, row.target), join(root, row.target))
   }
   return root
 }
@@ -75,13 +79,62 @@ test('apply rolls back earlier bundle writes when a later write fails', async ()
   }
 })
 
-test('reviewed upstream subagent bundle drift blocks check and apply modes', async () => {
+test('rc.2 subagent archive snapshot is the replay source, not the legacy modified bundle', async () => {
+  const row = PATCHES.find((item) => item.packageName === 'dsh-client-ui-subagent')
+  assert.deepEqual(row, SUBAGENT_ARCHIVE_SNAPSHOT)
+  assert.equal(row.source, 'custom-ui-patches/dsh-client-ui-subagent/client.js.rc2-archive.modified')
+  assert.notEqual(row.source, 'custom-ui-patches/dsh-client-ui-subagent/client.js.modified')
+  const snapshot = readFileSync(join(repoRoot, row.source))
+  assert.deepEqual(validateSubagentArchiveSnapshot(snapshot), { ok: true, missing: [] })
+  for (const marker of SUBAGENT_ARCHIVE_MARKERS) assert.ok(snapshot.includes(marker), marker)
+})
+
+test('rc.2 subagent archive drift is atomically repaired instead of blocked by the legacy hash gate', async () => {
   const root = fixture()
   try {
-    writeFileSync(join(root, PROTECTED_BUNDLES[0].target), 'unexpected upstream drift')
+    const target = join(root, SUBAGENT_ARCHIVE_SNAPSHOT.target)
+    writeFileSync(target, 'unexpected upstream drift')
+    const result = await replayCustomUiPatches({ root })
+    assert.equal(result.status, 'drift')
+    assert.equal(result.ok, false)
+    const applied = await replayCustomUiPatches({ root, apply: true })
+    assert.equal(applied.status, 'applied')
+    assert.deepEqual(readFileSync(target), readFileSync(join(root, SUBAGENT_ARCHIVE_SNAPSHOT.source)))
+    assert.equal(applied.archiveSnapshot.sourceSha256, '530dc01da4afdc564391eaf4e532bdedc51933dcadc80988a45f6226f526988c')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('invalid rc.2 subagent archive source fails closed before any target write', async () => {
+  const root = fixture()
+  try {
+    const source = join(root, SUBAGENT_ARCHIVE_SNAPSHOT.source)
+    const target = join(root, SUBAGENT_ARCHIVE_SNAPSHOT.target)
+    writeFileSync(source, 'legacy bundle')
+    writeFileSync(target, 'target sentinel')
     const result = await replayCustomUiPatches({ root, apply: true })
-    assert.equal(result.code, 'PROTECTED_UPSTREAM_BUNDLE_DRIFT')
+    assert.equal(result.code, 'SUBAGENT_ARCHIVE_SNAPSHOT_INVALID')
     assert.equal(result.apply, false)
+    assert.equal(result.archiveSnapshot.hashMatches, false)
+    assert.equal(readFileSync(target, 'utf8'), 'target sentinel')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rc.2 subagent archive source hash is version locked even when required markers remain', async () => {
+  const root = fixture()
+  try {
+    const source = join(root, SUBAGENT_ARCHIVE_SNAPSHOT.source)
+    const target = join(root, SUBAGENT_ARCHIVE_SNAPSHOT.target)
+    writeFileSync(source, `${readFileSync(source, 'utf8')}\n`)
+    writeFileSync(target, 'target sentinel')
+    const result = await replayCustomUiPatches({ root, apply: true })
+    assert.equal(result.code, 'SUBAGENT_ARCHIVE_SNAPSHOT_INVALID')
+    assert.deepEqual(result.archiveSnapshot.missingMarkers, [])
+    assert.equal(result.archiveSnapshot.hashMatches, false)
+    assert.equal(readFileSync(target, 'utf8'), 'target sentinel')
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

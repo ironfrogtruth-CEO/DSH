@@ -64,6 +64,70 @@ test('大神.app uses ensure-web and ensure-web suppresses the external browser'
   }
 })
 
+test('ensure-web keeps homes without node-addon-require-builtin on the existing startup path', () => {
+  const source = readFileSync(ensureWeb, 'utf8')
+  assert.match(source, /INSTALL_NODE_MODULES="\$INSTALL_DIR\/node_modules"/)
+  assert.match(source, /\[ -f "\$INSTALL_NODE_MODULES\/node-addon-require-builtin\/package\.json" \] \|\| return 0/)
+  assert.match(source, /process\.arch/)
+  assert.match(source, /--prefix "\$INSTALL_DIR" install --include=optional --ignore-scripts --no-audit --no-fund/)
+  assert.match(source, /api\.requireBuiltin\('internal\/modules\/esm\/loader'\)/)
+  assert.ok(
+    source.indexOf('if ! ensure_internal_loader_binding; then') < source.indexOf('if ! ensure_profile_local_links; then'),
+    'the architecture preflight must run before profile and Host startup work',
+  )
+})
+
+test('ensure-web repairs or clearly blocks a missing Darwin optional binding before Host startup', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-node-addon-binding-'))
+  const dshHome = join(root, '.dsh')
+  const install = join(dshHome, 'install')
+  const nodeModules = join(install, 'node_modules')
+  const entryManifest = join(nodeModules, 'node-addon-require-builtin', 'package.json')
+  const bindingName = 'node-addon-require-builtin-darwin-(arm64|x64)'
+  const npmArgs = join(root, 'npm-args.txt')
+  const fakeNpm = join(root, 'npm')
+  const hostArgs = join(root, 'host-args.json')
+  const binPath = join(nodeModules, '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  try {
+    mkdirSync(resolve(binPath, '..'), { recursive: true })
+    mkdirSync(resolve(entryManifest, '..'), { recursive: true })
+    writeFileSync(binPath, `require('node:fs').writeFileSync(${JSON.stringify(hostArgs)}, JSON.stringify(process.argv.slice(2)))\n`)
+    writeFileSync(entryManifest, JSON.stringify({
+      name: 'node-addon-require-builtin',
+      version: '0.1.5',
+      optionalDependencies: {
+        'node-addon-require-builtin-darwin-arm64': '0.1.5',
+        'node-addon-require-builtin-darwin-x64': '0.1.5',
+      },
+    }))
+    writeFileSync(join(install, 'package-lock.json'), JSON.stringify({ name: 'install', lockfileVersion: 3 }))
+    writeFileSync(fakeNpm, [
+      '#!/bin/bash',
+      `printf '%s\\n' "$*" > ${JSON.stringify(npmArgs)}`,
+      'exit 0',
+    ].join('\n'))
+    chmodSync(fakeNpm, 0o755)
+
+    const result = spawnSync('/bin/bash', [ensureWeb], {
+      cwd: root,
+      env: { ...process.env, HOME: root, DSH_PORT: '65443', DSH_NPM_BIN: fakeNpm },
+      encoding: 'utf8',
+      timeout: 5000,
+    })
+    assert.equal(result.status, 1, result.stderr || result.stdout)
+    const log = readFileSync(join(dshHome, 'web.log'), 'utf8')
+    assert.match(log, new RegExp(`DSH_NODE_ADDON_OPTIONAL_BINDING_MISSING\\t${bindingName}\\t`))
+    assert.match(log, /DSH_NODE_ADDON_LOADER_FAILED after optional binding repair/)
+    assert.equal(
+      readFileSync(npmArgs, 'utf8').trim(),
+      `--prefix ${install} install --include=optional --ignore-scripts --no-audit --no-fund`,
+    )
+    assert.equal(existsSync(hostArgs), false, 'Host must not start after an unverified binding repair')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('ensure-web fails closed when the selected-route patch cannot run', () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-route-fail-'))
   const dshHome = join(root, '.dsh')
@@ -228,7 +292,7 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified',
-    '$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.modified',
+    '$HOME/.dsh/custom-ui-patches/dsh-client-ui-subagent/client.js.rc2-archive.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-workspace/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified',
     '$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified',
@@ -248,6 +312,7 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/scripts/patch-fs-edit-auto-observe.mjs',
     '$HOME/.dsh/scripts/daily-git-commit.mjs',
 ]) assert.match(source, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), path)
+  assert.doesNotMatch(source, /custom-ui-patches\/dsh-client-ui-subagent\/client\.js\.modified/)
 })
 
 test('ensure-web validates goal-first contracts before stopping a healthy Host', () => {

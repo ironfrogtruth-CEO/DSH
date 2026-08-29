@@ -5655,7 +5655,11 @@ window.__ModuleLoader__.load({
 		/** Resolve the durable child identity and keep persona + task visible together. */
 		function subagentStatusLabel(summary, entry) {
 			const identity = summary?.projectionValues?.subagent;
-			const task = identity?.label ?? entry?.label ?? summary?.displayTitle ?? summary?.title ?? summary?.id ?? entry?.id ?? "子代理";
+			const rawTask = identity?.label ?? entry?.label ?? summary?.displayTitle ?? summary?.title ?? summary?.id ?? entry?.id ?? "子代理";
+			// 派生 label 来自子代理首条消息（如「你是神奇先生·架构-09 …」），展示前
+			// 剥掉「你是 / 你是子智能体：」前缀，避免状态药丸读起来像在称呼用户。
+			const stripped = rawTask.replace(/^你是子智能体(?:名称)?\s*[:：]?\s*/iu, "").replace(/^你是\s*[:：]?\s*/u, "").trim();
+			const task = stripped !== "" ? stripped : rawTask;
 			const persona = subagentPersonaOf(summary, entry);
 			if (persona === void 0 || task.includes(persona)) return task;
 			// New CyberMarcus children use labels such as `研究-01 检查 settings.yaml`.

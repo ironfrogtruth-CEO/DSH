@@ -1,11 +1,11 @@
 ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
-  provider: deepseek-official
-  model: deepseek-v4-pro
+  provider: zhipu-glm
+  model: glm-5.3-flash
   reasoningEffort: high
 agent-presets:
-  default: reliable-development
+  default: avengers
 permission:
   defaultPreset: danger-full-access
 ui-conversation:

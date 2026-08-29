@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Check or replay the reviewed CyberMarcus UI bundles for the locked DSH
- * baseline. A different upstream version is a compatibility-review boundary:
- * this script refuses to overwrite it.
+ * baseline, including the rc.2 subagent lineage/archive snapshot. A different
+ * upstream version is a compatibility-review boundary: this script refuses to
+ * overwrite it.
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
@@ -11,6 +12,26 @@ import { dirname, join, resolve } from 'node:path'
 
 export const BASELINE_VERSION = '0.1.1-rc.2'
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+export const SUBAGENT_ARCHIVE_SNAPSHOT = Object.freeze({
+  packageName: 'dsh-client-ui-subagent',
+  source: 'custom-ui-patches/dsh-client-ui-subagent/client.js.rc2-archive.modified',
+  target: 'install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js',
+  lineage: '@deepseek-ai/dsh-client-ui-subagent@0.1.1-rc.2',
+  purpose: 'reviewed-rc2-lineage-archive-lifecycle-bundle',
+  expectedSha256: '530dc01da4afdc564391eaf4e532bdedc51933dcadc80988a45f6226f526988c',
+})
+
+export const SUBAGENT_ARCHIVE_MARKERS = Object.freeze([
+  'window.__ModuleLoader__.load({',
+  'id: "@deepseek-ai/dsh-client-ui-subagent"',
+  'SubagentHeaderLineage',
+  'archiveSubagent',
+  '"archive.button": "归档"',
+  '"archive.running": "中断并归档"',
+  '"archive.button": "Archive"',
+  '"archive.running": "Interrupt & archive"',
+])
 
 export const PATCHES = Object.freeze([
   'dsh-client-ui-agent-preset',
@@ -28,17 +49,13 @@ export const PATCHES = Object.freeze([
   packageName: 'shrimp-shell',
   source: 'custom-ui-patches/shrimp-shell/client.js.modified',
   target: 'extensions/shrimp-shell/client.js',
-})))
+}), SUBAGENT_ARCHIVE_SNAPSHOT))
 
-// The current rc.2 subagent bundle intentionally keeps the reviewed upstream
-// lineage UI. The older custom modified file is not replayable, but the live
-// upstream hash remains protected so --check cannot report a false clean.
-export const PROTECTED_BUNDLES = Object.freeze([Object.freeze({
-  packageName: 'dsh-client-ui-subagent',
-  target: 'install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js',
-  expectedSha256: '5499863cb2fc4d2b68157e6fa2d072b5e3b29be99ecfa6ec71fa1c659aef80cb',
-  policy: 'reviewed-upstream-do-not-replay-legacy-custom-bundle',
-})])
+export function validateSubagentArchiveSnapshot(content) {
+  const text = Buffer.isBuffer(content) ? content.toString('utf8') : String(content)
+  const missing = SUBAGENT_ARCHIVE_MARKERS.filter((marker) => !text.includes(marker))
+  return { ok: missing.length === 0, missing }
+}
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
@@ -76,22 +93,26 @@ export async function replayCustomUiPatches({ root = scriptRoot, apply = false, 
       patches: [],
     }
   }
-  const protectedBundles = []
-  for (const bundle of PROTECTED_BUNDLES) {
-    const content = await readFile(join(normalizedRoot, bundle.target))
-    const actualSha256 = sha256(content)
-    protectedBundles.push({ ...bundle, actualSha256, matches: actualSha256 === bundle.expectedSha256 })
-  }
-  if (protectedBundles.some((bundle) => !bundle.matches)) {
+  const archiveSourcePath = join(normalizedRoot, SUBAGENT_ARCHIVE_SNAPSHOT.source)
+  const archiveSource = await readFile(archiveSourcePath)
+  const archiveValidation = validateSubagentArchiveSnapshot(archiveSource)
+  const archiveSourceSha256 = sha256(archiveSource)
+  const archiveHashMatches = archiveSourceSha256 === SUBAGENT_ARCHIVE_SNAPSHOT.expectedSha256
+  if (!archiveValidation.ok || !archiveHashMatches) {
     return {
       ok: false,
-      status: 'drift',
-      code: 'PROTECTED_UPSTREAM_BUNDLE_DRIFT',
+      status: 'blocked',
+      code: 'SUBAGENT_ARCHIVE_SNAPSHOT_INVALID',
       baselineVersion: BASELINE_VERSION,
       installedVersion: version,
       apply: false,
       patches: [],
-      protectedBundles,
+      archiveSnapshot: {
+        ...SUBAGENT_ARCHIVE_SNAPSHOT,
+        sourceSha256: archiveSourceSha256,
+        missingMarkers: archiveValidation.missing,
+        hashMatches: archiveHashMatches,
+      },
     }
   }
   const prepared = []
@@ -125,7 +146,12 @@ export async function replayCustomUiPatches({ root = scriptRoot, apply = false, 
         installedVersion: version,
         apply: true,
         patches: [],
-        protectedBundles,
+        archiveSnapshot: {
+          ...SUBAGENT_ARCHIVE_SNAPSHOT,
+          sourceSha256: archiveSourceSha256,
+          missingMarkers: [],
+          hashMatches: true,
+        },
       }
     }
   }
@@ -145,7 +171,12 @@ export async function replayCustomUiPatches({ root = scriptRoot, apply = false, 
     installedVersion: version,
     apply,
     patches: rows,
-    protectedBundles,
+    archiveSnapshot: {
+      ...SUBAGENT_ARCHIVE_SNAPSHOT,
+      sourceSha256: archiveSourceSha256,
+      missingMarkers: [],
+      hashMatches: true,
+    },
     studioReplay: 'custom-ui-patches/dsh-idesign-ippt-studio/replay-brand.sh',
   }
 }

@@ -256,10 +256,7 @@ window.__ModuleLoader__.load({
 					const knownLeaf = !entry.hasChildren;
 					const childLoading = childCatalog === void 0 || childCatalog.state === "loading" && childCatalog.entries.length === 0;
 					const summary = summaries[entry.id];
-					const rawLabel = entry.label ?? entry.id;
-					// 与状态药丸一致：剥掉派生 label 的「你是 / 你是子智能体：」前缀。
-					const cleanedLabel = rawLabel.replace(/^你是子智能体(?:名称)?\s*[:：]?\s*/iu, "").replace(/^你是\s*[:：]?\s*/u, "").trim();
-					const label = cleanedLabel !== "" ? cleanedLabel : rawLabel;
+					const label = entry.label ?? entry.id;
 					const mode = entry.mode === "one-shot" ? t("mode.oneShot") : t("mode.continuable");
 					const activity = entry.activity === "running" ? t("activity.running") : t("activity.inactive");
 					const secondary = [
@@ -421,9 +418,7 @@ window.__ModuleLoader__.load({
 			const setCatalogOpenRef = (0, react.useRef)(setCatalogOpen);
 			setCatalogOpenRef.current = setCatalogOpen;
 			const currentEntry = currentSessionId === void 0 ? void 0 : catalog?.entries.find((entry) => entry.kind === "child" && entry.id === currentSessionId);
-			const rawSwitcherLabel = currentEntry?.kind === "child" ? currentEntry.label ?? currentEntry.id : void 0;
-			const cleanedSwitcherLabel = typeof rawSwitcherLabel === "string" ? rawSwitcherLabel.replace(/^你是子智能体(?:名称)?\s*[:：]?\s*/iu, "").replace(/^你是\s*[:：]?\s*/u, "").trim() : rawSwitcherLabel;
-			const switcherDisplayTitle = cleanedSwitcherLabel ? cleanedSwitcherLabel : displayTitle;
+			const switcherDisplayTitle = currentEntry?.kind === "child" ? currentEntry.label ?? currentEntry.id : displayTitle;
 			const healthy = catalog?.entries.filter((entry) => entry.kind === "child") ?? [];
 			const descendants = (0, react.useMemo)(() => (0, _deepseek_ai_dsh_client_runtime_client.indexSubagentDescendants)(summaries).get(rootSessionId) ?? NO_DESCENDANTS, [rootSessionId, summaries]);
 			const descendantCount = Math.max(healthy.length, descendants.count);
