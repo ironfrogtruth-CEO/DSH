@@ -293,13 +293,18 @@ if [ -d "$KB_MANAGER_DIR" ] && [ ! -f "$KB_MANAGER_DIR/node_modules/@deepseek-ai
   fi
 fi
 
-# iMessage bridge is a local-only bundle. Its only external dependency is the
-# already-installed DSH tools contract; keep the package self-contained on a
-# migrated Mac without touching Messages or sending anything during startup.
-IMESSAGE_BRIDGE_DIR="$HOME/.dsh/extensions/dsh-imessage-bridge"
-if [ -d "$IMESSAGE_BRIDGE_DIR" ] && [ ! -f "$IMESSAGE_BRIDGE_DIR/node_modules/@deepseek-ai/dsh-tools/package.json" ]; then
-  if ! /usr/local/bin/npm install --prefix "$IMESSAGE_BRIDGE_DIR" --ignore-scripts --no-audit --no-fund >>"$LOG" 2>&1; then
-    echo "$(date '+%F %T') ensure-web: iMessage bridge 依赖安装失败" >>"$LOG"
+# The official DingTalk connector is a profile dependency, not a local npm
+# extension.  Restore the exact frozen profile graph on a migrated Mac without
+# running third-party lifecycle scripts.  Missing credentials remain the
+# connector's own fail-soft condition and never block Host startup.
+DINGTALK_PACKAGE="$PROFILE_NODE_MODULES/@dingtalk-real-ai/dsh-dingtalk/package.json"
+if [ -f "$PROFILE_PACKAGE" ] && /usr/bin/grep -q '"@dingtalk-real-ai/dsh-dingtalk"' "$PROFILE_PACKAGE" && [ ! -f "$DINGTALK_PACKAGE" ]; then
+  if [ ! -x "$PNPM_BIN" ]; then
+    echo "$(date '+%F %T') ensure-web: DingTalk profile dependency missing and pnpm unavailable" >>"$LOG"
+    exit 1
+  fi
+  if ! (cd "$PROFILE_DIR" && "$PNPM_BIN" install --frozen-lockfile --ignore-scripts --no-fund) >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: DingTalk profile dependency restore failed" >>"$LOG"
     exit 1
   fi
 fi
@@ -312,6 +317,8 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/.agent-presets/avengers/preset.yml" \
   "$HOME/.dsh/.agent-presets/avengers/agent.cordis.yml" \
   "$HOME/.dsh/profiles/web/package.json" \
+  "$HOME/.dsh/profiles/web/cordis.patch.yml" \
+  "$HOME/.dsh/profiles/web/pnpm-lock.yaml" \
   "$HOME/.dsh/container.manifest.yaml" \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/index.js" \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/machine.js" \
@@ -323,14 +330,10 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-knowledge-manager/client.js" \
   "$HOME/.dsh/extensions/dsh-knowledge-manager/cordis.patch.yml" \
   "$HOME/.dsh/extensions/dsh-knowledge-manager/index.test.mjs" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/package.json" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/index.js" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/client.js" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/reader.py" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/send_message.applescript" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/probe_messages.applescript" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/vendor/VENDOR-SHA256.md" \
-  "$HOME/.dsh/extensions/dsh-imessage-bridge/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-status/package.json" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-status/index.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-status/client.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-status/cordis.patch.yml" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/package.json" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/index.js" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js" \

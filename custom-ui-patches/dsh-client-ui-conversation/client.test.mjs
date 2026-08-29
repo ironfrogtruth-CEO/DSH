@@ -40,7 +40,7 @@ test('conversation patch keeps context events durable but out of the chat public
   assert.match(patched, /key: "context"/)
 })
 
-test('iMessage security envelope remains durable but chat renders only the remote task text', async () => {
+test('remote-channel security envelope remains durable but chat renders only the task text', async () => {
   const source = await readFile(patchUrl, 'utf8')
   assert.match(source, /function projectRemoteTaskContent\(content\)/)
   assert.match(source, /\[BEGIN UNTRUSTED REMOTE TASK\]/)

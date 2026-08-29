@@ -100,9 +100,19 @@
       - /Users/marcus/Desktop
       - /Users/marcus/.dsh
 
-# iMessage bridge is opt-in at runtime; its bundle is present so the panel and
-# formal DSH session ingress are available after explicit local authorization.
-- id: dsh-imessage-bridge
-  name: '@local/dsh-imessage-bridge'
+# Official DingTalk Stream connector.  It owns the channel/session runtime;
+# these values are safe defaults and deliberately contain no credentials.
+- id: dingtalk-channel
+  name: '@dingtalk-real-ai/dsh-dingtalk'
+  config:
+    workspace: /Users/marcus/Desktop
+    senderAccess: owner
+    groupAccess: none
+    imageMode: auto
+    tools:
+      enabled: false
+    debug: false
 
-  config: {}
+# Read-only local status projection for the sidebar utility slot.
+- id: dsh-dingtalk-status
+  name: '@local/dsh-dingtalk-status'

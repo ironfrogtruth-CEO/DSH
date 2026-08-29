@@ -1,5 +1,5 @@
 {
-  "name": "@local/dsh-imessage-bridge",
+  "name": "@local/dsh-dingtalk-status",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -13,17 +13,12 @@
   "files": [
     "index.js",
     "client.js",
-    "reader.py",
-    "send_message.applescript",
-    "probe_messages.applescript",
+    "index.test.mjs",
+    "client.test.mjs",
     "cordis.patch.yml",
-    "vendor",
     "README.md",
-    "index.test.mjs"
+    "package.json"
   ],
-  "dependencies": {
-    "@deepseek-ai/dsh-tools": "^0.1.1-rc.2"
-  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

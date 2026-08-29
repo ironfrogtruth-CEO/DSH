@@ -120,7 +120,8 @@ data:                                # 不纳入版本管理、导出默认排�
   storages: ~/.dsh/storages
   goal-first-state: ~/.dsh/goal-first-state
   backups: ~/.dsh/backups
-  imessage-bridge: ~/.dsh/private/imessage-bridge  # 仅水位/GUID/session映射/回执，0600
+  dingtalk-state: ~/.dsh-dingtalk         # 官方 Stream 运行态/绑定摘要，0600
+  imessage-bridge-legacy: ~/.dsh/private/imessage-bridge  # 迁移保留数据，不再加载，0600
   host-lifecycle: ~/.dsh/private/service-disabled + background-launch # 生命周期哨兵，0600
 
 extensions:                          # 扩展注册点
@@ -131,5 +132,6 @@ extensions:                          # 扩展注册点
   bundles:
     - "@local/dsh-dsbalance"    # 余额卡片固化 bundle(自动加载)
     - "@local/dsh-knowledge-manager" # 虾缸知识库管理入口(只读模型工具 + UI CRUD)
-    - "@local/dsh-imessage-bridge" # iMessage 任务/回执桥(默认关闭)
+    - "@dingtalk-real-ai/dsh-dingtalk" # 官方钉钉 Stream 连接器(凭据缺失时 fail-soft)
+    - "@local/dsh-dingtalk-status" # 钉钉脱敏状态与侧栏入口(只读)
     - "@local/dsh-shrimp-run-status" # 会话顶部虾/heartbeat真实运行节点状态(只读桥 + UI)

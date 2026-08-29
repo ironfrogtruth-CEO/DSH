@@ -56,8 +56,8 @@ if [ "$COUNT" -eq 0 ] && /usr/bin/pgrep -f "$APP_BINARY" >/dev/null 2>&1; then
   exit 0
 fi
 
-# LaunchAgent is intentionally not a TCC-capable Host owner: launching the
-# native app lets Messages DB/Automation permissions attach to 大神 itself.
+# LaunchAgent is intentionally not the channel owner: launching the native app
+# keeps the local Host and official channel runtime under 大神 itself.
 mkdir -p "$ROOT/private"
 chmod 700 "$ROOT/private" 2>/dev/null || true
 temporary="$BACKGROUND_SENTINEL.tmp-$$"

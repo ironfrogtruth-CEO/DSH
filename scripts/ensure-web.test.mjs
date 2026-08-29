@@ -280,6 +280,10 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/extensions/dsh-knowledge-manager/index.js',
     '$HOME/.dsh/extensions/dsh-knowledge-manager/client.js',
     '$HOME/.dsh/extensions/dsh-knowledge-manager/cordis.patch.yml',
+    '$HOME/.dsh/extensions/dsh-dingtalk-status/package.json',
+    '$HOME/.dsh/extensions/dsh-dingtalk-status/index.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-status/client.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-status/cordis.patch.yml',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/package.json',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/index.js',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js',
@@ -289,6 +293,8 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/extensions/dsh-webbridge/index.js',
     '$HOME/.dsh/extensions/dsh-webbridge/cordis.patch.yml',
     '$HOME/.dsh/extensions/dsh-webbridge/native-host/nm-host.js',
+    '$HOME/.dsh/profiles/web/cordis.patch.yml',
+    '$HOME/.dsh/profiles/web/pnpm-lock.yaml',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-jobs/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-conversation/client.js.modified',
     '$HOME/.dsh/custom-ui-patches/dsh-client-ui-agent-preset/client.js.modified',
@@ -313,6 +319,14 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/scripts/daily-git-commit.mjs',
 ]) assert.match(source, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), path)
   assert.doesNotMatch(source, /custom-ui-patches\/dsh-client-ui-subagent\/client\.js\.modified/)
+  assert.doesNotMatch(source, /dsh-imessage-bridge/)
+})
+
+test('ensure-web restores the exact DingTalk profile dependency without lifecycle scripts', () => {
+  const source = readFileSync(ensureWeb, 'utf8')
+  assert.match(source, /DINGTALK_PACKAGE=.*@dingtalk-real-ai\/dsh-dingtalk\/package\.json/)
+  assert.match(source, /install --frozen-lockfile --ignore-scripts/)
+  assert.doesNotMatch(source, /IMESSAGE_BRIDGE_DIR|iMessage bridge 依赖安装失败/)
 })
 
 test('ensure-web validates goal-first contracts before stopping a healthy Host', () => {

@@ -1,0 +1,5 @@
+# dsh-dingtalk-status: read-only local status projection for the official
+# DingTalk connector.  It never owns credentials or a DingTalk connection.
+- insert:
+    - id: dsh-dingtalk-status
+      name: '@local/dsh-dingtalk-status'

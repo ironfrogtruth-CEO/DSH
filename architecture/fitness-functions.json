@@ -34,8 +34,8 @@
         "reason": "虾缸知识库管理的显式 sidebar 弹窗 seam；模型工具仍保持只读"
       },
       {
-        "path": "extensions/dsh-imessage-bridge",
-        "reason": "iMessage opt-in 控制面板与 Host 任务桥的显式 sidebar seam"
+        "path": "extensions/dsh-dingtalk-status",
+        "reason": "官方钉钉连接器的只读状态与显式 sidebar seam；不拥有凭据或 Stream"
       },
       {
         "path": "extensions/dsh-shrimp-run-status",
