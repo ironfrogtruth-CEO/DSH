@@ -1106,26 +1106,38 @@ window.__ModuleLoader__.load({
 			return a < b ? -1 : 1;
 		}
 		/** Reconcile one editable order account and apply its activity-promotion policy. */
-		function nextSessionOrderAccount({ sessionIds, previousOrder, previousUpdatedAt, list, orderBy, sortByRecency }) {
-			let order = reconciledSessionOrder(sessionIds, previousOrder);
+		function nextSessionOrderAccount({ sessionIds, previousOrder, previousUpdatedAt = {}, list, orderBy, sortByRecency }) {
+			const hasPreviousOrder = Array.isArray(previousOrder);
+			const priorOrder = hasPreviousOrder ? previousOrder : [];
+			const priorTimes = previousUpdatedAt && typeof previousUpdatedAt === "object" ? previousUpdatedAt : {};
+			let order = reconciledSessionOrder(sessionIds, hasPreviousOrder ? priorOrder : void 0);
+			/* A newly observed Session must lead the persisted manual order too. The
+			 * old rows remain in their stored relative order; only the new prefix is
+			 * recency-sorted. This also handles a legacy order with no timestamp map. */
+			const priorIds = new Set(priorOrder);
+			const newIds = hasPreviousOrder ? sessionIds.filter((id) => !priorIds.has(id)) : [];
 			if (sortByRecency) order.sort((a, b) => compareSessionRecency(a, b, list.byId));
 			else if (orderBy === "updated") {
 				const promoted = sessionIds.filter((id) => {
 					const session = list.byId[id];
-					return session !== void 0 && (previousUpdatedAt[id] === void 0 || session.updatedAt > previousUpdatedAt[id]);
+					return session !== void 0 && (priorTimes[id] === void 0 || session.updatedAt > priorTimes[id]);
 				}).sort((a, b) => compareSessionRecency(a, b, list.byId));
 				if (promoted.length > 0) {
 					const promotedIds = new Set(promoted);
 					order = [...promoted, ...order.filter((id) => !promotedIds.has(id))];
 				}
+			} else if (newIds.length > 0) {
+				const newSet = new Set(newIds);
+				newIds.sort((a, b) => compareSessionRecency(a, b, list.byId));
+				order = [...newIds, ...order.filter((id) => !newSet.has(id))];
 			}
 			const updatedAt = {};
 			for (const id of sessionIds) {
 				const session = list.byId[id];
 				if (session !== void 0) updatedAt[id] = session.updatedAt;
 			}
-			const orderChanged = previousOrder === void 0 || order.length !== previousOrder.length || order.some((id, index) => id !== previousOrder[index]);
-			const timestampsChanged = Object.keys(updatedAt).length !== Object.keys(previousUpdatedAt).length || Object.entries(updatedAt).some(([id, timestamp]) => previousUpdatedAt[id] !== timestamp);
+			const orderChanged = !hasPreviousOrder || order.length !== priorOrder.length || order.some((id, index) => id !== priorOrder[index]);
+			const timestampsChanged = Object.keys(updatedAt).length !== Object.keys(priorTimes).length || Object.entries(updatedAt).some(([id, timestamp]) => priorTimes[id] !== timestamp);
 			return {
 				order,
 				updatedAt,

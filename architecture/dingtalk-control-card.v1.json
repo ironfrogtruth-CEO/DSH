@@ -1,0 +1,251 @@
+{
+  "$id": "cybermarcus://architecture/dingtalk-control-card.v1",
+  "schemaVersion": 1,
+  "name": "钉钉大神控制台",
+  "version": "1.0.0",
+  "status": "verified-android",
+  "purpose": "把钉钉连接状态、绑定会话和可授权控制投影到同一张可切换的互动卡片；不复制 DSH 状态，也不把卡片当作新的会话入口。",
+  "runtimeBoundary": {
+    "host": "大神 Host",
+    "connector": "@dingtalk-real-ai/dsh-dingtalk@0.6.2",
+    "statusExtension": "@local/dsh-dingtalk-status",
+    "supportedCardCarrier": "钉钉互动卡片模板；未配置模板时降级为现有斜杠命令",
+    "notImplementedByThisContract": [
+      "不在卡片内保存或创建凭据",
+      "不在卡片内复制完整 session id、conversation id、staff id、路径或调试日志",
+      "不新增会话、任务、模型或产物状态源"
+    ]
+  },
+  "truthSources": {
+    "status": {
+      "source": "同源 /api/dsh-dingtalk/status",
+      "owner": "dsh-dingtalk-status",
+      "fields": ["package", "credentials", "ownerBound", "stream", "aiCard", "boundSessionCount"]
+    },
+    "bindings": {
+      "source": "官方连接器 ~/.dsh-dingtalk/bindings.json",
+      "owner": "dsh-dingtalk@0.6.2",
+      "readRule": "只取 value 中的 canonical session id；忽略 conversation key，最多投影五条"
+    },
+    "sessions": {
+      "source": "ctx.sessionQuery.readTitleSnapshots([sessionId]) 的 fulfilled 结果；不可用时兼容 readTitleSnapshot(sessionId) 或 ctx.sessionPersistence.inspect(sessionId).meta；实时 running 只看 ctx.agents.get(sessionId).status",
+      "fields": ["sessionId", "title", "createdAt", "running"],
+      "presentation": "sessionId 只留在 Host 回调解析，不在卡片显示；卡片使用 sessionSlot"
+    },
+    "models": {
+      "source": "当前会话的 llm/model catalog 与官方连接器 /model 状态",
+      "fields": ["modelSlot", "displayName", "providerLabel", "reasoningLevel", "isCurrent"],
+      "presentation": "模型选择通过 modelSlot 回查 catalog，不把任意 provider/model 字符串直接信任为动作参数"
+    },
+    "tasks": {
+      "source": "同一 bound session 的 agents/sessionQuery 状态与官方 connector /status",
+      "fields": ["taskState", "running", "waitingApproval", "updatedAt"],
+      "presentation": "只显示状态和时间，不显示内部错误、提示词、工具参数或日志"
+    },
+    "artifacts": {
+      "source": "已存在的交付清单或 session surface 中的产物元数据；没有清单则为空",
+      "fields": ["artifactSlot", "displayName", "kind", "size", "updatedAt"],
+      "presentation": "仅 basename/类型/大小/时间；本地产物仍在大神会话中打开，不上传到钉钉"
+    }
+  },
+  "securityContract": {
+    "reader": "owner",
+    "mutations": "owner",
+    "callbackVerification": [
+      "验证 callback actionKey 属于本 schema",
+      "验证卡片 sessionRef/modelRef/artifactRef 属于当前 owner 会话且未过期",
+      "按当前 bindings、sessionQuery、llm 真源重新解析引用；不信任卡片携带的标题或状态",
+      "敏感操作继续走官方 connector 的审批，不由控制台绕过"
+    ],
+    "forbiddenOutputFields": [
+      "clientId",
+      "clientSecret",
+      "ownerStaffId",
+      "staffId",
+      "conversationId",
+      "conversationKey",
+      "sessionWebhook",
+      "bindingCode",
+      "absolutePath",
+      "rawState",
+      "debugLog",
+      "prompt",
+      "toolArguments"
+    ],
+    "failClosed": "真源缺失、JSON 损坏、引用失效、权限不明或回调重放时，不执行动作；显示失败状态和对应命令"
+  },
+  "cardContract": {
+    "templateId": "f42ee85c-bdb9-4197-b8b7-4379e9b64878.schema",
+    "templateName": "Dashen Control Center v1",
+    "templatePreset": "循环渲染容器之交互组件的使用与服务端更新",
+    "templateBuild": {
+      "latestVersion": 5718058,
+      "ossKey": "5000000006861666/1787996225902",
+      "draftBuiltAt": "2026-08-29T09:37:08.000Z",
+      "publicationStatus": "published",
+      "exportSha256": "bcec9ddd614d039b4004656e07eb91e41e13de78f4528010b6c74ac8e81ef108"
+    },
+    "platformAcceptance": {
+      "android": "passed: new /menu card rendered and view selection updated the same card",
+      "ios": "not accepted in this round by explicit user scope decision"
+    },
+    "templateVariables": {
+      "public.title": "string",
+      "private.form_fields": "JSON-encoded array; only TEXT and SELECT are allowed",
+      "private.form_status": "normal|disabled",
+      "private.button_text": "string",
+      "private.err_msg": "string"
+    },
+    "callbackEnvelope": {
+      "actionIds": "may be empty for the official dynamic-form template",
+      "selectionParams": "name + type + selected field result",
+      "submitParams": "submit_form_fields",
+      "slotEncoding": "v<cardVersion>:<slot>",
+      "ownerScope": "signed outTrackId + bound owner identity"
+    },
+    "controlFields": [
+      "view",
+      "sessionSlot",
+      "modelSlot",
+      "effortSlot",
+      "taskAction"
+    ]
+  },
+  "views": [
+    {
+      "viewId": "home",
+      "title": "首页状态",
+      "goal": "让管理员一眼知道钉钉现在能不能接任务，以及下一步该做什么。",
+      "sourceTruth": ["status"],
+      "displayFields": [
+        {"key": "package.version", "label": "官方插件", "type": "string", "sensitive": false},
+        {"key": "credentials.configured", "label": "凭据", "type": "boolean", "sensitive": false},
+        {"key": "ownerBound", "label": "管理员", "type": "boolean", "sensitive": false},
+        {"key": "stream.status", "label": "Stream", "type": "enum:connected|reconnecting|stale|unobserved", "sensitive": false},
+        {"key": "aiCard.available", "label": "AI Card", "type": "boolean|null", "sensitive": false},
+        {"key": "boundSessionCount", "label": "绑定会话", "type": "integer", "sensitive": false},
+        {"key": "stream.observedAt", "label": "最近观测", "type": "timestamp|null", "sensitive": false}
+      ],
+      "buttons": [
+        {"label": "刷新", "actionKey": "home.refresh", "owner": "owner", "params": {}, "fallbackCommand": "/status"},
+        {"label": "会话", "actionKey": "nav.sessions", "owner": "owner", "params": {"view": "sessions"}, "fallbackCommand": "/status"},
+        {"label": "模型与推理", "actionKey": "nav.models", "owner": "owner", "params": {"view": "models"}, "fallbackCommand": "/model"},
+        {"label": "任务控制", "actionKey": "nav.tasks", "owner": "owner", "params": {"view": "tasks"}, "fallbackCommand": "/status"},
+        {"label": "产物", "actionKey": "nav.artifacts", "owner": "owner", "params": {"view": "artifacts"}, "fallbackCommand": "/status"}
+      ],
+      "states": {
+        "loading": "正在读取钉钉状态…",
+        "empty": "尚未观测到官方连接器运行状态。",
+        "failed": "状态读取失败，未执行任何动作。",
+        "degraded": "缺少凭据时保持待配置；请在本机手动运行固定 setup 命令。"
+      },
+      "fallbackCommands": ["npx @dingtalk-real-ai/dsh-dingtalk@0.6.2 setup", "/status"]
+    },
+    {
+      "viewId": "sessions",
+      "title": "会话",
+      "goal": "查看最多五个绑定会话，并在管理员明确点击后打开或重开当前钉钉会话。",
+      "sourceTruth": ["bindings", "sessions"],
+      "displayFields": [
+        {"key": "session.slot", "label": "会话序号", "type": "string", "sensitive": false},
+        {"key": "session.title", "label": "标题", "type": "string", "sensitive": false},
+        {"key": "session.createdAt", "label": "创建时间", "type": "timestamp|null", "sensitive": false},
+        {"key": "session.running", "label": "状态", "type": "boolean", "sensitive": false}
+      ],
+      "buttons": [
+        {"label": "打开", "actionKey": "session.open", "owner": "owner", "params": {"sessionSlot": "{{session.slot}}"}, "fallbackCommand": "/status"},
+        {"label": "重开当前会话", "actionKey": "session.new", "owner": "owner", "params": {}, "fallbackCommand": "/new"},
+        {"label": "刷新", "actionKey": "sessions.refresh", "owner": "owner", "params": {}, "fallbackCommand": "/status"}
+      ],
+      "states": {
+        "loading": "正在读取绑定会话…",
+        "empty": "暂无可显示的绑定会话。",
+        "failed": "会话真源不可用，已隐藏会话列表。",
+        "degraded": "只能使用当前钉钉对话；请发送 /status 或 /new。"
+      },
+      "fallbackCommands": ["/status", "/new", "/stop"]
+    },
+    {
+      "viewId": "models",
+      "title": "模型与推理",
+      "goal": "显示当前模型和推理等级，管理员通过稳定槽位选择或恢复默认模型。",
+      "sourceTruth": ["models"],
+      "displayFields": [
+        {"key": "model.slot", "label": "模型序号", "type": "string", "sensitive": false},
+        {"key": "model.displayName", "label": "模型", "type": "string", "sensitive": false},
+        {"key": "model.providerLabel", "label": "提供方", "type": "string", "sensitive": false},
+        {"key": "model.reasoningLevel", "label": "推理等级", "type": "string", "sensitive": false},
+        {"key": "model.isCurrent", "label": "当前使用", "type": "boolean", "sensitive": false}
+      ],
+      "buttons": [
+        {"label": "选择", "actionKey": "model.use", "owner": "owner", "params": {"modelSlot": "{{model.slot}}"}, "fallbackCommand": "/model"},
+        {"label": "恢复默认", "actionKey": "model.reset", "owner": "owner", "params": {}, "fallbackCommand": "/model reset"},
+        {"label": "刷新", "actionKey": "models.refresh", "owner": "owner", "params": {}, "fallbackCommand": "/model"}
+      ],
+      "states": {
+        "loading": "正在读取模型目录…",
+        "empty": "当前模型目录不可用，继续使用当前会话模型。",
+        "failed": "模型真源不可用，未执行切换。",
+        "degraded": "请在钉钉中手动使用 /model 或 /model use <provider>/<model>。"
+      },
+      "fallbackCommands": ["/model", "/model use <provider>/<model>", "/model reset"]
+    },
+    {
+      "viewId": "tasks",
+      "title": "任务控制",
+      "goal": "只显示当前绑定会话的运行状态，并提供明确的停止或重开动作。",
+      "sourceTruth": ["tasks", "status"],
+      "displayFields": [
+        {"key": "task.state", "label": "任务状态", "type": "enum:idle|running|waitingApproval|failed|completed", "sensitive": false},
+        {"key": "task.running", "label": "执行中", "type": "boolean", "sensitive": false},
+        {"key": "task.waitingApproval", "label": "等待审批", "type": "boolean", "sensitive": false},
+        {"key": "task.updatedAt", "label": "更新时间", "type": "timestamp|null", "sensitive": false}
+      ],
+      "buttons": [
+        {"label": "停止", "actionKey": "task.stop", "owner": "owner", "params": {}, "fallbackCommand": "/stop"},
+        {"label": "重开", "actionKey": "task.new", "owner": "owner", "params": {}, "fallbackCommand": "/new"},
+        {"label": "刷新", "actionKey": "tasks.refresh", "owner": "owner", "params": {}, "fallbackCommand": "/status"}
+      ],
+      "states": {
+        "loading": "正在读取任务状态…",
+        "empty": "当前没有正在执行的任务。",
+        "failed": "任务状态不可确认，已阻止控制动作。",
+        "degraded": "请在钉钉中手动发送 /status、/stop 或 /new。"
+      },
+      "fallbackCommands": ["/status", "/stop", "/new"]
+    },
+    {
+      "viewId": "artifacts",
+      "title": "产物",
+      "goal": "只给管理员看已确认交付清单的轻量元数据，并把打开动作交回本地大神会话。",
+      "sourceTruth": ["artifacts", "sessions"],
+      "displayFields": [
+        {"key": "artifact.slot", "label": "产物序号", "type": "string", "sensitive": false},
+        {"key": "artifact.displayName", "label": "名称", "type": "basename", "sensitive": false},
+        {"key": "artifact.kind", "label": "类型", "type": "string", "sensitive": false},
+        {"key": "artifact.size", "label": "大小", "type": "integer", "sensitive": false},
+        {"key": "artifact.updatedAt", "label": "更新时间", "type": "timestamp|null", "sensitive": false}
+      ],
+      "buttons": [
+        {"label": "在大神中打开", "actionKey": "artifact.openLocal", "owner": "owner", "params": {"artifactSlot": "{{artifact.slot}}", "sessionSlot": "{{session.slot}}"}, "fallbackCommand": "/status"},
+        {"label": "刷新", "actionKey": "artifacts.refresh", "owner": "owner", "params": {}, "fallbackCommand": "/status"}
+      ],
+      "states": {
+        "loading": "正在读取交付清单…",
+        "empty": "当前会话没有可展示的产物元数据。",
+        "failed": "交付清单不可确认，已隐藏产物。",
+        "degraded": "官方连接器不上传本地产物；请在大神会话中查看。"
+      },
+      "fallbackCommands": ["/status", "请在大神本地会话打开产物"]
+    }
+  ],
+  "acceptanceChecklist": [
+    "五个 viewId 均能由同一张卡片导航，不创建第二套运行状态",
+    "所有展示字段均来自 truthSources，卡片不显示完整 session id、路径、凭据和调试数据",
+    "每个 callback 均有 actionKey、owner 权限、参数和固定降级命令",
+    "sessionSlot/modelSlot/artifactSlot 回调在执行前重新从真源解析，过期或重放即拒绝",
+    "缺少官方凭据、AI Card 模板、sessionQuery、llm 或交付清单时 fail-closed 并显示降级命令",
+    "停止、重开、模型切换等动作不绕过官方审批，不自动切换大神当前窗口",
+    "真实钉钉卡片验收需覆盖加载、空、失败、降级、owner 拒绝和重复回调"
+  ]
+}

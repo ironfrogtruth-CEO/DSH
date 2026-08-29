@@ -31,6 +31,9 @@
       "header-utilities-responsive",
       "dingtalk-status-panel-read-only",
       "dingtalk-profile-safe-defaults",
+      "dingtalk-manual-order-new-session-visible",
+      "dingtalk-async-followup-replay",
+      "dingtalk-owner-control-menu",
       "context-injection-hidden-think-visible"
     ]
   },
@@ -93,6 +96,9 @@
       "dingtalk-stream-no-group-default",
       "dingtalk-ai-card-fail-soft",
       "dingtalk-read-only-status-projection",
+      "dingtalk-manual-order-new-session-promotion",
+      "dingtalk-async-parent-followup-replay",
+      "dingtalk-owner-only-session-model-artifact-controls",
       "shrimp-run-status-durable-session-rail",
       "shrimp-run-status-summary-status-polling",
       "shrimp-run-status-terminal-dismiss-persisted",

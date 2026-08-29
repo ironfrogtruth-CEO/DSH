@@ -2,13 +2,14 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
+    "@dingtalk-real-ai/dsh-dingtalk": "0.6.2",
     "@dsh-market/plugin": "^0.2.1",
     "@local/dsh-browser": "link:/Users/marcus/.dsh/extensions/dsh-browser",
     "@local/dsh-code-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-code-intelligence",
     "@local/dsh-compaction-v2": "link:/Users/marcus/.dsh/extensions/dsh-compaction-v2",
     "@local/dsh-cross-session": "link:/Users/marcus/.dsh/extensions/dsh-cross-session",
-    "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
     "@local/dsh-dingtalk-status": "link:/Users/marcus/.dsh/extensions/dsh-dingtalk-status",
+    "@local/dsh-dsbalance": "link:/Users/marcus/.dsh/extensions/dsbalance-bundle",
     "@local/dsh-evals": "link:/Users/marcus/.dsh/extensions/dsh-evals",
     "@local/dsh-frontend-qa": "link:/Users/marcus/.dsh/extensions/dsh-frontend-qa",
     "@local/dsh-git": "link:/Users/marcus/.dsh/extensions/dsh-git",
@@ -25,7 +26,6 @@
     "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media",
     "deepseek-idesign": "^0.2.2",
     "deepseek-ippt": "^0.1.2",
-    "@dingtalk-real-ai/dsh-dingtalk": "0.6.2",
     "dsh-codex-port": "github:STARDUSTLC666/dsh-codex-port"
   },
   "dsh": {
@@ -59,6 +59,11 @@
         "@local/dsh-webbridge",
         "dsh-codex-port"
       ]
+    }
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@dingtalk-real-ai/dsh-dingtalk@0.6.2": "patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch"
     }
   }
 }

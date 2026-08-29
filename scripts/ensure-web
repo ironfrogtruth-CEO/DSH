@@ -319,6 +319,7 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/profiles/web/package.json" \
   "$HOME/.dsh/profiles/web/cordis.patch.yml" \
   "$HOME/.dsh/profiles/web/pnpm-lock.yaml" \
+  "$HOME/.dsh/profiles/web/patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch" \
   "$HOME/.dsh/container.manifest.yaml" \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/index.js" \
   "$HOME/.dsh/extensions/dsh-goal-first-state-machine/machine.js" \

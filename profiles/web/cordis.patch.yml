@@ -1,68 +1,51 @@
-# 虾缸 profile 用户补丁层: 继承自 Codex/Claude 配置的"好用插件"接线
-# 1) Host 终端/PTY 服务
-# 2) MCP 客户端 — 只接免费 + 国内可用(无需翻墙) + 零配置即可用的服务器:
-#    - playwright : 本地 stdio, 免费开源, 可控制真实 Chrome(与内置浏览器工具互补)
-#    - sequential-thinking : 本地 stdio, 免费, 结构化推理辅助
-#    - wechat-mp : 公众号助手(国内, 免费; 需在微信公众平台获取 AppSecret 后填入)
-#    - tencent-docs : 腾讯文档(国内, 免费; 需在 docs.qq.com 开放平台获取个人访问令牌后填入)
-#    - zhipu : 智谱开放平台免费模型(国内直连; 识图 GLM-4.6V-Flash / 生图 CogView-3-Flash / 视频 CogVideoX-Flash,
-#      官方文档标注免费; 需在 open.bigmodel.cn 免费注册并填 ZHIPU_API_KEY 到 ~/.dsh/.credentials.yaml)
-#    均为 failOnStartupError: false: 连接失败时优雅降级,不影响启动
-#    (figma/notion 为境外服务且需 OAuth 令牌, 2026-08-15 已移除)
 - insert:
     - id: terminal
-      name: '@deepseek-ai/dsh-terminal'
-
+      name: "@deepseek-ai/dsh-terminal"
     - id: terminal-bash
-      name: '@deepseek-ai/dsh-terminal-bash'
-
+      name: "@deepseek-ai/dsh-terminal-bash"
     - id: schedule
-      name: '@deepseek-ai/dsh-schedule'
-
+      name: "@deepseek-ai/dsh-schedule"
     - id: mcp-playwright
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: "@deepseek-ai/dsh-mcp-client"
       config:
         transport: stdio
         serverName: playwright
         command: npx
         args:
-          - '@playwright/mcp@latest'
+          - "@playwright/mcp@latest"
         env: {}
         cwd: /Users/marcus/Desktop
         toolCallTimeoutMs: 120000
         failOnStartupError: false
-
     - id: mcp-sequential-thinking
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: "@deepseek-ai/dsh-mcp-client"
       config:
         transport: stdio
         serverName: sequential-thinking
         command: npx
         args:
-          - '@modelcontextprotocol/server-sequential-thinking@latest'
+          - "@modelcontextprotocol/server-sequential-thinking@latest"
         env: {}
         cwd: /Users/marcus/Desktop
         toolCallTimeoutMs: 30000
         failOnStartupError: false
-
     - id: mcp-wechat
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: "@deepseek-ai/dsh-mcp-client"
       config:
         transport: stdio
         serverName: wechat-mp
         command: npx
         args:
-          - '-y'
-          - '@xihe-lab/wechat-mp-mcp-server@latest'
+          - -y
+          - "@xihe-lab/wechat-mp-mcp-server@latest"
         env:
           WECHAT_APP_ID: wx5d8afee05a2c7a25
           WECHAT_APP_SECRET: 待填入-AppSecret
         cwd: /Users/marcus/Desktop
         toolCallTimeoutMs: 60000
         failOnStartupError: false
-
     - id: mcp-tencent-docs
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: "@deepseek-ai/dsh-mcp-client"
       config:
         transport: streamable-http
         serverName: tencent-docs
@@ -71,9 +54,8 @@
           Authorization: Bearer 待填入-腾讯文档个人访问令牌
         toolCallTimeoutMs: 60000
         failOnStartupError: false
-
     - id: mcp-zhipu
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: "@deepseek-ai/dsh-mcp-client"
       config:
         transport: stdio
         serverName: zhipu
@@ -84,14 +66,8 @@
         cwd: /Users/marcus/Desktop
         toolCallTimeoutMs: 700000
         failOnStartupError: false
-
-# First formal activation observes ordinary policy decisions without blocking
-# existing tools. The detached-background hard gate remains active in observe
-# mode so a bare process cannot escape managed job ownership. Host intelligence
-# bundles are explicit-tool only and have no client/UI half; they do not
-# auto-inject context into current sessions.
 - id: dsh-tool-policy
-  name: '@local/dsh-tool-policy'
+  name: "@local/dsh-tool-policy"
   config:
     mode: observe
     operationMode: act
@@ -99,11 +75,8 @@
     workspaceRoots:
       - /Users/marcus/Desktop
       - /Users/marcus/.dsh
-
-# Official DingTalk Stream connector.  It owns the channel/session runtime;
-# these values are safe defaults and deliberately contain no credentials.
 - id: dingtalk-channel
-  name: '@dingtalk-real-ai/dsh-dingtalk'
+  name: "@dingtalk-real-ai/dsh-dingtalk"
   config:
     workspace: /Users/marcus/Desktop
     senderAccess: owner
@@ -112,7 +85,16 @@
     tools:
       enabled: false
     debug: false
-
-# Read-only local status projection for the sidebar utility slot.
+    consoleCardTemplateId: f42ee85c-bdb9-4197-b8b7-4379e9b64878.schema
+    accounts:
+      - groupAccess: none
+        id: default
+        enabled: true
+        clientIdRef: DINGTALK_CLIENT_ID
+        clientSecretRef: DINGTALK_CLIENT_SECRET
+        senderAccess: owner
+        allowedSenders: []
+        groupAllowlist: []
+        sessionScope: chat
 - id: dsh-dingtalk-status
-  name: '@local/dsh-dingtalk-status'
+  name: "@local/dsh-dingtalk-status"

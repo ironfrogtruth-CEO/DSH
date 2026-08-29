@@ -383,8 +383,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         hostEnsureInFlight = true
         ensureService { [weak self] in
             guard let self = self else { return }
-            self.hostEnsureInFlight = false
-            self.waitForStableService()
+            self.waitForStableService { [weak self] recovered in
+                guard let self = self else { return }
+                self.hostEnsureInFlight = false
+                // A WebView reload is allowed only after two consecutive HTTP
+                // probes prove that the Host recovered.  A failed ensure must
+                // leave the current page untouched instead of reloading into a
+                // white screen.
+                guard recovered, !self.isTerminating else { return }
+                self.loadWithRetry()
+            }
         }
     }
 
@@ -418,9 +426,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
     }
 
-    func waitForStableService(attempt: Int = 0, stableChecks: Int = 0) {
+    func waitForStableService(attempt: Int = 0, stableChecks: Int = 0, completion: @escaping (Bool) -> Void) {
         guard attempt < 40, let url = URL(string: UI_URL) else {
-            loadWithRetry()
+            completion(false)
             return
         }
         var request = URLRequest(url: url)
@@ -431,9 +439,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 guard let self = self else { return }
                 if nextStable >= 2 {
-                    self.loadWithRetry()
+                    completion(true)
                 } else {
-                    self.waitForStableService(attempt: attempt + 1, stableChecks: nextStable)
+                    self.waitForStableService(attempt: attempt + 1, stableChecks: nextStable, completion: completion)
                 }
             }
         }.resume()
@@ -494,8 +502,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         loadInFlight = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            self?.loadWithRetry()
+            self?.startHostRecovery()
         }
+    }
+
+    // Successful navigation closes the in-flight gate.  Without this reset a
+    // later Host recovery or content-process restart cannot load the page.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        loadInFlight = false
+    }
+
+    // WKWebView may lose its content process while the Host is still alive.
+    // Re-enter the same guarded recovery path; it reloads once only after the
+    // Host has passed the two-probe stability gate.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        loadInFlight = false
+        startHostRecovery()
     }
 
     // ---- WKWebView 默认不实现 window.alert/confirm/prompt：不实现这些代理时

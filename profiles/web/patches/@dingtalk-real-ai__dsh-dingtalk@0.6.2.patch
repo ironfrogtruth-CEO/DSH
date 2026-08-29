@@ -1,0 +1,1721 @@
+diff --git a/lib/bridge.d.ts b/lib/bridge.d.ts
+index b20642a481a870c455d95f447ef656cbdd38fd1d..406d68f2440c85ad1096bb91cb51b7c4fd89b727 100644
+--- a/lib/bridge.d.ts
++++ b/lib/bridge.d.ts
+@@ -12,13 +12,18 @@ export interface BridgeOptions {
+     modelOverrides: JsonStore<ModelOverride>;
+     /** Per-conversation workspace override store (set via /cd). */
+     workspaceOverrides: JsonStore<string>;
++    /** Canonical host session headers used to preserve the target preset on resume. */
++    sessionQuery?: {
++        readTitleSnapshots(sessionIds: readonly string[]): Promise<readonly unknown[]>;
++    };
+     /** Deployment default model route; undefined lets the host decide. */
+     modelSelection(): {
+         provider?: string;
+         model?: string;
++        reasoningEffort?: string;
+     } | undefined;
+     /** Default agent-preset composition (tools); empty when the deployment has no roster. */
+-    compose(): Promise<{
++    compose(agentPreset?: string): Promise<{
+         agentPreset?: string;
+         setup?: (agentCtx: HostAgentContext) => Promise<void>;
+     }>;
+diff --git a/lib/bridge.js b/lib/bridge.js
+index c177704034ef311410587bf7b1012bebdc59c47b..5ed2e62afb31810ae7b672612b0a41b3b37fd146 100644
+--- a/lib/bridge.js
++++ b/lib/bridge.js
+@@ -55,14 +55,31 @@ export class Bridge {
+         // Entry-point-created agents carry no session-local model selection, so the
+         // route must be supplied here or prompt assembly fails ({{model}} unset).
+         // Likewise the preset must be composed via setup, or the agent has no tools.
+-        const agentOptions = this.opts.modelOverrides.get(conversationId) ?? this.opts.modelSelection();
++        const route = this.opts.modelOverrides.get(conversationId) ?? this.opts.modelSelection();
++        const agentOptions = route;
+         const cwd = this.opts.workspaceOverrides.get(conversationId) ?? this.opts.cwd;
+-        const composition = await this.opts.compose();
+         const bound = this.bindings.get(conversationId);
+         if (bound) {
+             const running = this.agents.get(sessionId(bound));
+             if (running)
+                 return running;
++            // A resumed session must be composed from its own durable header.
++            // Otherwise changing the host's current preset (for example to
++            // Avengers) would silently resume an older CyberMarcus session with
++            // a different tool/prompt world.
++            let targetPreset;
++            if (this.opts.sessionQuery?.readTitleSnapshots) {
++                try {
++                    const observations = await this.opts.sessionQuery.readTitleSnapshots([sessionId(bound)]);
++                    const first = Array.isArray(observations) ? observations[0] : undefined;
++                    if (first?.status === 'fulfilled')
++                        targetPreset = first.value?.session?.agentPreset;
++                }
++                catch (err) {
++                    this.opts.log(`session header lookup failed for ${bound}: ${err instanceof Error ? err.message : err}`);
++                }
++            }
++            const composition = await this.opts.compose(targetPreset);
+             try {
+                 const handle = await this.agents.resume({
+                     resumeSessionId: sessionId(bound),
+@@ -76,6 +93,7 @@ export class Bridge {
+                 this.opts.log(`resume ${bound} failed (${err instanceof Error ? err.message : err}); creating fresh`);
+             }
+         }
++        const composition = await this.opts.compose();
+         const id = sessionId(randomUUID());
+         const handle = await this.agents.create({
+             sessionId: id,
+diff --git a/lib/commands.d.ts b/lib/commands.d.ts
+index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..e611d45a88a0fb7aa380c5cea060436481d1c4ee 100644
+--- a/lib/commands.d.ts
++++ b/lib/commands.d.ts
+@@ -7,16 +7,46 @@ import type { Queue } from './queue.js';
+ export interface ModelOverride {
+     provider: string;
+     model: string;
++    reasoningEffort?: string;
+ }
++export declare function scanArtifacts(options: {
++    cwd: string;
++    createdAt?: number;
++    now?: number;
++}): Array<{
++    relativeName: string;
++    type: string;
++    size: string;
++    time: string;
++}>;
+ export interface CommandDeps {
+     agents: HostAgentRegistry;
+     outbound: Outbound;
+     bindings: Bindings;
+     modelOverrides: JsonStore<ModelOverride>;
+     queue: Queue;
++    /** Canonical host session roster and title observations; no local index. */
++    sessionQuery?: {
++        listSessions(): Promise<readonly unknown[]>;
++        readTitleSnapshots(sessionIds: readonly string[]): Promise<readonly unknown[]>;
++    };
++    /** Canonical host model catalog and exact capability validation. */
++    llm?: {
++        listProviders(): readonly unknown[];
++        listModels(provider: string): Promise<readonly unknown[]>;
++        resolveModelInfo(provider: string, model: string): Promise<any>;
++        resolveCallConfig(config: Record<string, unknown>): Promise<Record<string, unknown>>;
++    };
++    /** Management and artifact commands are fail-closed to the bound owner. */
++    isOwner(msg: InboundMessage): boolean;
++    /** Optional interactive console opener; false means caller must use Markdown. */
++    console?: {
++        open(msg: InboundMessage, scopeKey: string): Promise<boolean>;
++    };
+     defaultModel(): {
+         provider?: string;
+         model?: string;
++        reasoningEffort?: string;
+     } | undefined;
+     /** Human-readable connector security/capability lines appended to /status. */
+     connectorStatus(): string[];
+@@ -58,6 +88,20 @@ export declare class Commands {
+     /** Interactive busy cards: outTrackId → conversationId (buttons and text answers share one pending state). */
+     private busyCards;
+     constructor(deps: CommandDeps);
++    sessionRowsFor(scopeKey: string): Promise<readonly unknown[]>;
++    modelRowsFor(): Promise<readonly unknown[]>;
++    statusSnapshot(scopeKey: string): {
++        bound: string;
++        model: string;
++        queueDepth: number;
++        connector: string[];
++    };
++    useSession(scopeKey: string, target: string): Promise<{ ok: boolean; reason?: string; row?: unknown }>;
++    useModel(scopeKey: string, provider: string, model: string, effort?: string): Promise<{ ok: boolean; error?: string; route?: ModelOverride }>;
++    useEffort(scopeKey: string, effort: string): Promise<{ ok: boolean; error?: string; route?: ModelOverride }>;
++    stopSession(scopeKey: string): { ok: boolean; reason?: string };
++    resetSession(scopeKey: string): { ok: true };
++    artifactRowsFor(scopeKey: string): Promise<readonly unknown[] | undefined>;
+     markBusyNotice(conversationId: string, ctx: BusyContext): void;
+     registerBusyCard(outTrackId: string, conversationId: string): void;
+     /**
+diff --git a/lib/commands.js b/lib/commands.js
+index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5db092689 100644
+--- a/lib/commands.js
++++ b/lib/commands.js
+@@ -1,9 +1,11 @@
+ /**
+  * Slash commands — handled locally, never sent to the model:
+- * /status /new /stop /model /help, plus the queue-busy numeric choice
+- * ("2" = interrupt) captured while a busy notice is pending.
++ * /status /new /stop /model /help /menu /sessions /models /effort,
++ * plus the queue-busy numeric choice ("2" = interrupt) captured while a busy
++ * notice is pending.
+  */
+-import { existsSync, statSync } from 'node:fs';
++import { existsSync, lstatSync, readdirSync, statSync } from 'node:fs';
++import { extname, relative, resolve } from 'node:path';
+ import { sessionId } from './host.js';
+ const HELP = [
+     '**可用命令**',
+@@ -11,12 +13,289 @@ const HELP = [
+     '- `/new` 重开会话（清空上下文）',
+     '- `/stop` 停止当前正在执行的任务',
+     '- `/model` 查看当前模型',
+-    '- `/model use <provider>/<model>` 切换本会话模型（会重开会话生效）',
++    '- `/model use <provider>/<model> [effort]` 切换本会话模型和推理等级（会重开会话生效）',
+     '- `/model reset` 恢复默认模型（会重开会话生效）',
++    '- `/models` 查看可用模型和推理等级',
++    '- `/effort <level>` 设置当前模型推理等级；`/effort reset` 恢复模型默认',
++    '- `/sessions` 查看可切换的主会话',
++    '- `/session use <序号或ID前缀>` 切换当前钉钉对话绑定的主会话',
++    '- `/artifacts` 查看当前会话近期产物（仅返回相对文件名）',
++    '- `/menu` 查看移动端常用入口（使用命令，不伪造按钮）',
+     '- `/ws` 列出可用工作区',
+     '- `/cd <路径或序号>` 切换本会话工作目录（会重开会话生效）；`/cd reset` 恢复默认',
+     '- `/help` 本清单',
+ ].join('\n');
++const MENU = [
++    '**钉钉入口**',
++    '`/status` 查看连接、会话和模型',
++    '`/sessions` / `/session use <序号或ID前缀>` 切换主会话',
++    '`/artifacts` 查看当前会话近期产物',
++    '`/models` / `/model use <provider>/<model> [effort]` 选择模型',
++    '`/effort <level>` 选择推理等级',
++    '`/new` 新会话　`/stop` 停止任务　`/help` 完整帮助',
++    '',
++    '当前未配置互动卡片，以上入口使用明确命令，不伪造按钮。',
++].join('\n');
++const MAX_SESSIONS = 10;
++const MAX_MODEL_ROWS = 60;
++const MAX_ARTIFACTS = 10;
++const MAX_ARTIFACT_CANDIDATES = 5000;
++const MAX_ARTIFACT_DEPTH = 8;
++const ARTIFACT_CUTOFF_MS = 60_000;
++const HIDDEN_SEGMENT = /^\./;
++// Sensitive names are rejected by segment, not merely by extension: output
++// must never become a side channel for credentials, sessions, logs or tokens.
++const SENSITIVE_SEGMENT = /^(?:credentials?|secrets?|sessions?|logs?|db|keys?|tokens?|env|passwords?|passwds?|api[-_]?keys?|access[-_]?tokens?)(?:[._-].*)?$/i;
++const OWNER_COMMANDS = new Set(['/model', '/models', '/effort', '/sessions', '/session', '/artifacts']);
++
++function cleanInline(value, max = 160) {
++    return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
++}
++
++function titleFromObservation(value) {
++    const title = value?.title;
++    if (typeof title === 'string') return cleanInline(title);
++    if (title && typeof title.title === 'string') return cleanInline(title.title);
++    return '';
++}
++
++function settledValue(result) {
++    return result?.status === 'fulfilled' ? result.value : undefined;
++}
++
++function currentWorkspace(deps, key) {
++    return deps.workspaceOverrides?.get(key) ?? deps.defaultWorkspace ?? '';
++}
++
++function sameWorkspace(header, workspace) {
++    return !workspace || (typeof header?.cwd === 'string' && header.cwd === workspace);
++}
++
++/**
++ * Read the host's canonical session roster. There is intentionally no local
++ * session index: listSessions and readTitleSnapshots are the only truth.
++ */
++async function sessionRows(deps, key) {
++    const query = deps.sessionQuery;
++    if (!query || typeof query.listSessions !== 'function' || typeof query.readTitleSnapshots !== 'function') return [];
++    const records = await query.listSessions();
++    const candidates = (Array.isArray(records) ? records : []).filter((record) => {
++        const header = record?.header;
++        return typeof header?.id === 'string' && header.id.trim() && header.origin !== 'subagent';
++    });
++    if (!candidates.length) return [];
++    const observations = await query.readTitleSnapshots(candidates.map((record) => sessionId(record.header.id)));
++    const byId = new Map();
++    for (const observation of Array.isArray(observations) ? observations : []) {
++        const value = settledValue(observation);
++        if (value?.session?.id) byId.set(String(value.session.id), value);
++    }
++    const workspace = currentWorkspace(deps, key);
++    return candidates
++        .map((record) => {
++        const header = record.header;
++        const observed = byId.get(String(header.id));
++        const title = titleFromObservation(observed);
++        if (!title) return null;
++        return {
++            id: String(header.id),
++            title,
++            cwd: typeof observed?.session?.cwd === 'string' ? observed.session.cwd : header.cwd,
++            createdAt: Number(header.createdAt) || 0,
++            agentPreset: typeof header.agentPreset === 'string' ? header.agentPreset : '',
++            live: record.live === true,
++            persisted: record.persisted === true,
++            sameWorkspace: sameWorkspace(header, workspace),
++        };
++    })
++        .filter(Boolean)
++        .sort((left, right) => Number(right.sameWorkspace) - Number(left.sameWorkspace)
++        || right.createdAt - left.createdAt
++        || left.id.localeCompare(right.id))
++        .slice(0, MAX_SESSIONS);
++}
++
++/** Resolve only the bound, non-subagent session's canonical header. */
++async function boundSessionHeader(deps, key) {
++    const bound = deps.bindings.get(key);
++    const query = deps.sessionQuery;
++    if (!bound || !query || typeof query.listSessions !== 'function') return undefined;
++    const records = await query.listSessions();
++    const record = (Array.isArray(records) ? records : []).find((item) => String(item?.header?.id ?? '') === String(bound));
++    if (!record?.header || record.header.origin === 'subagent') return undefined;
++    return record.header;
++}
++
++function safeArtifactSegment(name) {
++    return typeof name === 'string'
++        && name.length > 0
++        && !HIDDEN_SEGMENT.test(name)
++        && !SENSITIVE_SEGMENT.test(name);
++}
++
++function artifactType(name) {
++    const extension = extname(name).slice(1).toUpperCase();
++    return extension ? extension.slice(0, 12) : '文件';
++}
++
++function formatBytes(bytes) {
++    const size = Number(bytes);
++    if (!Number.isFinite(size) || size < 0) return '未知大小';
++    if (size < 1024) return `${size} B`;
++    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
++    if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
++    return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
++}
++
++/**
++ * Return metadata only.  It intentionally uses lstat at every level and
++ * refuses an output symlink instead of falling back to a broader scan.
++ */
++export function scanArtifacts({ cwd, createdAt, now = Date.now() }) {
++    if (typeof cwd !== 'string' || !cwd.trim()) return [];
++    const base = resolve(cwd);
++    let baseStat;
++    try {
++        baseStat = lstatSync(base);
++    }
++    catch {
++        return [];
++    }
++    if (!baseStat.isDirectory() || baseStat.isSymbolicLink()) return [];
++    let root = base;
++    const output = resolve(base, 'output');
++    try {
++        const outputStat = lstatSync(output);
++        if (outputStat.isSymbolicLink()) return [];
++        if (outputStat.isDirectory()) root = output;
++    }
++    catch {
++        // No output directory: scan the canonical cwd as the documented fallback.
++    }
++    const cutoff = (Number.isFinite(Number(createdAt)) ? Number(createdAt) : Number(now)) - ARTIFACT_CUTOFF_MS;
++    const found = [];
++    let candidates = 0;
++    const visit = (directory, depth) => {
++        if (depth > MAX_ARTIFACT_DEPTH || candidates >= MAX_ARTIFACT_CANDIDATES) return;
++        let entries;
++        try {
++            entries = readdirSync(directory, { withFileTypes: true });
++        }
++        catch {
++            return;
++        }
++        for (const entry of entries) {
++            if (candidates >= MAX_ARTIFACT_CANDIDATES) return;
++            if (!safeArtifactSegment(entry.name)) continue;
++            candidates += 1;
++            const full = resolve(directory, entry.name);
++            let stat;
++            try {
++                stat = lstatSync(full);
++            }
++            catch {
++                continue;
++            }
++            if (stat.isSymbolicLink()) continue;
++            if (stat.isDirectory()) {
++                visit(full, depth + 1);
++                continue;
++            }
++            if (!stat.isFile() || stat.mtimeMs < cutoff) continue;
++            const relativeName = relative(base, full);
++            if (!relativeName || relativeName.startsWith('..') || relativeName.split(/[\\/]/).some((part) => !safeArtifactSegment(part))) continue;
++            found.push({
++                relativeName,
++                type: artifactType(entry.name),
++                size: formatBytes(stat.size),
++                time: new Date(stat.mtimeMs).toISOString(),
++                mtimeMs: stat.mtimeMs,
++            });
++        }
++    };
++    visit(root, 0);
++    return found
++        .sort((left, right) => right.mtimeMs - left.mtimeMs || left.relativeName.localeCompare(right.relativeName))
++        .slice(0, MAX_ARTIFACTS);
++}
++
++function effortIds(info) {
++    return Array.isArray(info?.reasoning?.efforts)
++        ? info.reasoning.efforts.map((effort) => String(effort?.id ?? '')).filter(Boolean)
++        : [];
++}
++
++async function validateModel(deps, provider, model, effort) {
++    const llm = deps.llm;
++    if (!llm || typeof llm.resolveModelInfo !== 'function' || typeof llm.resolveCallConfig !== 'function') {
++        return { ok: false, error: '模型服务尚未装配，未执行切换。' };
++    }
++    if (!provider || !model) return { ok: false, error: 'provider 和 model 不能为空。' };
++    try {
++        const info = await llm.resolveModelInfo(provider, model);
++        const supported = effortIds(info);
++        if (effort !== undefined && !supported.includes(effort)) {
++            const available = supported.length ? supported.map((id) => `\`${cleanInline(id)}\``).join('、') : '该模型未声明推理等级';
++            return { ok: false, error: `推理等级 \`${cleanInline(effort)}\` 不受 \`${cleanInline(provider)}/${cleanInline(model)}\` 支持。可用：${available}` };
++        }
++        const config = { provider, model, ...(effort === undefined ? {} : { reasoningEffort: effort }) };
++        const resolved = await llm.resolveCallConfig(config);
++        return { ok: true, info, config: resolved };
++    }
++    catch (error) {
++        return { ok: false, error: `模型校验失败：${cleanInline(error?.message || error)}` };
++    }
++}
++
++function modelRoute(override, fallback) {
++    return override ?? fallback ?? {};
++}
++
++function modelLabel(route) {
++    const base = `${cleanInline(route?.provider || '?')}/${cleanInline(route?.model || '?')}`;
++    return route?.reasoningEffort ? `${base}（推理：${cleanInline(route.reasoningEffort)}）` : base;
++}
++
++async function modelRows(deps) {
++    const llm = deps.llm;
++    if (!llm || typeof llm.listProviders !== 'function' || typeof llm.listModels !== 'function') return [];
++    const providers = llm.listProviders();
++    const rows = [];
++    for (const provider of Array.isArray(providers) ? providers : []) {
++        const providerId = typeof provider === 'string' ? provider : provider?.id;
++        if (!providerId) continue;
++        let models;
++        try {
++            models = await llm.listModels(providerId);
++        }
++        catch {
++            continue;
++        }
++        for (const model of Array.isArray(models) ? models : []) {
++            const modelId = typeof model === 'string' ? model : model?.id;
++            if (!modelId) continue;
++            let info = model;
++            if (typeof llm.resolveModelInfo === 'function') {
++                try {
++                    info = await llm.resolveModelInfo(providerId, modelId);
++                }
++                catch {
++                    // A catalog entry can be visible while its adapter is not
++                    // currently able to resolve capabilities; keep the route.
++                }
++            }
++            rows.push({
++                provider: String(providerId),
++                providerName: cleanInline(typeof provider === 'string' ? provider : provider?.name || providerId),
++                model: String(modelId),
++                name: cleanInline(info?.name || model?.name || modelId),
++                efforts: effortIds(info),
++            });
++            if (rows.length >= MAX_MODEL_ROWS) return rows;
++        }
++    }
++    return rows;
++}
+ /** Commands that must win over a pending human-interaction answer. */
+ export function isSessionControl(text) {
+     const command = text.trim().split(/\s+/, 1)[0];
+@@ -37,6 +316,108 @@ export class Commands {
+     registerBusyCard(outTrackId, conversationId) {
+         this.busyCards.set(outTrackId, conversationId);
+     }
++    /** Read-only canonical roster for the interactive console. */
++    sessionRowsFor(scopeKey) {
++        return sessionRows(this.deps, scopeKey);
++    }
++    /** Read-only canonical model catalog for the interactive console. */
++    modelRowsFor() {
++        return modelRows(this.deps);
++    }
++    /** Current bound route and connector state, with no secret-bearing fields. */
++    statusSnapshot(scopeKey) {
++        const bound = this.deps.bindings.get(scopeKey);
++        const override = this.deps.modelOverrides.get(scopeKey);
++        const model = override ?? this.deps.defaultModel();
++        return {
++            bound: bound ? `${bound.slice(0, 8)}…` : '',
++            model: modelLabel(model),
++            queueDepth: this.deps.queue.depth(scopeKey),
++            connector: this.deps.connectorStatus(),
++        };
++    }
++    /** Apply a unique session selection without emitting a second Markdown bubble. */
++    async useSession(scopeKey, target) {
++        const rows = await sessionRows(this.deps, scopeKey);
++        const value = String(target ?? '').trim();
++        const matches = /^\d+$/.test(value)
++            ? (rows[Number(value) - 1] ? [rows[Number(value) - 1]] : [])
++            : rows.filter((row) => row.id.startsWith(value));
++        if (matches.length !== 1)
++            return { ok: false, reason: matches.length > 1 ? 'ambiguous' : 'not-found' };
++        const picked = matches[0];
++        this.deps.bindings.set(scopeKey, picked.id);
++        return { ok: true, row: picked };
++    }
++    /** Validate and apply an exact model route, then force a fresh bound session. */
++    async useModel(scopeKey, provider, model, effort) {
++        const checked = await validateModel(this.deps, provider, model, effort);
++        if (!checked.ok)
++            return { ok: false, error: checked.error };
++        const override = { provider, model, ...(effort === undefined ? {} : { reasoningEffort: effort }) };
++        this.deps.modelOverrides.set(scopeKey, override);
++        this.deps.bindings.delete(scopeKey);
++        return { ok: true, route: override };
++    }
++    /** Validate and apply an effort for the current route, then force a fresh session. */
++    async useEffort(scopeKey, effort) {
++        const existing = this.deps.modelOverrides.get(scopeKey);
++        const route = modelRoute(existing, this.deps.defaultModel());
++        if (!route?.provider || !route?.model)
++            return { ok: false, error: '当前没有可识别的模型路由，未执行切换。' };
++        if (effort === 'reset') {
++            if (!existing)
++                return { ok: false, error: '当前会话跟随默认模型，未设置推理等级覆盖。' };
++            const checked = await validateModel(this.deps, route.provider, route.model);
++            if (!checked.ok)
++                return { ok: false, error: checked.error };
++            const next = { provider: route.provider, model: route.model };
++            this.deps.modelOverrides.set(scopeKey, next);
++            this.deps.bindings.delete(scopeKey);
++            return { ok: true, route: next };
++        }
++        const checked = await validateModel(this.deps, route.provider, route.model, effort);
++        if (!checked.ok)
++            return { ok: false, error: checked.error };
++        const next = { provider: route.provider, model: route.model, reasoningEffort: effort };
++        this.deps.modelOverrides.set(scopeKey, next);
++        this.deps.bindings.delete(scopeKey);
++        return { ok: true, route: next };
++    }
++    /** Stop the currently bound live agent without producing a duplicate reply. */
++    stopSession(scopeKey) {
++        const bound = this.deps.bindings.get(scopeKey);
++        const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
++        if (!agent || agent.status !== 'running')
++            return { ok: false, reason: 'idle' };
++        try {
++            agent.cancel({ kind: 'user' });
++            return { ok: true };
++        }
++        catch (error) {
++            return { ok: false, reason: cleanInline(error?.message || error) };
++        }
++    }
++    /** Reset only this DingTalk conversation's queue and binding. */
++    resetSession(scopeKey) {
++        const bound = this.deps.bindings.get(scopeKey);
++        const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
++        if (agent?.status === 'running') {
++            try { agent.cancel({ kind: 'user' }); }
++            catch { /* reset still clears this channel's route */ }
++        }
++        this.pendingBusyChoice.delete(scopeKey);
++        this.deps.queue.clear(scopeKey);
++        this.deps.bindings.delete(scopeKey);
++        return { ok: true };
++    }
++    /** Metadata-only artifacts for the current bound canonical session. */
++    async artifactRowsFor(scopeKey) {
++        const header = await boundSessionHeader(this.deps, scopeKey);
++        if (!header || typeof header.cwd !== 'string' || !header.cwd)
++            return undefined;
++        return scanArtifacts({ cwd: header.cwd, createdAt: header.createdAt });
++    }
+     /**
+      * Consume a busy-card button press: approve = interrupt, reject = steer.
+      * Only the queued message's own sender may decide.
+@@ -122,10 +503,25 @@ export class Commands {
+         if (!text.startsWith('/'))
+             return false;
+         const [cmd, sub, ...rest] = text.split(/\s+/);
++        if (OWNER_COMMANDS.has(cmd) && (!this.deps.isOwner || !this.deps.isOwner(msg))) {
++            await reply('当前入口仅管理员可用。');
++            return true;
++        }
+         switch (cmd) {
+             case '/help':
+                 await reply(HELP);
+                 return true;
++            case '/menu':
++                if (this.deps.console?.open) {
++                    try {
++                        if (await this.deps.console.open(msg, key)) return true;
++                    }
++                    catch (error) {
++                        this.deps.log(`console card unavailable, falling back to Markdown: ${error instanceof Error ? error.message : error}`);
++                    }
++                }
++                await reply(MENU);
++                return true;
+             case '/status': {
+                 const bound = this.deps.bindings.get(key);
+                 const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
+@@ -135,7 +531,7 @@ export class Commands {
+                 await reply([
+                     '**状态**',
+                     `- 会话：${bound ? `\`${bound.slice(0, 8)}…\`${agent ? `（${agent.status === 'running' ? '执行中' : '空闲'}）` : '（未加载，下条消息恢复）'}` : '尚未建立'}`,
+-                    `- 模型：${model?.provider ?? '?'}/${model?.model ?? '?'}${override ? '（本会话覆盖）' : '（默认）'}`,
++                    `- 模型：${modelLabel(model)}${override ? '（本会话覆盖）' : '（默认）'}`,
+                     `- 排队：${this.deps.queue.depth(key)} 条在途`,
+                     ...(this.deps.defaultWorkspace
+                         ? [`- 工作区：${ws ?? this.deps.defaultWorkspace}${ws ? '（本会话覆盖）' : '（默认）'}`]
+@@ -171,7 +567,7 @@ export class Commands {
+                 if (!sub) {
+                     const override = this.deps.modelOverrides.get(key);
+                     const model = override ?? this.deps.defaultModel();
+-                    await reply(`当前模型：\`${model?.provider ?? '?'}/${model?.model ?? '?'}\`${override ? '（本会话覆盖）' : '（跟随默认）'}\n切换：\`/model use <provider>/<model>\`（可用清单见 dsh web 设置 → 模型）`);
++                    await reply(`当前模型：\`${modelLabel(model)}\`${override ? '（本会话覆盖）' : '（跟随默认）'}\n切换：\`/model use <provider>/<model> [effort]\`；先用 \`/models\` 查看可用清单。`);
+                     return true;
+                 }
+                 if (sub === 'reset') {
+@@ -181,21 +577,159 @@ export class Commands {
+                     return true;
+                 }
+                 if (sub === 'use') {
+-                    const spec = rest.join(' ').trim();
++                    const tokens = rest.join(' ').trim().split(/\s+/).filter(Boolean);
++                    const spec = tokens[0] || '';
++                    const effort = tokens[1];
+                     const slash = spec.indexOf('/');
+-                    if (slash <= 0 || slash === spec.length - 1) {
+-                        await reply('用法：`/model use <provider>/<model>`，例如 `/model use qoder-sdk/gm51model`');
++                    if (tokens.length > 2 || slash <= 0 || slash === spec.length - 1) {
++                        await reply('用法：`/model use <provider>/<model> [effort]`，例如 `/model use qoder-sdk/gm51model medium`');
++                        return true;
++                    }
++                    const provider = spec.slice(0, slash);
++                    const model = spec.slice(slash + 1);
++                    const checked = await validateModel(this.deps, provider, model, effort);
++                    if (!checked.ok) {
++                        await reply(`⚠️ ${checked.error}`);
+                         return true;
+                     }
+-                    const override = { provider: spec.slice(0, slash), model: spec.slice(slash + 1) };
++                    const override = { provider, model, ...(effort === undefined ? {} : { reasoningEffort: effort }) };
+                     this.deps.modelOverrides.set(key, override);
+                     this.deps.bindings.delete(key);
+-                    await reply(`✅ 本会话模型已切换为 \`${override.provider}/${override.model}\`，会话已重开（新上下文生效）。`);
++                    await reply(`✅ 本会话模型已切换为 \`${modelLabel(override)}\`，会话已重开（新上下文生效）。`);
+                     return true;
+                 }
+                 await reply(HELP);
+                 return true;
+             }
++            case '/models': {
++                const rows = await modelRows(this.deps);
++                if (!rows.length) {
++                    await reply('模型目录当前不可用，未执行任何切换。');
++                    return true;
++                }
++                const lines = rows.map((row, index) => `${index + 1}. \`${cleanInline(row.provider)}/${cleanInline(row.model)}\`${row.name && row.name !== row.model ? `（${row.name}）` : ''}${row.efforts.length ? `\n   推理等级：${row.efforts.map((effort) => `\`${cleanInline(effort)}\``).join('、')}` : ''}`);
++                await reply(['**可用模型**', ...lines, '', '切换：`/model use <provider>/<model> [effort]`；推理等级也可用 `/effort <level>` 设置。', rows.length >= MAX_MODEL_ROWS ? `（仅显示前 ${MAX_MODEL_ROWS} 项）` : ''].filter(Boolean).join('\n'));
++                return true;
++            }
++            case '/effort': {
++                const override = this.deps.modelOverrides.get(key);
++                const route = modelRoute(override, this.deps.defaultModel());
++                if (!route?.provider || !route?.model) {
++                    await reply('当前没有可识别的模型路由，未执行切换。');
++                    return true;
++                }
++                if (!sub) {
++                    const checked = await validateModel(this.deps, route.provider, route.model);
++                    if (!checked.ok) {
++                        await reply(`⚠️ ${checked.error}`);
++                        return true;
++                    }
++                    const supported = effortIds(checked.info);
++                    await reply(`当前模型：\`${modelLabel(route)}\`\n可用推理等级：${supported.length ? supported.map((effort) => `\`${cleanInline(effort)}\``).join('、') : '该模型未声明推理等级'}\n设置：\`/effort <level>\`；恢复默认：\`/effort reset\``);
++                    return true;
++                }
++                if (sub === 'reset') {
++                    if (!override) {
++                        await reply('当前会话跟随默认模型，未设置推理等级覆盖。');
++                        return true;
++                    }
++                    const checked = await validateModel(this.deps, override.provider, override.model);
++                    if (!checked.ok) {
++                        await reply(`⚠️ ${checked.error}`);
++                        return true;
++                    }
++                    this.deps.modelOverrides.set(key, { provider: override.provider, model: override.model });
++                    this.deps.bindings.delete(key);
++                    await reply(`✅ 已恢复 \`${cleanInline(override.provider)}/${cleanInline(override.model)}\` 的默认推理等级，会话已重开。`);
++                    return true;
++                }
++                const checked = await validateModel(this.deps, route.provider, route.model, sub);
++                if (!checked.ok) {
++                    await reply(`⚠️ ${checked.error}`);
++                    return true;
++                }
++                this.deps.modelOverrides.set(key, { provider: route.provider, model: route.model, reasoningEffort: sub });
++                this.deps.bindings.delete(key);
++                await reply(`✅ 推理等级已设为 \`${cleanInline(sub)}\`，模型为 \`${cleanInline(route.provider)}/${cleanInline(route.model)}\`，会话已重开。`);
++                return true;
++            }
++            case '/sessions': {
++                let rows;
++                try {
++                    rows = await sessionRows(this.deps, key);
++                }
++                catch (error) {
++                    this.deps.log(`session roster failed: ${error instanceof Error ? error.message : error}`);
++                    await reply('会话目录读取失败，未执行切换。');
++                    return true;
++                }
++                if (!rows.length) {
++                    await reply('没有可切换的主会话（子代理和无标题会话已过滤）。');
++                    return true;
++                }
++                const bound = this.deps.bindings.get(key);
++                const lines = rows.map((row, index) => `${index + 1}. ${cleanInline(row.title)} \`${row.id.slice(0, 8)}…\`${row.id === bound ? '（当前）' : ''}${row.sameWorkspace ? '（当前工作区优先）' : ''}`);
++                await reply(['**可切换主会话**', ...lines, '', '切换：`/session use <序号或ID前缀>`', '仅改变当前钉钉对话的会话绑定。'].join('\n'));
++                return true;
++            }
++            case '/session': {
++                if (sub !== 'use') {
++                    await reply('用法：`/session use <序号或ID前缀>`（先 `/sessions` 查看清单）');
++                    return true;
++                }
++                const target = rest.join(' ').trim();
++                if (!target) {
++                    await reply('用法：`/session use <序号或ID前缀>`（先 `/sessions` 查看清单）');
++                    return true;
++                }
++                let rows;
++                try {
++                    rows = await sessionRows(this.deps, key);
++                }
++                catch (error) {
++                    this.deps.log(`session roster failed: ${error instanceof Error ? error.message : error}`);
++                    await reply('会话目录读取失败，未执行切换。');
++                    return true;
++                }
++                const matches = /^\d+$/.test(target)
++                    ? (rows[Number(target) - 1] ? [rows[Number(target) - 1]] : [])
++                    : rows.filter((row) => row.id.startsWith(target));
++                if (matches.length !== 1) {
++                    await reply(matches.length > 1
++                        ? `ID 前缀 \`${cleanInline(target)}\` 匹配多个会话，请使用更长前缀。`
++                        : `没有唯一匹配的会话 \`${cleanInline(target)}\`，请先发送 \`/sessions\`。`);
++                    return true;
++                }
++                const picked = matches[0];
++                this.deps.bindings.set(key, picked.id);
++                await reply(`✅ 当前钉钉对话已切换到「${cleanInline(picked.title)}」\n会话：\`${picked.id.slice(0, 8)}…\`\n下条消息将按该会话原有 preset 恢复；其他钉钉对话不受影响。`);
++                return true;
++            }
++            case '/artifacts': {
++                let header;
++                try {
++                    header = await boundSessionHeader(this.deps, key);
++                }
++                catch (error) {
++                    this.deps.log(`artifact session lookup failed: ${error instanceof Error ? error.message : error}`);
++                }
++                if (!header || typeof header.cwd !== 'string' || !header.cwd) {
++                    await reply('当前钉钉对话尚未绑定可读取产物的主会话；未知、未绑定或子代理会话不会扫描。');
++                    return true;
++                }
++                const artifacts = scanArtifacts({ cwd: header.cwd, createdAt: header.createdAt });
++                if (!artifacts.length) {
++                    await reply('当前会话暂无近期产物（仅扫描 cwd/output 或 cwd，隐藏路径、敏感名和符号链接已跳过）。');
++                    return true;
++                }
++                await reply([
++                    '**当前会话近期产物**',
++                    ...artifacts.map((artifact) => `- \`${cleanInline(artifact.relativeName, 240)}\` · ${cleanInline(artifact.type)} · ${artifact.size} · ${artifact.time}`),
++                    '',
++                    '仅展示相对 cwd 的文件名、类型、大小和时间；钉钉端不读取内容、不上传，也不提供直接下载。',
++                ].join('\n'));
++                return true;
++            }
+             case '/ws': {
+                 if (!this.deps.listWorkspaces || !this.deps.workspaceOverrides) {
+                     await reply('工作区模块未装配。');
+diff --git a/lib/config.d.ts b/lib/config.d.ts
+index db2d69918ef076488d316794a27b6b1ca8947c1f..7033d68d31a768cfa521b92b327de7aa61667f8f 100644
+--- a/lib/config.d.ts
++++ b/lib/config.d.ts
+@@ -23,6 +23,7 @@ export interface Config {
+     workspace: string;
+     markdownTitle: string;
+     interactionCardTemplateId: string;
++    consoleCardTemplateId: string;
+     ownerStaffId: string;
+     senderAccess: SenderAccess;
+     allowedSenders: string[];
+diff --git a/lib/config.js b/lib/config.js
+index 3dc84c2a5fdd1475e9be02e74328069488254dff..094a3c4351072408829ad0f64ada523258ac4071 100644
+--- a/lib/config.js
++++ b/lib/config.js
+@@ -29,6 +29,9 @@ export const Config = Schema.object({
+     interactionCardTemplateId: Schema.string()
+         .default('')
+         .description('可选的审批/Plan Review 互动卡片模板 ID；留空时管理员私聊使用一次性文字确认码，群聊审批拒绝'),
++    consoleCardTemplateId: Schema.string()
++        .default('')
++        .description('可选的大神控制台互动卡片模板 ID；独立于审批模板，留空时 /menu 使用命令 Markdown'),
+     ownerStaffId: Schema.string()
+         .default('')
+         .description('唯一管理员 staffId；留空时需通过本机 setup 生成的一次性口令在私聊绑定'),
+diff --git a/lib/console.d.ts b/lib/console.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..44eafd6a697b6b32100322adf137b9f8b3f3bc2e
+--- /dev/null
++++ b/lib/console.d.ts
+@@ -0,0 +1,20 @@
++import type { InboundCardCallback, InboundMessage } from './stream.js';
++export declare const CONSOLE_CARD_TTL_MS: number;
++export interface ConsoleCardsOptions {
++    interactionCards?: {
++        create(request: Record<string, unknown>): Promise<boolean>;
++    };
++    commands: any;
++    outbound: {
++        sendMarkdown(webhook: string, title: string, text: string): Promise<boolean>;
++    };
++    markdownTitle: string;
++    isOwner?(msg: { senderStaffId: string; conversationId: string; conversationType: string }): boolean;
++    isOwnerId?(userId: string): boolean;
++    log(line: string): void;
++}
++export declare class ConsoleCards {
++    constructor(deps: ConsoleCardsOptions);
++    open(msg: InboundMessage, scopeKey: string): Promise<boolean>;
++    handleCardCallback(callback: InboundCardCallback): Promise<{ handled: boolean; response: Record<string, unknown> }>;
++}
+diff --git a/lib/console.js b/lib/console.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3af5d79f8c
+--- /dev/null
++++ b/lib/console.js
+@@ -0,0 +1,416 @@
++/**
++ * Owner-only DingTalk control card.
++ *
++ * The profile's published template is the official dynamic-form contract:
++ * public `title`, private `form_fields`, `form_status`, `button_text` and
++ * `err_msg`.  Only TEXT and SELECT fields are rendered; CHECKBOX fields are
++ * intentionally absent because the published template warns about them.
++ * Business state remains in Commands (ctx.sessionQuery, ctx.llm and Bindings).
++ */
++import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
++import { cardTarget } from './targets.js';
++
++export const CONSOLE_CARD_TTL_MS = 2 * 60 * 60 * 1000;
++const MAX_CARDS = 100;
++const MAX_FIELDS = 8;
++const MAX_OPTIONS = 10;
++const MAX_PARAMS = 32;
++const SELECT_NAMES = new Set(['view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
++const SUBMIT_ACTIONS = new Set(['', 'submit', 'console_submit', 'button', 'apply']);
++const SELECT_ACTIONS = new Set(['', 'select', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
++const VIEWS = ['首页', '会话', '模型', '推理等级', '产物'];
++const ACTIONS = ['不执行动作', '停止当前任务', '新会话', '查看产物'];
++const ACTION_VALUES = ['none', 'stop', 'new', 'artifacts'];
++
++function text(value, max = 240) {
++    return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
++}
++
++function detailText(value, max = 8_000) {
++    return String(value ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/[ \t]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
++}
++
++function paramsObject(value) {
++    return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
++}
++
++function stableValue(value, depth = 0) {
++    if (depth > 5) return '[depth]';
++    if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
++    if (Array.isArray(value)) return value.slice(0, 40).map((item) => stableValue(item, depth + 1));
++    if (value && typeof value === 'object') {
++        const output = {};
++        for (const key of Object.keys(value).sort().slice(0, MAX_PARAMS)) output[key] = stableValue(value[key], depth + 1);
++        return output;
++    }
++    return String(value);
++}
++
++function fingerprint(params, actionId) {
++    return `${actionId}\u0000${JSON.stringify(stableValue(paramsObject(params) ?? {}))}`;
++}
++
++function validParams(params, allowed) {
++    if (!params || typeof params !== 'object' || Array.isArray(params)) return false;
++    const keys = Object.keys(params);
++    if (keys.length > MAX_PARAMS) return false;
++    for (const key of keys) {
++        if (!allowed.has(key)) return false;
++        const value = params[key];
++        if (typeof value === 'string' && value.length <= 2_000) continue;
++        if (typeof value === 'number' && Number.isSafeInteger(value)) continue;
++        if (typeof value === 'boolean') continue;
++        if (value && typeof value === 'object' && !Array.isArray(value)) continue;
++        if (Array.isArray(value) && key === 'submit_form_fields' && value.length <= MAX_FIELDS) continue;
++        return false;
++    }
++    return true;
++}
++
++function versionOf(params) {
++    const value = paramsObject(params)?.version;
++    if (typeof value === 'number' && Number.isSafeInteger(value)) return value;
++    if (typeof value === 'string' && /^\d{1,9}$/.test(value)) return Number(value);
++    return undefined;
++}
++
++function selectIndex(value) {
++    const object = paramsObject(value);
++    return object && Number.isSafeInteger(object.index) ? object.index : undefined;
++}
++
++function textField(name, label, value) {
++    return { type: 'TEXT', name, label: text(label, 80), default_string: text(value, 1_200) };
++}
++
++function selectField(name, label, options, selected, prefix, version) {
++    const bounded = options.slice(0, MAX_OPTIONS).map((item, index) => ({
++        value: `v${version}:${prefix}${index + 1}`,
++        text: { zh_CN: text(item, 120) },
++    }));
++    return {
++        type: 'SELECT',
++        name,
++        label: text(label, 80),
++        placeholder: bounded.length ? `请选择${text(label, 40)}` : '暂无可选项',
++        ...(bounded.length && Number.isSafeInteger(selected) && selected >= 0 && selected < bounded.length ? { default_number: selected } : {}),
++        options: bounded,
++    };
++}
++
++function outputPayload(fields, status, errorText) {
++    return {
++        title: '大神控制台',
++        form_fields: JSON.stringify(fields.slice(0, MAX_FIELDS)),
++        form_status: status,
++        button_text: status === 'disabled' ? '已应用' : '应用设置 / 执行动作',
++        err_msg: text(errorText, 600),
++    };
++}
++
++function visibleFieldNames(viewIndex) {
++    if (viewIndex === 1) return new Set(['status', 'notice', 'view', 'sessionSlot']);
++    if (viewIndex === 2) return new Set(['status', 'notice', 'view', 'modelSlot']);
++    if (viewIndex === 3) return new Set(['status', 'notice', 'view', 'effortSlot']);
++    if (viewIndex === 4) return new Set(['status', 'notice', 'view', 'artifacts']);
++    return new Set(['status', 'notice', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
++}
++
++export class ConsoleCards {
++    deps;
++    secret = randomBytes(32);
++    cards = new Map();
++    constructor(deps) {
++        this.deps = deps;
++    }
++    signedOutTrackId(userId, conversationId) {
++        const nonce = randomBytes(8).toString('hex');
++        const message = `${nonce}\u0000${userId}\u0000${conversationId}`;
++        const signature = createHmac('sha256', this.secret).update(message).digest('hex').slice(0, 24);
++        return `dshc1_${nonce}_${signature}`;
++    }
++    verifyOutTrackId(outTrackId, record) {
++        const match = /^dshc1_([0-9a-f]{16})_([0-9a-f]{24})$/.exec(outTrackId);
++        if (!match) return false;
++        const message = `${match[1]}\u0000${record.userId}\u0000${record.conversationId}`;
++        const expected = createHmac('sha256', this.secret).update(message).digest('hex').slice(0, 24);
++        return timingSafeEqual(Buffer.from(match[2]), Buffer.from(expected));
++    }
++    clear(outTrackId) {
++        const record = this.cards.get(outTrackId);
++        if (record) clearTimeout(record.expiryTimer);
++        this.cards.delete(outTrackId);
++    }
++    prune() {
++        const now = Date.now();
++        for (const [id, record] of this.cards) if (record.expiresAt <= now) this.clear(id);
++        while (this.cards.size >= MAX_CARDS) this.clear(this.cards.keys().next().value);
++    }
++    async formState(record) {
++        const commands = this.deps.commands;
++        const status = commands.statusSnapshot(record.scopeKey);
++        const sessions = (await commands.sessionRowsFor(record.scopeKey)).slice(0, MAX_OPTIONS);
++        const models = (await commands.modelRowsFor()).slice(0, MAX_OPTIONS);
++        const model = Number.isSafeInteger(record.selections.modelSlot) ? models[record.selections.modelSlot] : undefined;
++        const route = commands.deps?.modelOverrides?.get?.(record.scopeKey) ?? commands.deps?.defaultModel?.();
++        const efforts = model?.efforts?.length
++            ? model.efforts.map((item) => text(item))
++            : route?.provider && route?.model
++                ? (await commands.deps.llm?.resolveModelInfo?.(route.provider, route.model))?.reasoning?.efforts?.map((item) => text(item?.id)).filter(Boolean) ?? []
++                : [];
++        let artifacts = [];
++        try {
++            artifacts = (await commands.artifactRowsFor(record.scopeKey))?.slice(0, MAX_OPTIONS) ?? [];
++        }
++        catch {
++            artifacts = [];
++        }
++        const statusText = [
++            `会话：${text(status.bound || '尚未建立')}`,
++            `模型：${text(status.model)}`,
++            `排队：${status.queueDepth} 条在途`,
++            ...status.connector.map((line) => text(line)),
++        ].join('\n');
++        const artifactText = artifacts.length
++            ? artifacts.map((item) => `${text(item.relativeName, 180)} · ${text(item.type)} · ${text(item.size)} · ${text(item.time)}`).join('\n')
++            : '暂无近期产物';
++        const allFields = [
++            textField('status', '当前状态', statusText),
++            textField('notice', '操作提示', record.notice || '请选择内容并提交操作'),
++            selectField('view', '查看内容', VIEWS, record.selections.view, 'v', record.version),
++            selectField('sessionSlot', '会话', sessions.map((item) => text(item.title)), record.selections.sessionSlot, 's', record.version),
++            selectField('modelSlot', '模型', models.map((item) => `${text(item.provider)}/${text(item.model)}`), record.selections.modelSlot, 'm', record.version),
++            selectField('effortSlot', '推理等级', efforts, record.selections.effortSlot, 'e', record.version),
++            selectField('taskAction', '动作', ACTIONS, record.selections.taskAction, 'a', record.version),
++            textField('artifacts', '近期产物', artifactText),
++        ];
++        const names = visibleFieldNames(record.selections.view);
++        const fields = allFields.filter((field) => names.has(field.name));
++        return { fields, sessions, models, efforts, artifacts };
++    }
++    async payload(record, status = 'normal', errorText = '') {
++        const state = await this.formState(record);
++        return { payload: outputPayload(state.fields, status, errorText), state };
++    }
++    async open(msg, scopeKey) {
++        if (!this.deps.interactionCards || !this.deps.isOwner?.(msg)) return false;
++        this.prune();
++        const outTrackId = this.signedOutTrackId(msg.senderStaffId, msg.conversationId);
++        const record = {
++            outTrackId,
++            userId: msg.senderStaffId,
++            conversationId: msg.conversationId,
++            sessionWebhook: msg.sessionWebhook,
++            scopeKey,
++            version: 1,
++            expiresAt: Date.now() + CONSOLE_CARD_TTL_MS,
++            selections: { view: 0, sessionSlot: undefined, modelSlot: undefined, effortSlot: undefined, taskAction: 0 },
++            notice: '',
++            responses: new Map(),
++            expiryTimer: undefined,
++        };
++        record.expiryTimer = setTimeout(() => {
++            if (this.cards.get(outTrackId) === record) this.cards.delete(outTrackId);
++        }, CONSOLE_CARD_TTL_MS);
++        record.expiryTimer.unref?.();
++        this.cards.set(outTrackId, record);
++        try {
++            const built = await this.payload(record);
++            const privateData = {
++                form_fields: built.payload.form_fields,
++                form_status: built.payload.form_status,
++                button_text: built.payload.button_text,
++                err_msg: built.payload.err_msg,
++            };
++            const delivered = await this.deps.interactionCards.create({
++                outTrackId,
++                kind: 'console',
++                target: cardTarget(msg),
++                cardData: { title: built.payload.title, ...privateData },
++                title: built.payload.title,
++                detail: '',
++                approveLabel: built.payload.button_text,
++                rejectLabel: built.payload.button_text,
++            });
++            if (!delivered) {
++                this.clear(outTrackId);
++                return false;
++            }
++            return true;
++        }
++        catch (error) {
++            this.deps.log(`console card create failed: ${error instanceof Error ? error.message : error}`);
++            this.clear(outTrackId);
++            return false;
++        }
++    }
++    cardUpdate(record, payload) {
++        const privateData = {
++            form_fields: payload.form_fields,
++            form_status: payload.form_status,
++            button_text: payload.button_text,
++            err_msg: payload.err_msg,
++        };
++        return {
++            outTrackId: record.outTrackId,
++            version: String(record.version),
++            cardData: { cardParamMap: { title: payload.title } },
++            userPrivateData: { cardParamMap: privateData },
++            cardUpdateOptions: { updateCardDataByKey: true, updatePrivateDataByKey: true },
++        };
++    }
++    async fallback(record, content) {
++        try {
++            if (record.sessionWebhook) await this.deps.outbound.sendMarkdown(record.sessionWebhook, this.deps.markdownTitle, content);
++        }
++        catch (error) {
++            this.deps.log(`console Markdown fallback failed: ${error instanceof Error ? error.message : error}`);
++        }
++    }
++    async handleSelect(record, params) {
++        const name = paramString(params, 'name', 40);
++        const type = paramString(params, 'type', 40);
++        if (!SELECT_NAMES.has(name) || type !== 'SELECT') return undefined;
++        const selected = paramsObject(params)?.[name];
++        const index = selectIndex(selected);
++        if (!Number.isSafeInteger(index) || index < 0) return undefined;
++        const built = await this.payload(record);
++        const field = built.state.fields.find((item) => item.name === name);
++        if (!field || field.type !== 'SELECT' || index >= field.options.length) return undefined;
++        if (typeof paramsObject(selected)?.value !== 'string' || paramsObject(selected).value !== field.options[index].value) return undefined;
++        record.selections[name] = index;
++        if (name === 'modelSlot') record.selections.effortSlot = undefined;
++        record.version += 1;
++        const next = await this.payload(record);
++        return this.cardUpdate(record, next.payload);
++    }
++    async handleSubmit(record, params) {
++        const submitted = submittedFields(params);
++        if (!submitted) return undefined;
++        const state = await this.formState(record);
++        const fields = new Map(state.fields.map((field) => [field.name, field]));
++        const indices = {};
++        const viewField = submitted.get('view');
++        if (!viewField || !fields.has('view')) return undefined;
++        if (viewField.default_number === undefined || viewField.default_number < 0 || viewField.default_number >= fields.get('view').options.length) return undefined;
++        const visible = visibleFieldNames(viewField.default_number);
++        for (const name of SELECT_NAMES) {
++            const field = submitted.get(name);
++            if (!visible.has(name)) continue;
++            if (!field) return undefined;
++            const current = fields.get(name);
++            if (!current || current.type !== 'SELECT') return undefined;
++            if (field.default_number === undefined) continue;
++            if (field.default_number < 0 || field.default_number >= current.options.length) return undefined;
++            const submittedOption = Array.isArray(field.options) ? field.options[field.default_number] : undefined;
++            const currentOption = current.options[field.default_number];
++            if (!submittedOption || typeof submittedOption.value !== 'string' || submittedOption.value !== currentOption.value) return undefined;
++            indices[name] = field.default_number;
++        }
++        const targetSession = state.sessions[indices.sessionSlot];
++        const targetModel = state.models[indices.modelSlot];
++        const targetEffort = state.efforts[indices.effortSlot];
++        const task = ACTION_VALUES[indices.taskAction];
++        if (indices.sessionSlot !== undefined && !targetSession) return undefined;
++        if (indices.modelSlot !== undefined && !targetModel) return undefined;
++        if (indices.effortSlot !== undefined && !targetEffort) return undefined;
++        if (targetModel) {
++            const result = await this.deps.commands.useModel(record.scopeKey, targetModel.provider, targetModel.model, targetEffort);
++            if (!result.ok) return { error: result.error || '模型校验失败，未执行切换。' };
++        }
++        else if (targetEffort) {
++            const result = await this.deps.commands.useEffort(record.scopeKey, targetEffort);
++            if (!result.ok) return { error: result.error || '推理等级校验失败，未执行切换。' };
++        }
++        if (targetSession) {
++            const result = await this.deps.commands.useSession(record.scopeKey, targetSession.id);
++            if (!result.ok) return { error: '会话映射已变化，请刷新后重试。' };
++        }
++        if (task === 'stop') this.deps.commands.stopSession(record.scopeKey);
++        if (task === 'new') this.deps.commands.resetSession(record.scopeKey);
++        record.selections = { view: viewField.default_number, sessionSlot: indices.sessionSlot, modelSlot: indices.modelSlot, effortSlot: indices.effortSlot, taskAction: 0 };
++        record.notice = task === 'artifacts' ? '已切换到产物视图。' : '设置已应用。';
++        record.version += 1;
++        const next = await this.payload(record, 'normal');
++        return this.cardUpdate(record, next.payload);
++    }
++    async handleCardCallback(callback) {
++        const record = this.cards.get(callback?.outTrackId);
++        if (!record) return { handled: false, response: {} };
++        if (record.expiresAt <= Date.now() || !this.verifyOutTrackId(callback.outTrackId, record)) {
++            this.clear(record.outTrackId);
++            return { handled: true, response: {} };
++        }
++        if (callback.userId !== record.userId || !this.deps.isOwnerId?.(callback.userId)) return { handled: true, response: {} };
++        const params = paramsObject(callback.params);
++        if (!params || !Array.isArray(callback.actionIds) || callback.actionIds.length > 1) return { handled: true, response: {} };
++        const actionId = String(callback.actionIds[0] ?? '');
++        const hasSubmit = Object.prototype.hasOwnProperty.call(params, 'submit_form_fields');
++        const selectionName = typeof params.name === 'string' ? params.name : '';
++        if (hasSubmit ? !SUBMIT_ACTIONS.has(actionId) : !(SELECT_ACTIONS.has(actionId) || SELECT_NAMES.has(selectionName))) return { handled: true, response: {} };
++        const allowedParams = new Set(['version']);
++        if (hasSubmit) allowedParams.add('submit_form_fields');
++        else {
++            allowedParams.add('name');
++            allowedParams.add('type');
++            if (selectionName) allowedParams.add(selectionName);
++        }
++        if (!validParams(params, allowedParams)) return { handled: true, response: {} };
++        if (Object.prototype.hasOwnProperty.call(params, 'version') && versionOf(params) === undefined) return { handled: true, response: {} };
++        const key = fingerprint(params, hasSubmit ? 'submit' : `select:${selectionName}`);
++        const prior = record.responses.get(key);
++        if (prior) return { handled: true, response: prior };
++        const version = versionOf(params);
++        if (version !== undefined && version !== record.version) {
++            const current = await this.payload(record);
++            return { handled: true, response: this.cardUpdate(record, current.payload) };
++        }
++        try {
++            const result = hasSubmit ? await this.handleSubmit(record, params) : await this.handleSelect(record, params);
++            if (!result) {
++                const current = await this.payload(record);
++                return { handled: true, response: this.cardUpdate(record, current.payload) };
++            }
++            if (result.error) {
++                record.version += 1;
++                const next = await this.payload(record, 'normal', result.error);
++                const response = this.cardUpdate(record, next.payload);
++                record.responses.set(key, response);
++                return { handled: true, response };
++            }
++            record.responses.set(key, result);
++            return { handled: true, response: result };
++        }
++        catch (error) {
++            this.deps.log(`console action failed: ${error instanceof Error ? error.message : error}`);
++            await this.fallback(record, '控制台操作暂时失败，请使用 `/menu`、`/sessions`、`/models` 或 `/help` 命令。');
++            return { handled: true, response: {} };
++        }
++    }
++}
++
++function paramString(params, name, max = 160) {
++    const value = paramsObject(params)?.[name];
++    return typeof value === 'string' ? text(value, max) : '';
++}
++
++function submittedFields(params) {
++    const fields = paramsObject(params)?.submit_form_fields;
++    if (!Array.isArray(fields) || fields.length === 0 || fields.length > MAX_FIELDS) return undefined;
++    const byName = new Map();
++    for (const field of fields) {
++        if (!field || typeof field !== 'object' || Array.isArray(field)) return undefined;
++        const name = typeof field.name === 'string' ? field.name : '';
++        const type = typeof field.type === 'string' ? field.type : '';
++        if (!SELECT_NAMES.has(name) && !['status', 'notice', 'artifacts'].includes(name)) return undefined;
++        if (byName.has(name)) return undefined;
++        if (SELECT_NAMES.has(name)) {
++            if (type !== 'SELECT' || (field.default_number !== undefined && !Number.isSafeInteger(field.default_number))) return undefined;
++        }
++        else if (type !== 'TEXT' || typeof field.default_string !== 'string') {
++            return undefined;
++        }
++        byName.set(name, field);
++    }
++    return byName;
++}
+diff --git a/lib/index.js b/lib/index.js
+index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa340e85c8fa 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -22,6 +22,7 @@ import { Commands, isSessionControl } from './commands.js';
+ import { QuestionManager } from './questions.js';
+ import { WorkspaceLinker } from './workspace.js';
+ import { InteractionCards } from './interaction-card.js';
++import { ConsoleCards } from './console.js';
+ import { OwnerBinding } from './owner.js';
+ import { DwsTools } from './tools.js';
+ import { downloadImageByCode } from './media.js';
+@@ -30,7 +31,7 @@ import { exactPackageSpec } from './package-info.js';
+ import { resolveStateDir } from './paths.js';
+ import { cardTarget } from './targets.js';
+ export const name = 'dingtalk-channel';
+-export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm'];
++export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm', 'sessionQuery'];
+ export { Config };
+ export async function apply(ctx, config) {
+     const log = (line) => console.log(`[dsh-dingtalk ${new Date().toTimeString().slice(0, 8)}] ${line}`);
+@@ -78,6 +79,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     const { clientId, clientSecret } = account;
+     const log = (line) => console.log(`[dsh-dingtalk:${account.id} ${new Date().toTimeString().slice(0, 8)}] ${line}`);
+     const interactionCardTemplateId = config.interactionCardTemplateId || process.env.DINGTALK_INTERACTION_CARD_TEMPLATE_ID || '';
++    const consoleCardTemplateId = config.consoleCardTemplateId || process.env.DINGTALK_CONSOLE_CARD_TEMPLATE_ID || '';
+     const stateDir = accountStateDir(resolveStateDir(), account.id);
+     let streamStatus = 'connecting';
+     const owner = new OwnerBinding({
+@@ -128,6 +130,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     const interactionCards = interactionCardTemplateId
+         ? new InteractionCards(() => outbound.token(), clientId, interactionCardTemplateId, log)
+         : undefined;
++    const consoleInteractionCards = consoleCardTemplateId
++        ? new InteractionCards(() => outbound.token(), clientId, consoleCardTemplateId, log)
++        : undefined;
+     const cardCapabilityFile = path.join(stateDir, 'capabilities.json');
+     const cardCapability = new CardCapability((reason) => {
+         fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+@@ -168,6 +173,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+         log,
+         modelOverrides,
+         workspaceOverrides,
++        sessionQuery: ctx.sessionQuery,
+         modelSelection: currentDefault,
+         resolveImage: async (downloadCode, scopeKey) => {
+             const legacyMode = config.attachImages === true ? 'always' : config.attachImages === false ? 'never' : undefined;
+@@ -201,7 +207,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             questions.bindSession(agent.id, msg);
+             void workspace.attach(agent.id);
+         },
+-        compose: async () => {
++        compose: async (presetId) => {
+             // Optional service: a deployment without a roster runs preset-less
+             // (host-composition tools only), matching apiproxy's fallback.
+             const presets = ctx.get?.('agentPresets');
+@@ -209,7 +215,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+                 return { setup: async (agentCtx) => questions.install(agentCtx) };
+             }
+             try {
+-                const resolved = await presets.resolve(undefined);
++                const resolved = await presets.resolve(presetId);
+                 return {
+                     agentPreset: resolved.id,
+                     setup: async (agentCtx) => {
+@@ -224,12 +230,26 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             }
+         },
+     });
++    const isOwner = (msg) => {
++        const ownerStaffId = owner.status().ownerStaffId;
++        return msg.conversationType === 'direct'
++            && typeof ownerStaffId === 'string'
++            && ownerStaffId.length > 0
++            && msg.senderStaffId === ownerStaffId;
++    };
++    let consoleCards;
+     const commands = new Commands({
+         agents,
+         outbound,
+         bindings,
+         modelOverrides,
+         queue,
++        sessionQuery: ctx.sessionQuery,
++        llm: ctx.llm,
++        isOwner,
++        console: {
++            open: (msg, scopeKey) => consoleCards?.open(msg, scopeKey) ?? Promise.resolve(false),
++        },
+         defaultModel: currentDefault,
+         toolsStatusLine: () => dwsTools.statusLine(),
+         workspaceOverrides,
+@@ -270,6 +290,17 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+         markdownTitle: config.markdownTitle,
+         log,
+     });
++    if (consoleInteractionCards) {
++        consoleCards = new ConsoleCards({
++            interactionCards: consoleInteractionCards,
++            commands,
++            outbound,
++            markdownTitle: config.markdownTitle,
++            isOwner,
++            isOwnerId: (userId) => isOwner({ conversationType: 'direct', senderStaffId: userId }),
++            log,
++        });
++    }
+     ctx.on('session/event', (session, event) => {
+         renderer.onSessionEvent(session, event);
+     });
+@@ -438,14 +469,19 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             });
+         },
+         onCardCallback: async (callback) => {
+-            const handled = questions.handleCardCallback(callback) || (await commands.handleCardCallback(callback));
+-            if (!handled)
+-                return {};
+-            const approved = callback.actionIds[0] === 'approve';
+-            return {
+-                cardData: { cardParamMap: { status: approved ? 'approved' : 'rejected' } },
+-                cardUpdateOptions: { updateCardDataByKey: true },
+-            };
++            if (consoleCards) {
++                const result = await consoleCards.handleCardCallback(callback);
++                if (result.handled)
++                    return result.response;
++            }
++            if (questions.handleCardCallback(callback) || (await commands.handleCardCallback(callback))) {
++                const approved = callback.actionIds[0] === 'approve';
++                return {
++                    cardData: { cardParamMap: { status: approved ? 'approved' : 'rejected' } },
++                    cardUpdateOptions: { updateCardDataByKey: true },
++                };
++            }
++            return {};
+         },
+     });
+     ctx.on('dispose', () => stop());
+diff --git a/lib/interaction-card.d.ts b/lib/interaction-card.d.ts
+index a0f646b033971f7f83f7948166e7361712d317e7..bac89a232fd988202aec4c148989e133e8c03f1e 100644
+--- a/lib/interaction-card.d.ts
++++ b/lib/interaction-card.d.ts
+@@ -9,7 +9,7 @@ export interface InteractionCardCallback {
+ /** Card creation input whose action ids are fixed to `approve` and `reject`. */
+ export interface InteractionCardRequest {
+     outTrackId: string;
+-    kind: 'approval' | 'plan-review' | 'queue-choice' | 'question';
++    kind: 'approval' | 'plan-review' | 'queue-choice' | 'question' | 'console';
+     target: {
+         type: 'user';
+         userId: string;
+@@ -21,6 +21,10 @@ export interface InteractionCardRequest {
+     detail: string;
+     approveLabel: string;
+     rejectLabel: string;
++    /** Optional public template variables; preserves the old approval shape when absent. */
++    cardParamMap?: Record<string, string>;
++    /** Optional public template variables used by the control card. */
++    cardData?: Record<string, string>;
+ }
+ /** Delivery adapter for the configured DingTalk interactive-card template. */
+ export interface InteractionCardSender {
+diff --git a/lib/interaction-card.js b/lib/interaction-card.js
+index 11b0821a2cd3344bde5d4a873163cc41f9111619..98d613c257c9762eb51766e233530d0bf2823978 100644
+--- a/lib/interaction-card.js
++++ b/lib/interaction-card.js
+@@ -40,26 +40,27 @@ export class InteractionCards {
+                 },
+             };
+         try {
++            const cardData = request.cardData ?? {
++                title: request.title,
++                detail: request.detail,
++                approveLabel: request.approveLabel,
++                rejectLabel: request.rejectLabel,
++                status: 'pending',
++                kind: request.kind,
++                interactionId: request.outTrackId,
++                ...(request.cardParamMap ?? {}),
++            };
+             await this.call('POST', '/v1.0/card/instances', {
+                 cardTemplateId: this.templateId,
+                 outTrackId: request.outTrackId,
+                 callbackType: 'STREAM',
+                 userIdType: 1,
+-                cardData: {
+-                    cardParamMap: {
+-                        title: request.title,
+-                        detail: request.detail,
+-                        approveLabel: request.approveLabel,
+-                        rejectLabel: request.rejectLabel,
+-                        status: 'pending',
+-                        kind: request.kind,
+-                        interactionId: request.outTrackId,
+-                    },
+-                },
++                cardData: { cardParamMap: cardData },
+                 imGroupOpenSpaceModel: { supportForward: false },
+                 imRobotOpenSpaceModel: { supportForward: false },
+             });
+             await this.call('POST', '/v1.0/card/instances/deliver', deliverBody);
++            this.log(`interaction card delivered kind=${request.kind}`);
+             return true;
+         }
+         catch (err) {
+diff --git a/lib/renderer.d.ts b/lib/renderer.d.ts
+index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..81516638394266682547d5a72f0874ec297d1084 100644
+--- a/lib/renderer.d.ts
++++ b/lib/renderer.d.ts
+@@ -12,6 +12,7 @@ import type { InboundMessage } from './stream.js';
+ import type { Outbound } from './outbound.js';
+ import type { Emotion } from './emotion.js';
+ import { AICard, type CardTarget } from './aicard.js';
++export declare const DINGTALK_ROUTE_TTL_MS: number;
+ export interface RendererDeps {
+     config: Pick<Config, 'replyMode' | 'streaming' | 'asyncMode' | 'ackText' | 'markdownTitle' | 'emotionFirstResponse'>;
+     outbound: Outbound;
+@@ -22,6 +23,7 @@ export interface RendererDeps {
+ export declare class Renderer {
+     private readonly deps;
+     private states;
++    private routes;
+     constructor(deps: RendererDeps);
+     /**
+      * Register the reply context for the turn this inbound message will drive.
+diff --git a/lib/renderer.js b/lib/renderer.js
+index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a43a76781 100644
+--- a/lib/renderer.js
++++ b/lib/renderer.js
+@@ -2,6 +2,7 @@ import { CardCapabilityError } from './aicard.js';
+ import { cardTarget } from './targets.js';
+ import { describeTurnError } from './errors.js';
+ const EMPTY_MODEL_RESPONSE = '⚠️ **模型本次未产出正文**\n> 可能是输出额度被推理占满，请调大 `max_tokens` 或更换模型后重试。';
++export const DINGTALK_ROUTE_TTL_MS = 2 * 60 * 60 * 1000;
+ /**
+  * Render live segments to markdown: consecutive tool lines merge into one
+  * compact blockquote (one line per tool, no blank lines between them), text
+@@ -31,6 +32,8 @@ function renderLive(segments) {
+ export class Renderer {
+     deps;
+     states = new Map();
++    /** Session-id → minimal DingTalk parent route; never persisted or full-text. */
++    routes = new Map();
+     constructor(deps) {
+         this.deps = deps;
+     }
+@@ -60,6 +63,7 @@ export class Renderer {
+             carryOffset: 0,
+             settle,
+         };
++        this.rememberRoute(sessionId, msg, mode);
+         if (config.asyncMode) {
+             // Ack now; the settled result is pushed at turn end, no streaming card.
+             void this.deps.outbound.sendText(msg.sessionWebhook, config.ackText);
+@@ -70,6 +74,106 @@ export class Renderer {
+         this.states.set(sessionId, state);
+         return settled;
+     }
++    rememberRoute(sessionId, msg, mode) {
++        this.clearRoute(sessionId);
++        const route = {
++            conversationType: msg.conversationType,
++            conversationId: msg.conversationId,
++            senderStaffId: msg.senderStaffId,
++            sessionWebhook: msg.sessionWebhook,
++            mode,
++            expiresAt: Date.now() + DINGTALK_ROUTE_TTL_MS,
++            lastCompletedTurn: undefined,
++            replay: undefined,
++        };
++        route.expiryTimer = setTimeout(() => {
++            if (this.routes.get(sessionId) === route)
++                this.routes.delete(sessionId);
++        }, DINGTALK_ROUTE_TTL_MS);
++        route.expiryTimer.unref?.();
++        this.routes.set(sessionId, route);
++    }
++    clearRoute(sessionId) {
++        const route = this.routes.get(sessionId);
++        if (!route)
++            return;
++        clearTimeout(route.expiryTimer);
++        this.routes.delete(sessionId);
++    }
++    routeFor(sessionId) {
++        const route = this.routes.get(sessionId);
++        if (!route)
++            return undefined;
++        if (Date.now() >= route.expiresAt) {
++            this.clearRoute(sessionId);
++            return undefined;
++        }
++        return route;
++    }
++    replayStart(route, turn) {
++        if (Number.isSafeInteger(turn) && route.lastCompletedTurn === turn)
++            return undefined;
++        if (route.replay && route.replay.turn === turn)
++            return route.replay;
++        route.replay = {
++            turn: Number.isSafeInteger(turn) ? turn : undefined,
++            parts: [],
++        };
++        return route.replay;
++    }
++    replayAssistant(route, event) {
++        if (event.data?.interrupted === true)
++            return;
++        const blocks = event.data?.message?.content;
++        if (!Array.isArray(blocks))
++            return;
++        const text = blocks
++            .filter((block) => block?.type === 'text' && typeof block.text === 'string')
++            .map((block) => block.text)
++            .join('')
++            .trim();
++        // Tool-only assistant messages must not create a DingTalk bubble.
++        if (!text)
++            return;
++        const replay = this.replayStart(route, event.data?.turn);
++        if (!replay)
++            return;
++        if (replay.turn !== undefined && Number.isSafeInteger(event.data?.turn) && replay.turn !== event.data.turn)
++            return;
++        replay.parts.push(text);
++    }
++    async publishReplay(route, text) {
++        if (!route.sessionWebhook || !text.trim())
++            return;
++        const { config, outbound } = this.deps;
++        let card;
++        try {
++            card = await this.deps.createCard(cardTarget(route));
++            if (card) {
++                await card.finish(text);
++                this.deps.log(`async DingTalk replay card sent (${text.length} chars)`);
++                return;
++            }
++        }
++        catch (error) {
++            this.deps.log(`async DingTalk replay card failed, falling back to markdown: ${error instanceof Error ? error.message : error}`);
++        }
++        await outbound.sendMarkdown(route.sessionWebhook, config.markdownTitle, text);
++    }
++    replayEnd(sessionId, route, eventData) {
++        const replay = route.replay;
++        route.replay = undefined;
++        const turn = eventData?.turn;
++        const reason = eventData?.reason ?? eventData;
++        if (!replay || (replay.turn !== undefined && Number.isSafeInteger(turn) && replay.turn !== turn))
++            return;
++        if (Number.isSafeInteger(turn))
++            route.lastCompletedTurn = turn;
++        const text = replay.parts.join('\n\n').trim();
++        if (!text || reason?.kind === 'aborted' || reason?.kind === 'interrupted')
++            return;
++        void this.publishReplay(route, text).catch((error) => this.deps.log(`async DingTalk replay failed: ${error instanceof Error ? error.message : error}`));
++    }
+     /**
+      * A new bubble entered the conversation below any live card — mark its
+      * turn(s) so the next frame rolls output over to a fresh card at the bottom.
+@@ -97,9 +201,35 @@ export class Renderer {
+     }
+     onSessionEvent(session, event) {
+         const st = this.states.get(session.id);
+-        if (!st)
++        if (!st) {
++            const route = this.routeFor(session.id);
++            if (!route)
++                return;
++            // A manual App message is not a DingTalk child report. Drop the
++            // route immediately so its following assistant output cannot leak.
++            if (event.type === 'user/message') {
++                if (event.data?.source?.kind === 'user')
++                    this.clearRoute(session.id);
++                else
++                    this.replayStart(route, undefined);
++                return;
++            }
++            if (event.type === 'turn/start') {
++                this.replayStart(route, event.data?.turn);
++                return;
++            }
++            if (event.type === 'assistant/message') {
++                this.replayAssistant(route, event);
++                return;
++            }
++            if (event.type === 'turn/end')
++                this.replayEnd(session.id, route, event.data);
+             return;
++        }
+         switch (event.type) {
++            case 'turn/start':
++                st.turn = event.data?.turn;
++                break;
+             case 'assistant/chunk': {
+                 const chunk = event.data?.chunk;
+                 if (chunk?.type === 'text-delta' && typeof chunk.text === 'string') {
+@@ -130,6 +260,7 @@ export class Renderer {
+                 break;
+             }
+             case 'assistant/message': {
++                st.turn = event.data?.turn ?? st.turn;
+                 const blocks = event.data?.message?.content;
+                 if (Array.isArray(blocks)) {
+                     const text = blocks
+@@ -142,6 +273,7 @@ export class Renderer {
+                 break;
+             }
+             case 'turn/end': {
++                st.turn = event.data?.turn ?? st.turn;
+                 void this.finalize(session.id, st, event.data?.reason);
+                 break;
+             }
+@@ -201,6 +333,9 @@ export class Renderer {
+         // Snapshot-and-delete first: turn/end and a late flush may race, and a
+         // second finalize on the same state must be impossible.
+         this.states.delete(sessionId);
++        const route = this.routes.get(sessionId);
++        if (route && Number.isSafeInteger(st.turn))
++            route.lastCompletedTurn = st.turn;
+         if (st.flushTimer)
+             clearTimeout(st.flushTimer);
+         const { config, outbound, emotion } = this.deps;
+diff --git a/lib/stream.d.ts b/lib/stream.d.ts
+index a87cbf31f8387c382c54c39bdce883a0f6859e3a..5624d8f4fc196c492d3000ed2f2427c79181e955 100644
+--- a/lib/stream.d.ts
++++ b/lib/stream.d.ts
+@@ -36,7 +36,7 @@ export interface InboundCardCallback {
+     actionIds: string[];
+     params: Record<string, unknown>;
+ }
+-/** Normalize DingTalk's string-encoded card callback content. */
++/** Normalize DingTalk's string-encoded card callback content; dynamic forms may have no actionIds. */
+ export declare function normalizeCardCallback(data: any): InboundCardCallback | undefined;
+ export interface StreamOptions extends DingTalkAppCredentials {
+     debug?: boolean;
+diff --git a/lib/stream.js b/lib/stream.js
+index 0833a5d337f69fe7024b313dadd976a913aa584b..26892601de48852cc529b86afb3afec032a9649d 100644
+--- a/lib/stream.js
++++ b/lib/stream.js
+@@ -24,14 +24,19 @@ export function normalizeCardCallback(data) {
+     const actionIds = Array.isArray(privateData?.actionIds)
+         ? privateData.actionIds.filter((value) => typeof value === 'string')
+         : [];
+-    if (!actionIds.length)
+-        return undefined;
+     const params = privateData?.params;
++    // Dynamic-form templates may legitimately omit actionIds for SELECT
++    // changes or a submit callback; params.name/type/submit_form_fields are
++    // the reliable signals. Approval/question cards still enforce their own
++    // action whitelist downstream.
++    const paramsObject = params && typeof params === 'object' && !Array.isArray(params) ? params : undefined;
++    if (!actionIds.length && !paramsObject)
++        return undefined;
+     return {
+         outTrackId: data.outTrackId,
+         userId: data.userId,
+         actionIds,
+-        params: typeof params === 'object' && params !== null ? params : {},
++        params: paramsObject ?? {},
+     };
+ }
+ const DEDUP_TTL_MS = 30 * 60 * 1000;
+@@ -345,8 +350,11 @@ export async function startStream(opts) {
+         try {
+             const data = typeof res?.data === 'string' ? JSON.parse(res.data) : res?.data;
+             const callback = normalizeCardCallback(data);
+-            if (callback && opts.onCardCallback)
++            opts.log(`card callback received normalized=${Boolean(callback)} actions=${callback?.actionIds?.length ?? 0} submit=${Boolean(callback?.params?.submit_form_fields)} selection=${typeof callback?.params?.name === 'string'}`);
++            if (callback && opts.onCardCallback) {
+                 response = await opts.onCardCallback(callback);
++                opts.log(`card callback response emitted keys=${Object.keys(response ?? {}).sort().join(',') || 'none'}`);
++            }
+         }
+         catch (err) {
+             opts.log(`card callback error: ${err instanceof Error ? err.message : err}`);

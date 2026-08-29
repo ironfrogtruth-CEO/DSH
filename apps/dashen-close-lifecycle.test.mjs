@@ -24,6 +24,11 @@ test('red close hides the window, Dock reopen restores it, and explicit quit sto
   assert.match(source, /Timer\.scheduledTimer\(withTimeInterval: 30/)
   assert.match(source, /NSWorkspace\.didWakeNotification/)
   assert.match(source, /checkHostHealth[\s\S]*startHostRecovery/)
+  assert.match(source, /func startHostRecovery[\s\S]*waitForStableService[\s\S]*guard recovered[\s\S]*loadWithRetry/)
+  assert.match(source, /func waitForStableService[\s\S]*completion: @escaping \(Bool\) -> Void/)
+  assert.match(source, /func webView\(_ webView: WKWebView, didFinish navigation: WKNavigation!\)[\s\S]*loadInFlight = false/)
+  assert.match(source, /func webViewWebContentProcessDidTerminate\(_ webView: WKWebView\)[\s\S]*startHostRecovery\(\)/)
+  assert.match(source, /didFailProvisionalNavigation[\s\S]*self\?\.startHostRecovery\(\)/)
   assert.match(source, /stopHostHealthMonitoring[\s\S]*hostHealthTimer\?\.invalidate/)
   assert.match(source, /applicationShouldTerminate[\s\S]*isTerminating = true/)
   assert.match(source, /applicationWillTerminate[\s\S]*if audioEngine\.isRunning \|\| recognitionRequest != nil \|\| recognitionTask != nil/)
@@ -31,10 +36,10 @@ test('red close hides the window, Dock reopen restores it, and explicit quit sto
   assert.match(source, /func cleanupRecording\(\)[\s\S]*if audioEngine\.isRunning[\s\S]*removeTap/)
 })
 
-test('Swift app source compiles without replacing the deployed app', async () => {
+test('Swift app source compiles as the supported arm64 macOS target without replacing the deployed app', async () => {
   const output = await mkdtemp(join(tmpdir(), 'dashen-close-lifecycle-'))
   try {
-    const result = spawnSync('swiftc', ['-O', '-o', join(output, '大神'), sourcePath, '-framework', 'Cocoa', '-framework', 'WebKit', '-framework', 'Speech', '-framework', 'AVFoundation'], { encoding: 'utf8', timeout: 120_000 })
+    const result = spawnSync('swiftc', ['-O', '-target', 'arm64-apple-macos13.0', '-o', join(output, '大神'), sourcePath, '-framework', 'Cocoa', '-framework', 'WebKit', '-framework', 'Speech', '-framework', 'AVFoundation'], { encoding: 'utf8', timeout: 120_000 })
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   } finally {
     await rm(output, { recursive: true, force: true })

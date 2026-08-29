@@ -63,3 +63,39 @@ test('ungrouped data stays recoverable while its grouped-sidebar row is hidden',
     'flat-session recovery projection must remain unchanged',
   )
 })
+
+test('new Sessions are recency-prefixed without disturbing manual order or current selection', async () => {
+  const patched = await readFile(patchUrl, 'utf8')
+  const helperSource = section(patched, 'function reconciledSessionOrder', '\n\t\t/** Grouping and ordering menu')
+  const { nextSessionOrderAccount } = Function(`${helperSource}; return { nextSessionOrderAccount }`)()
+  const list = {
+    current: 'old-b',
+    byId: {
+      'old-a': { id: 'old-a', updatedAt: 10 },
+      'old-b': { id: 'old-b', updatedAt: 99 },
+      'new-a': { id: 'new-a', updatedAt: 40 },
+      'new-b': { id: 'new-b', updatedAt: 80 },
+    },
+  }
+  const previousOrder = ['old-a', 'old-b']
+  const manual = nextSessionOrderAccount({
+    sessionIds: ['old-a', 'old-b', 'new-a', 'new-b'],
+    previousOrder,
+    previousUpdatedAt: { 'old-a': 10 },
+    list,
+    orderBy: 'manual',
+    sortByRecency: false,
+  })
+  assert.deepEqual(manual.order, ['new-b', 'new-a', 'old-a', 'old-b'])
+  assert.equal(list.current, 'old-b', 'ordering must not change current selection')
+
+  const knownManual = nextSessionOrderAccount({
+    sessionIds: ['old-a', 'old-b'],
+    previousOrder,
+    previousUpdatedAt: { 'old-a': 10 },
+    list,
+    orderBy: 'manual',
+    sortByRecency: false,
+  })
+  assert.deepEqual(knownManual.order, previousOrder, 'known Session updates must not reorder manual rows')
+})

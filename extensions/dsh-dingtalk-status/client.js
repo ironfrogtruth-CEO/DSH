@@ -12,8 +12,9 @@ window.__ModuleLoader__.load({
 
     const React = require('react')
     const h = React.createElement
-    const inject = ['slots']
+    const inject = ['slots', 'sessions']
     const safe = (value, fallback = '') => String(value ?? fallback)
+    let openHostSession = null
 
     function DingTalkIcon() {
       return h('svg', { viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true },
@@ -51,6 +52,20 @@ window.__ModuleLoader__.load({
       const value = await response.json().catch(() => ({}))
       if (!response.ok || value.ok === false) throw new Error(value.error || `状态读取失败(${response.status})`)
       return value
+    }
+
+    async function openSession(sessionId) {
+      if (!sessionId) return
+      try {
+        if (typeof openHostSession === 'function') {
+          await openHostSession(sessionId)
+          return
+        }
+      } catch {
+        // Fall through to the legacy event bridge only when the native session
+        // opener rejects this canonical id.
+      }
+      window.dispatchEvent(new CustomEvent('dsh:open-session', { detail: { sessionId } }))
     }
 
     async function copyCommand(value) {
@@ -152,6 +167,15 @@ window.__ModuleLoader__.load({
               ),
             ),
             h('section', { className: 'dsh-dingtalk-section' },
+              h('div', { className: 'dsh-dingtalk-section-title' }, '最近钉钉会话'),
+              Array.isArray(state?.sessions) && state.sessions.length
+                ? h('div', { className: 'dsh-dingtalk-sessions' }, state.sessions.map((session) => h('div', { className: 'dsh-dingtalk-session', key: session.sessionId },
+                    h('div', { className: 'dsh-dingtalk-session-main' }, h('strong', null, session.title || '钉钉会话'), h('small', null, session.running ? '执行中' : '已暂停')),
+                    h('button', { type: 'button', onClick: () => { void openSession(session.sessionId) }, title: '打开对应会话' }, '打开'),
+                  )))
+                : h('div', { className: 'dsh-dingtalk-empty' }, '暂无可显示的绑定会话。'),
+            ),
+            h('section', { className: 'dsh-dingtalk-section' },
               h('div', { className: 'dsh-dingtalk-section-title' }, '真实边界'),
               h('p', { className: 'dsh-dingtalk-note' }, '当前官方连接器不支持入站文件、音频、视频；输出以 AI Card 或 Markdown 为主。本地产物仍需在大神会话中打开。'),
             ),
@@ -166,6 +190,7 @@ window.__ModuleLoader__.load({
     }
 
     function apply(ctx) {
+      openHostSession = ctx.sessions.open.bind(ctx.sessions)
       const style = document.createElement('style')
       style.id = 'dsh-dingtalk-status-styles'
       style.textContent = `
@@ -178,7 +203,7 @@ window.__ModuleLoader__.load({
         .dsh-dingtalk-backdrop{position:fixed;inset:0;z-index:10020;background:rgba(8,12,18,.43);backdrop-filter:blur(1px)}
         .dsh-dingtalk-dialog{position:fixed;z-index:10021;top:56px;right:18px;bottom:18px;display:flex;flex-direction:column;box-sizing:border-box;width:min(620px,calc(100vw - 36px));max-height:calc(100vh - 74px);overflow:hidden;border:1px solid var(--dsw-alias-border-l2,rgba(255,255,255,.14));border-radius:16px;background:var(--dsw-alias-bg-layer-1,#191b1f);box-shadow:0 24px 80px rgba(0,0,0,.5);color:var(--dsw-alias-label-primary,#f5f6f7);outline:none;left:calc(50% + var(--dsh-sidebar-half-width,140px))!important;right:auto!important;transform:translateX(-50%)}
         .dsh-dingtalk-title-row{display:flex;align-items:center;gap:10px;min-width:0}.dsh-dingtalk-head{display:flex;align-items:center;justify-content:space-between;min-height:68px;padding:0 18px;border-bottom:1px solid var(--dsw-alias-border-l2,rgba(128,128,128,.2));flex:none}.dsh-dingtalk-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;color:#35a56f;background:#35a56f18}.dsh-dingtalk-head h2{margin:0;font-size:16px;line-height:22px}.dsh-dingtalk-head p{margin:2px 0 0;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:11px}.dsh-dingtalk-close{display:grid;place-items:center;width:32px;height:32px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--dsw-alias-label-secondary,#8c949d);font-size:21px;cursor:pointer}
-        .dsh-dingtalk-body{display:flex;flex-direction:column;min-height:0;flex:1;overflow:auto;padding:13px 15px 16px}.dsh-dingtalk-alert{padding:8px 10px;margin-bottom:9px;border-radius:9px;font-size:12px}.dsh-dingtalk-alert.error{background:#d84c4516;color:#f08077}.dsh-dingtalk-alert.success{background:#35a56f16;color:#68c895}.dsh-dingtalk-state{display:flex;align-items:center;gap:8px;padding:10px 11px;margin-bottom:12px;border:1px solid #35a56f30;border-radius:10px;background:#35a56f0d}.dsh-dingtalk-state span:last-child{margin-left:auto;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dsh-dingtalk-intro{margin:0 0 3px;color:var(--dsw-alias-label-secondary,#b1b7bf);font-size:11px;line-height:18px}.dsh-dingtalk-section{padding:12px 0;border-top:1px solid var(--dsw-alias-border-l1,rgba(128,128,128,.13))}.dsh-dingtalk-section-title{margin-bottom:9px;color:var(--dsw-alias-label-secondary,#b1b7bf);font-size:12px;font-weight:650}.dsh-dingtalk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px;border-radius:9px;background:var(--dsw-alias-bg-base,#141619);color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px}.dsh-dingtalk-grid span{display:flex;flex-direction:column;gap:3px}.dsh-dingtalk-grid strong{color:var(--dsw-alias-label-primary,#f5f6f7);font-size:11px;font-weight:550}.dsh-dingtalk-note{margin:0;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px;line-height:16px}.dsh-dingtalk-command{display:flex;align-items:center;gap:8px;padding:9px;border-radius:9px;background:var(--dsw-alias-bg-base,#141619)}.dsh-dingtalk-command code{min-width:0;overflow:auto;color:var(--dsw-alias-label-primary,#f5f6f7);font:10px/16px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}.dsh-dingtalk-command button{flex:none;min-height:28px;padding:0 9px;border:1px solid var(--dsw-alias-border-l2,rgba(128,128,128,.28));border-radius:8px;background:transparent;color:inherit;font-size:11px;cursor:pointer}
+        .dsh-dingtalk-body{display:flex;flex-direction:column;min-height:0;flex:1;overflow:auto;padding:13px 15px 16px}.dsh-dingtalk-alert{padding:8px 10px;margin-bottom:9px;border-radius:9px;font-size:12px}.dsh-dingtalk-alert.error{background:#d84c4516;color:#f08077}.dsh-dingtalk-alert.success{background:#35a56f16;color:#68c895}.dsh-dingtalk-state{display:flex;align-items:center;gap:8px;padding:10px 11px;margin-bottom:12px;border:1px solid #35a56f30;border-radius:10px;background:#35a56f0d}.dsh-dingtalk-state span:last-child{margin-left:auto;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dsh-dingtalk-intro{margin:0 0 3px;color:var(--dsw-alias-label-secondary,#b1b7bf);font-size:11px;line-height:18px}.dsh-dingtalk-section{padding:12px 0;border-top:1px solid var(--dsw-alias-border-l1,rgba(128,128,128,.13))}.dsh-dingtalk-section-title{margin-bottom:9px;color:var(--dsw-alias-label-secondary,#b1b7bf);font-size:12px;font-weight:650}.dsh-dingtalk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px;border-radius:9px;background:var(--dsw-alias-bg-base,#141619);color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px}.dsh-dingtalk-grid span{display:flex;flex-direction:column;gap:3px}.dsh-dingtalk-grid strong{color:var(--dsw-alias-label-primary,#f5f6f7);font-size:11px;font-weight:550}.dsh-dingtalk-sessions{display:grid;gap:6px}.dsh-dingtalk-session{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 9px;border:1px solid var(--dsw-alias-border-l1,rgba(128,128,128,.15));border-radius:9px;background:var(--dsw-alias-bg-base,#141619)}.dsh-dingtalk-session-main{display:flex;flex-direction:column;min-width:0;flex:1}.dsh-dingtalk-session-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.dsh-dingtalk-session-main small{color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px}.dsh-dingtalk-session button{min-height:26px;padding:0 8px;border:1px solid var(--dsw-alias-border-l2,rgba(128,128,128,.28));border-radius:7px;background:transparent;color:inherit;font-size:10px;cursor:pointer;white-space:nowrap}.dsh-dingtalk-empty{padding:8px;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px}.dsh-dingtalk-note{margin:0;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px;line-height:16px}.dsh-dingtalk-command{display:flex;align-items:center;gap:8px;padding:9px;border-radius:9px;background:var(--dsw-alias-bg-base,#141619)}.dsh-dingtalk-command code{min-width:0;overflow:auto;color:var(--dsw-alias-label-primary,#f5f6f7);font:10px/16px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}.dsh-dingtalk-command button{flex:none;min-height:28px;padding:0 9px;border:1px solid var(--dsw-alias-border-l2,rgba(128,128,128,.28));border-radius:8px;background:transparent;color:inherit;font-size:11px;cursor:pointer}
             [data-dsh-sidebar-foot]{box-sizing:border-box!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-template-rows:auto auto!important;align-items:center!important;gap:6px 8px!important;width:100%!important;min-width:0!important}
             [data-dsh-footer-actions],[data-dsh-settings-area]{display:contents!important}
             [data-dsh-footer-actions] > [data-slot="sidebar.footer.action"],[data-dsh-settings-area] > [data-slot="sidebar.settings"]{display:contents!important}
