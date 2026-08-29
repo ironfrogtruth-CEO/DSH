@@ -247,8 +247,28 @@ function commandFixture() {
     workspaceOverrides: new MapStore(),
     defaultWorkspace: '/workspace',
   }
-  return { commands: new Commands(deps), deps, replies, bindings, modelOverrides, sessionQuery }
+  return { commands: new Commands(deps), deps, replies, bindings, modelOverrides, sessionQuery, sessionHeaders, titleById }
 }
+
+test('session roster resolves titles only for the ten pre-ranked canonical candidates', async () => {
+  const fixture = commandFixture()
+  for (let index = 0; index < 30; index += 1) {
+    const id = `extra-${String(index).padStart(2, '0')}`
+    fixture.sessionHeaders.push({ id, cwd: '/workspace', createdAt: 1_000 + index, agentPreset: 'CyberMarcus' })
+    fixture.titleById.set(id, `额外会话 ${index}`)
+  }
+  const originalRead = fixture.sessionQuery.readTitleSnapshots.bind(fixture.sessionQuery)
+  const batches = []
+  fixture.sessionQuery.readTitleSnapshots = async (ids) => {
+    batches.push(ids.map(String))
+    return originalRead(ids)
+  }
+  const rows = await fixture.commands.sessionRowsFor('dt-conversation-1')
+  assert.equal(rows.length, 10)
+  assert.deepEqual(batches.map((ids) => ids.length), [10])
+  assert.equal(rows[0].id, 'extra-29')
+  assert.equal(rows.at(-1).id, 'extra-20')
+})
 
 test('management commands are owner-only and use the canonical session/model services', async () => {
   const fixture = commandFixture()
@@ -408,6 +428,21 @@ test('artifact scan is bounded, recent-only, relative, and rejects symlink or se
 
 test('interactive console seeds the real dynamic form and updates one card idempotently', async () => {
   const fixture = commandFixture()
+  const calls = { sessionRowsFor: 0, modelRowsFor: 0, artifactRowsFor: 0, resolveModelInfo: 0 }
+  for (const name of ['sessionRowsFor', 'modelRowsFor', 'artifactRowsFor']) {
+    const original = fixture.commands[name].bind(fixture.commands)
+    fixture.commands[name] = async (...args) => {
+      calls[name] += 1
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return original(...args)
+    }
+  }
+  const originalResolveModelInfo = fixture.deps.llm.resolveModelInfo
+  fixture.deps.llm.resolveModelInfo = async (...args) => {
+    calls.resolveModelInfo += 1
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    return originalResolveModelInfo(...args)
+  }
   const requests = []
   const consoleCards = new ConsoleCards({
     interactionCards: {
@@ -421,23 +456,24 @@ test('interactive console seeds the real dynamic form and updates one card idemp
     log: () => {},
   })
   const ownerMessage = commandMessage('/menu')
+  const openStartedAt = performance.now()
   assert.equal(await consoleCards.open(ownerMessage, 'dt-conversation-1'), true)
+  assert.ok(performance.now() - openStartedAt < 1_000)
+  assert.deepEqual(calls, { sessionRowsFor: 0, modelRowsFor: 0, artifactRowsFor: 0, resolveModelInfo: 0 })
   assert.equal(requests.length, 1)
   const first = requests[0]
   assert.equal(first.kind, 'console')
+  assert.equal('privateData' in first, false)
   assert.match(first.outTrackId, /^dshc1_[0-9a-f]{16}_[0-9a-f]{24}$/)
   assert.deepEqual(Object.keys(first.cardData).sort(), ['button_text', 'err_msg', 'form_fields', 'form_status', 'title'])
   assert.equal(first.cardData.title, '大神控制台')
   assert.equal(first.cardData.button_text, '应用设置 / 执行动作')
   const fields = JSON.parse(first.cardData.form_fields)
-  assert.deepEqual(fields.map((field) => field.name), ['status', 'notice', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction'])
+  assert.deepEqual(fields.map((field) => field.name), ['status', 'view'])
   assert.deepEqual(new Set(fields.map((field) => field.type)), new Set(['TEXT', 'SELECT']))
   assert.equal(fields.some((field) => field.type.startsWith('CHECKBOX')), false)
   const slots = fields.filter((field) => field.type === 'SELECT').flatMap((field) => field.options.map((option) => option.value))
-  assert.ok(slots.some((value) => /^v1:s\d+$/.test(value)))
-  assert.ok(slots.some((value) => /^v1:m\d+$/.test(value)))
-  assert.ok(slots.some((value) => /^v1:e\d+$/.test(value)))
-  assert.ok(slots.every((value) => /^v1:(?:v|s|m|e|a)\d+$/.test(value)))
+  assert.ok(slots.every((value) => /^v1:v\d+$/.test(value)))
 
   const select = await consoleCards.handleCardCallback({
     outTrackId: first.outTrackId,
@@ -451,26 +487,51 @@ test('interactive console seeds the real dynamic form and updates one card idemp
   assert.equal(select.response.cardData.cardParamMap.title, '大神控制台')
   assert.equal(select.response.cardUpdateOptions.updatePrivateDataByKey, true)
   assert.equal(Object.keys(select.response.userPrivateData.cardParamMap).sort().join(','), 'button_text,err_msg,form_fields,form_status')
+  assert.equal(calls.sessionRowsFor, 1)
+  assert.deepEqual(calls, { sessionRowsFor: 1, modelRowsFor: 0, artifactRowsFor: 0, resolveModelInfo: 0 })
 
   const currentFields = JSON.parse(select.response.userPrivateData.cardParamMap.form_fields)
-  assert.deepEqual(currentFields.map((field) => field.name), ['status', 'notice', 'view', 'sessionSlot'])
-  const submitFields = currentFields.map((field) => {
-    if (field.type === 'SELECT' && field.name !== 'view' && field.options.length > 0) return { ...field, default_number: 0 }
-    return field
-  })
-  const submit = {
+  assert.deepEqual(currentFields.map((field) => field.name), ['status', 'view', 'sessionSlot'])
+  const sessionField = currentFields.find((field) => field.name === 'sessionSlot')
+  const sessionSelectStartedAt = performance.now()
+  const sessionSelected = await consoleCards.handleCardCallback({
     outTrackId: first.outTrackId,
     userId: 'owner-staff',
     actionIds: [],
-    params: { version: '2', submit_form_fields: submitFields },
+    params: { version: '2', name: 'sessionSlot', type: 'SELECT', sessionSlot: { index: 0, value: sessionField.options[0].value } },
+  })
+  assert.ok(performance.now() - sessionSelectStartedAt < 200)
+  assert.equal(sessionSelected.response.version, '3')
+  assert.deepEqual(calls, { sessionRowsFor: 1, modelRowsFor: 0, artifactRowsFor: 0, resolveModelInfo: 0 })
+  const selectedFields = JSON.parse(sessionSelected.response.userPrivateData.cardParamMap.form_fields)
+  assert.equal(selectedFields.find((field) => field.name === 'sessionSlot').default_number, 0)
+  const submitFields = selectedFields
+  const submit = {
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: ['node_submit_button'],
+    params: { version: '3', submit_form_fields: submitFields },
   }
   const applied = await consoleCards.handleCardCallback(submit)
   assert.equal(applied.handled, true)
   assert.equal(applied.response.outTrackId, first.outTrackId)
-  assert.equal(applied.response.version, '3')
+  assert.equal(applied.response.version, '4')
   assert.equal(applied.response.userPrivateData.cardParamMap.form_status, 'normal')
-  assert.match(JSON.parse(applied.response.userPrivateData.cardParamMap.form_fields).find((field) => field.name === 'notice').default_string, /设置已应用/)
+  assert.equal(applied.response.userPrivateData.cardParamMap.button_text, '✓ 设置已应用')
+  assert.equal(JSON.parse(applied.response.userPrivateData.cardParamMap.form_fields).some((field) => field.name === 'notice'), false)
   assert.deepEqual(await consoleCards.handleCardCallback(submit), applied)
+
+  const appliedFields = JSON.parse(applied.response.userPrivateData.cardParamMap.form_fields)
+  const appliedView = appliedFields.find((field) => field.name === 'view')
+  const resumed = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '4', name: 'view', type: 'SELECT', view: { index: 2, value: appliedView.options[2].value } },
+  })
+  assert.equal(resumed.response.version, '5')
+  assert.equal(resumed.response.userPrivateData.cardParamMap.button_text, '应用设置 / 执行动作')
+  assert.equal(JSON.parse(resumed.response.userPrivateData.cardParamMap.form_fields).some((field) => field.name === 'notice'), false)
 
   const stale = await consoleCards.handleCardCallback({
     outTrackId: first.outTrackId,
@@ -478,7 +539,7 @@ test('interactive console seeds the real dynamic form and updates one card idemp
     actionIds: [],
     params: { version: '1', name: 'view', type: 'SELECT', view: { index: 2 } },
   })
-  assert.equal(stale.response.version, '3')
+  assert.equal(stale.response.version, '5')
   const wrongUser = await consoleCards.handleCardCallback({
     outTrackId: first.outTrackId,
     userId: 'not-owner',
@@ -495,6 +556,101 @@ test('interactive console seeds the real dynamic form and updates one card idemp
   assert.equal(tampered.handled, false)
   assert.equal(await consoleCards.open(commandMessage('/menu', 'not-owner'), 'dt-conversation-1'), false)
   assert.equal(requests.length, 1)
+})
+
+test('model and reasoning selections are submitted as one revalidated route', async () => {
+  const fixture = commandFixture()
+  const requests = []
+  const consoleCards = new ConsoleCards({
+    interactionCards: { async create(request) { requests.push(request); return true } },
+    commands: fixture.commands,
+    outbound: fixture.deps.outbound,
+    markdownTitle: 'DSH',
+    isOwner: fixture.deps.isOwner,
+    isOwnerId: (userId) => userId === 'owner-staff',
+    log: () => {},
+  })
+  assert.equal(await consoleCards.open(commandMessage('/menu'), 'dt-conversation-1'), true)
+  const first = requests[0]
+  const homeFields = JSON.parse(first.cardData.form_fields)
+  const homeView = homeFields.find((field) => field.name === 'view')
+  const modelsView = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '1', name: 'view', type: 'SELECT', view: { index: 2, value: homeView.options[2].value } },
+  })
+  const modelFields = JSON.parse(modelsView.response.userPrivateData.cardParamMap.form_fields)
+  const modelField = modelFields.find((field) => field.name === 'modelSlot')
+  const selectedModel = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '2', name: 'modelSlot', type: 'SELECT', modelSlot: { index: 0, value: modelField.options[0].value } },
+  })
+  const selectedModelFields = JSON.parse(selectedModel.response.userPrivateData.cardParamMap.form_fields)
+  const selectedModelView = selectedModelFields.find((field) => field.name === 'view')
+  const effortView = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '3', name: 'view', type: 'SELECT', view: { index: 3, value: selectedModelView.options[3].value } },
+  })
+  const effortFields = JSON.parse(effortView.response.userPrivateData.cardParamMap.form_fields)
+  assert.deepEqual(effortFields.map((field) => field.name), ['status', 'view', 'modelSlot', 'effortSlot'])
+  assert.equal(effortFields.find((field) => field.name === 'modelSlot').default_number, 0)
+  const effortField = effortFields.find((field) => field.name === 'effortSlot')
+  const selectedEffort = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '4', name: 'effortSlot', type: 'SELECT', effortSlot: { index: 1, value: effortField.options[1].value } },
+  })
+  const submitFields = JSON.parse(selectedEffort.response.userPrivateData.cardParamMap.form_fields)
+  const applied = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: ['node_submit_button'],
+    params: { version: '5', submit_form_fields: submitFields },
+  })
+  assert.equal(applied.response.version, '6')
+  assert.deepEqual(fixture.modelOverrides.get('dt-conversation-1'), { provider: 'provider-a', model: 'model-a', reasoningEffort: 'medium' })
+})
+
+test('task view is reachable and keeps artifact navigation separate', async () => {
+  const fixture = commandFixture()
+  const requests = []
+  const consoleCards = new ConsoleCards({
+    interactionCards: { async create(request) { requests.push(request); return true } },
+    commands: fixture.commands,
+    outbound: fixture.deps.outbound,
+    markdownTitle: 'DSH',
+    isOwner: fixture.deps.isOwner,
+    isOwnerId: (userId) => userId === 'owner-staff',
+    log: () => {},
+  })
+  await consoleCards.open(commandMessage('/menu'), 'dt-conversation-1')
+  const first = requests[0]
+  const homeFields = JSON.parse(first.cardData.form_fields)
+  const view = homeFields.find((field) => field.name === 'view')
+  assert.equal(view.options[5].text.zh_CN, '任务')
+  const taskView = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '1', name: 'view', type: 'SELECT', view: { index: 5, value: view.options[5].value } },
+  })
+  const taskFields = JSON.parse(taskView.response.userPrivateData.cardParamMap.form_fields)
+  assert.deepEqual(taskFields.map((field) => field.name), ['status', 'view', 'taskAction'])
+  const taskAction = taskFields.find((field) => field.name === 'taskAction')
+  assert.deepEqual(taskAction.options.map((option) => option.text.zh_CN), ['不执行动作', '停止当前任务', '新会话'])
+  const applied = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: ['node_submit_button'],
+    params: { version: '2', submit_form_fields: taskFields },
+  })
+  assert.equal(applied.response.userPrivateData.cardParamMap.button_text, '✓ 设置已应用')
 })
 
 test('stream normalizer keeps dynamic-form callbacks with empty actionIds and rejects malformed params', async () => {
@@ -533,6 +689,7 @@ test('interaction sender keeps approval template isolated and seeds dynamic-form
       approveLabel: '应用设置 / 执行动作',
       rejectLabel: '应用设置 / 执行动作',
       cardData: { title: '大神控制台', form_fields: '[]', form_status: 'normal', button_text: '应用设置 / 执行动作', err_msg: '' },
+      privateData: { must_not_reach_api: 'regression-guard' },
     })
     assert.equal(delivered, true)
     assert.equal(requests.length, 2)

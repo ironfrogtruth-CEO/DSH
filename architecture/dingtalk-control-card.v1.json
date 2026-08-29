@@ -86,7 +86,7 @@
       "exportSha256": "bcec9ddd614d039b4004656e07eb91e41e13de78f4528010b6c74ac8e81ef108"
     },
     "platformAcceptance": {
-      "android": "passed: new /menu card rendered and view selection updated the same card",
+      "android": "passed: /menu delivery; session view/select/apply; model plus reasoning joint apply; artifact empty state; task view and no-op submit; success state on primary button; one-click callbacks measured at about 0-400ms after optimization",
       "ios": "not accepted in this round by explicit user scope decision"
     },
     "templateVariables": {

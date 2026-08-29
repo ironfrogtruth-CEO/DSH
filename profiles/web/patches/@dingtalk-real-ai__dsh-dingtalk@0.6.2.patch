@@ -141,7 +141,7 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..e611d45a88a0fb7aa380c5cea0604364
      registerBusyCard(outTrackId: string, conversationId: string): void;
      /**
 diff --git a/lib/commands.js b/lib/commands.js
-index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5db092689 100644
+index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368a9daa1ee 100644
 --- a/lib/commands.js
 +++ b/lib/commands.js
 @@ -1,9 +1,11 @@
@@ -159,7 +159,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
  import { sessionId } from './host.js';
  const HELP = [
      '**可用命令**',
-@@ -11,12 +13,289 @@ const HELP = [
+@@ -11,12 +13,288 @@ const HELP = [
      '- `/new` 重开会话（清空上下文）',
      '- `/stop` 停止当前正在执行的任务',
      '- `/model` 查看当前模型',
@@ -230,10 +230,14 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
 +    const query = deps.sessionQuery;
 +    if (!query || typeof query.listSessions !== 'function' || typeof query.readTitleSnapshots !== 'function') return [];
 +    const records = await query.listSessions();
++    const workspace = currentWorkspace(deps, key);
 +    const candidates = (Array.isArray(records) ? records : []).filter((record) => {
 +        const header = record?.header;
 +        return typeof header?.id === 'string' && header.id.trim() && header.origin !== 'subagent';
-+    });
++    }).sort((left, right) => Number(sameWorkspace(right.header, workspace)) - Number(sameWorkspace(left.header, workspace))
++        || (Number(right.header?.createdAt) || 0) - (Number(left.header?.createdAt) || 0)
++        || String(left.header?.id).localeCompare(String(right.header?.id)))
++        .slice(0, MAX_SESSIONS);
 +    if (!candidates.length) return [];
 +    const observations = await query.readTitleSnapshots(candidates.map((record) => sessionId(record.header.id)));
 +    const byId = new Map();
@@ -241,7 +245,6 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
 +        const value = settledValue(observation);
 +        if (value?.session?.id) byId.set(String(value.session.id), value);
 +    }
-+    const workspace = currentWorkspace(deps, key);
 +    return candidates
 +        .map((record) => {
 +        const header = record.header;
@@ -259,11 +262,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
 +            sameWorkspace: sameWorkspace(header, workspace),
 +        };
 +    })
-+        .filter(Boolean)
-+        .sort((left, right) => Number(right.sameWorkspace) - Number(left.sameWorkspace)
-+        || right.createdAt - left.createdAt
-+        || left.id.localeCompare(right.id))
-+        .slice(0, MAX_SESSIONS);
++        .filter(Boolean);
 +}
 +
 +/** Resolve only the bound, non-subagent session's canonical header. */
@@ -450,7 +449,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
  /** Commands that must win over a pending human-interaction answer. */
  export function isSessionControl(text) {
      const command = text.trim().split(/\s+/, 1)[0];
-@@ -37,6 +316,108 @@ export class Commands {
+@@ -37,6 +315,108 @@ export class Commands {
      registerBusyCard(outTrackId, conversationId) {
          this.busyCards.set(outTrackId, conversationId);
      }
@@ -559,7 +558,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
      /**
       * Consume a busy-card button press: approve = interrupt, reject = steer.
       * Only the queued message's own sender may decide.
-@@ -122,10 +503,25 @@ export class Commands {
+@@ -122,10 +502,25 @@ export class Commands {
          if (!text.startsWith('/'))
              return false;
          const [cmd, sub, ...rest] = text.split(/\s+/);
@@ -585,7 +584,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
              case '/status': {
                  const bound = this.deps.bindings.get(key);
                  const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
-@@ -135,7 +531,7 @@ export class Commands {
+@@ -135,7 +530,7 @@ export class Commands {
                  await reply([
                      '**状态**',
                      `- 会话：${bound ? `\`${bound.slice(0, 8)}…\`${agent ? `（${agent.status === 'running' ? '执行中' : '空闲'}）` : '（未加载，下条消息恢复）'}` : '尚未建立'}`,
@@ -594,7 +593,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
                      `- 排队：${this.deps.queue.depth(key)} 条在途`,
                      ...(this.deps.defaultWorkspace
                          ? [`- 工作区：${ws ?? this.deps.defaultWorkspace}${ws ? '（本会话覆盖）' : '（默认）'}`]
-@@ -171,7 +567,7 @@ export class Commands {
+@@ -171,7 +566,7 @@ export class Commands {
                  if (!sub) {
                      const override = this.deps.modelOverrides.get(key);
                      const model = override ?? this.deps.defaultModel();
@@ -603,7 +602,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..6d10d0f9c6faf658ec3c1edf934fc2a5
                      return true;
                  }
                  if (sub === 'reset') {
-@@ -181,21 +577,159 @@ export class Commands {
+@@ -181,21 +576,159 @@ export class Commands {
                      return true;
                  }
                  if (sub === 'use') {
@@ -822,10 +821,10 @@ index 0000000000000000000000000000000000000000..44eafd6a697b6b32100322adf137b9f8
 +}
 diff --git a/lib/console.js b/lib/console.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3af5d79f8c
+index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba318d8dd13
 --- /dev/null
 +++ b/lib/console.js
-@@ -0,0 +1,416 @@
+@@ -0,0 +1,477 @@
 +/**
 + * Owner-only DingTalk control card.
 + *
@@ -844,11 +843,11 @@ index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3a
 +const MAX_OPTIONS = 10;
 +const MAX_PARAMS = 32;
 +const SELECT_NAMES = new Set(['view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
-+const SUBMIT_ACTIONS = new Set(['', 'submit', 'console_submit', 'button', 'apply']);
 +const SELECT_ACTIONS = new Set(['', 'select', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
-+const VIEWS = ['首页', '会话', '模型', '推理等级', '产物'];
-+const ACTIONS = ['不执行动作', '停止当前任务', '新会话', '查看产物'];
-+const ACTION_VALUES = ['none', 'stop', 'new', 'artifacts'];
++const VIEWS = ['首页', '会话', '模型', '推理等级', '产物', '任务'];
++const ACTIONS = ['不执行动作', '停止当前任务', '新会话'];
++const ACTION_VALUES = ['none', 'stop', 'new'];
++const SLOT_PREFIX = { view: 'v', sessionSlot: 's', modelSlot: 'm', effortSlot: 'e', taskAction: 'a' };
 +
 +function text(value, max = 240) {
 +    return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
@@ -926,22 +925,41 @@ index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3a
 +    };
 +}
 +
-+function outputPayload(fields, status, errorText) {
++function outputPayload(fields, status, errorText, buttonText = '') {
 +    return {
 +        title: '大神控制台',
 +        form_fields: JSON.stringify(fields.slice(0, MAX_FIELDS)),
 +        form_status: status,
-+        button_text: status === 'disabled' ? '已应用' : '应用设置 / 执行动作',
++        button_text: buttonText || (status === 'disabled' ? '已应用' : '应用设置 / 执行动作'),
 +        err_msg: text(errorText, 600),
 +    };
 +}
 +
 +function visibleFieldNames(viewIndex) {
-+    if (viewIndex === 1) return new Set(['status', 'notice', 'view', 'sessionSlot']);
-+    if (viewIndex === 2) return new Set(['status', 'notice', 'view', 'modelSlot']);
-+    if (viewIndex === 3) return new Set(['status', 'notice', 'view', 'effortSlot']);
-+    if (viewIndex === 4) return new Set(['status', 'notice', 'view', 'artifacts']);
-+    return new Set(['status', 'notice', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
++    if (viewIndex === 1) return new Set(['status', 'view', 'sessionSlot']);
++    if (viewIndex === 2) return new Set(['status', 'view', 'modelSlot']);
++    if (viewIndex === 3) return new Set(['status', 'view', 'modelSlot', 'effortSlot']);
++    if (viewIndex === 4) return new Set(['status', 'view', 'artifacts']);
++    if (viewIndex === 5) return new Set(['status', 'view', 'taskAction']);
++    return new Set(['status', 'view']);
++}
++
++function refreshCachedFields(record, fields) {
++    const refreshed = fields.filter((field) => field?.name !== 'notice').map((field) => {
++        if (field?.type !== 'SELECT' || !SLOT_PREFIX[field.name]) return field;
++        const selected = record.selections[field.name];
++        const next = {
++            ...field,
++            options: (field.options ?? []).map((option, index) => ({
++                ...option,
++                value: `v${record.version}:${SLOT_PREFIX[field.name]}${index + 1}`,
++            })),
++        };
++        if (Number.isSafeInteger(selected) && selected >= 0 && selected < next.options.length) next.default_number = selected;
++        else delete next.default_number;
++        return next;
++    });
++    return refreshed;
 +}
 +
 +export class ConsoleCards {
@@ -977,48 +995,69 @@ index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3a
 +    async formState(record) {
 +        const commands = this.deps.commands;
 +        const status = commands.statusSnapshot(record.scopeKey);
-+        const sessions = (await commands.sessionRowsFor(record.scopeKey)).slice(0, MAX_OPTIONS);
-+        const models = (await commands.modelRowsFor()).slice(0, MAX_OPTIONS);
-+        const model = Number.isSafeInteger(record.selections.modelSlot) ? models[record.selections.modelSlot] : undefined;
-+        const route = commands.deps?.modelOverrides?.get?.(record.scopeKey) ?? commands.deps?.defaultModel?.();
-+        const efforts = model?.efforts?.length
-+            ? model.efforts.map((item) => text(item))
-+            : route?.provider && route?.model
-+                ? (await commands.deps.llm?.resolveModelInfo?.(route.provider, route.model))?.reasoning?.efforts?.map((item) => text(item?.id)).filter(Boolean) ?? []
-+                : [];
-+        let artifacts = [];
-+        try {
-+            artifacts = (await commands.artifactRowsFor(record.scopeKey))?.slice(0, MAX_OPTIONS) ?? [];
-+        }
-+        catch {
-+            artifacts = [];
-+        }
 +        const statusText = [
 +            `会话：${text(status.bound || '尚未建立')}`,
 +            `模型：${text(status.model)}`,
 +            `排队：${status.queueDepth} 条在途`,
 +            ...status.connector.map((line) => text(line)),
 +        ].join('\n');
-+        const artifactText = artifacts.length
-+            ? artifacts.map((item) => `${text(item.relativeName, 180)} · ${text(item.type)} · ${text(item.size)} · ${text(item.time)}`).join('\n')
-+            : '暂无近期产物';
-+        const allFields = [
++        const viewIndex = record.selections.view;
++        const fields = [
 +            textField('status', '当前状态', statusText),
-+            textField('notice', '操作提示', record.notice || '请选择内容并提交操作'),
-+            selectField('view', '查看内容', VIEWS, record.selections.view, 'v', record.version),
-+            selectField('sessionSlot', '会话', sessions.map((item) => text(item.title)), record.selections.sessionSlot, 's', record.version),
-+            selectField('modelSlot', '模型', models.map((item) => `${text(item.provider)}/${text(item.model)}`), record.selections.modelSlot, 'm', record.version),
-+            selectField('effortSlot', '推理等级', efforts, record.selections.effortSlot, 'e', record.version),
-+            selectField('taskAction', '动作', ACTIONS, record.selections.taskAction, 'a', record.version),
-+            textField('artifacts', '近期产物', artifactText),
++            selectField('view', '查看内容', VIEWS, viewIndex, 'v', record.version),
 +        ];
-+        const names = visibleFieldNames(record.selections.view);
-+        const fields = allFields.filter((field) => names.has(field.name));
++        let sessions = [];
++        let models = [];
++        let efforts = [];
++        let artifacts = [];
++        if (viewIndex === 1) {
++            sessions = (await commands.sessionRowsFor(record.scopeKey)).slice(0, MAX_OPTIONS);
++            fields.push(selectField('sessionSlot', '会话', sessions.map((item) => text(item.title)), record.selections.sessionSlot, 's', record.version));
++        }
++        else if (viewIndex === 2) {
++            models = (await commands.modelRowsFor()).slice(0, MAX_OPTIONS);
++            fields.push(selectField('modelSlot', '模型', models.map((item) => `${text(item.provider)}/${text(item.model)}`), record.selections.modelSlot, 'm', record.version));
++        }
++        else if (viewIndex === 3) {
++            models = (await commands.modelRowsFor()).slice(0, MAX_OPTIONS);
++            const selectedModel = Number.isSafeInteger(record.selections.modelSlot)
++                ? models[record.selections.modelSlot]
++                : undefined;
++            const route = commands.deps?.modelOverrides?.get?.(record.scopeKey) ?? commands.deps?.defaultModel?.();
++            efforts = selectedModel?.efforts?.length
++                ? selectedModel.efforts.map((item) => text(item))
++                : route?.provider && route?.model
++                    ? (await commands.deps.llm?.resolveModelInfo?.(route.provider, route.model))?.reasoning?.efforts?.map((item) => text(item?.id)).filter(Boolean) ?? []
++                    : [];
++            fields.push(selectField('modelSlot', '模型', models.map((item) => `${text(item.provider)}/${text(item.model)}`), record.selections.modelSlot, 'm', record.version));
++            fields.push(selectField('effortSlot', '推理等级', efforts, record.selections.effortSlot, 'e', record.version));
++        }
++        else if (viewIndex === 4) {
++            try {
++                artifacts = (await commands.artifactRowsFor(record.scopeKey))?.slice(0, MAX_OPTIONS) ?? [];
++            }
++            catch {
++                artifacts = [];
++            }
++            const artifactText = artifacts.length
++                ? artifacts.map((item) => `${text(item.relativeName, 180)} · ${text(item.type)} · ${text(item.size)} · ${text(item.time)}`).join('\n')
++                : '暂无近期产物';
++            fields.push(textField('artifacts', '近期产物', artifactText));
++        }
++        else if (viewIndex === 5) {
++            fields.push(selectField('taskAction', '动作', ACTIONS, record.selections.taskAction, 'a', record.version));
++        }
 +        return { fields, sessions, models, efforts, artifacts };
 +    }
 +    async payload(record, status = 'normal', errorText = '') {
 +        const state = await this.formState(record);
-+        return { payload: outputPayload(state.fields, status, errorText), state };
++        record.viewState = state;
++        return { payload: outputPayload(state.fields, status, errorText, record.notice ? '✓ 设置已应用' : ''), state };
++    }
++    payloadFromCached(record, state, status = 'normal', errorText = '') {
++        const nextState = { ...state, fields: refreshCachedFields(record, state.fields) };
++        record.viewState = nextState;
++        return { payload: outputPayload(nextState.fields, status, errorText, record.notice ? '✓ 设置已应用' : ''), state: nextState };
 +    }
 +    async open(msg, scopeKey) {
 +        if (!this.deps.interactionCards || !this.deps.isOwner?.(msg)) return false;
@@ -1102,14 +1141,26 @@ index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3a
 +        const selected = paramsObject(params)?.[name];
 +        const index = selectIndex(selected);
 +        if (!Number.isSafeInteger(index) || index < 0) return undefined;
-+        const built = await this.payload(record);
-+        const field = built.state.fields.find((item) => item.name === name);
++        if (name === 'view') {
++            if (index >= VIEWS.length || paramsObject(selected)?.value !== `v${record.version}:v${index + 1}`) return undefined;
++            record.notice = '';
++            record.selections.view = index;
++            record.version += 1;
++            const next = await this.payload(record);
++            return this.cardUpdate(record, next.payload);
++        }
++        const built = record.viewState;
++        if (!built || record.selections.view === undefined) return undefined;
++        const field = built.fields.find((item) => item.name === name);
 +        if (!field || field.type !== 'SELECT' || index >= field.options.length) return undefined;
 +        if (typeof paramsObject(selected)?.value !== 'string' || paramsObject(selected).value !== field.options[index].value) return undefined;
++        record.notice = '';
 +        record.selections[name] = index;
 +        if (name === 'modelSlot') record.selections.effortSlot = undefined;
 +        record.version += 1;
-+        const next = await this.payload(record);
++        const next = name === 'modelSlot' && record.selections.view === 3
++            ? await this.payload(record)
++            : this.payloadFromCached(record, built);
 +        return this.cardUpdate(record, next.payload);
 +    }
 +    async handleSubmit(record, params) {
@@ -1157,9 +1208,9 @@ index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3a
 +        if (task === 'stop') this.deps.commands.stopSession(record.scopeKey);
 +        if (task === 'new') this.deps.commands.resetSession(record.scopeKey);
 +        record.selections = { view: viewField.default_number, sessionSlot: indices.sessionSlot, modelSlot: indices.modelSlot, effortSlot: indices.effortSlot, taskAction: 0 };
-+        record.notice = task === 'artifacts' ? '已切换到产物视图。' : '设置已应用。';
++        record.notice = '设置已应用。';
 +        record.version += 1;
-+        const next = await this.payload(record, 'normal');
++        const next = this.payloadFromCached(record, state, 'normal');
 +        return this.cardUpdate(record, next.payload);
 +    }
 +    async handleCardCallback(callback) {
@@ -1175,7 +1226,16 @@ index 0000000000000000000000000000000000000000..6ccb6de9d5440c5d8f53cc654b2dcb3a
 +        const actionId = String(callback.actionIds[0] ?? '');
 +        const hasSubmit = Object.prototype.hasOwnProperty.call(params, 'submit_form_fields');
 +        const selectionName = typeof params.name === 'string' ? params.name : '';
-+        if (hasSubmit ? !SUBMIT_ACTIONS.has(actionId) : !(SELECT_ACTIONS.has(actionId) || SELECT_NAMES.has(selectionName))) return { handled: true, response: {} };
++        if (hasSubmit) {
++            // Published dynamic-form templates use a generated component action
++            // id.  The signed card record, bound owner and strict submitted-field
++            // schema are the authorization boundary; accept only a bounded,
++            // printable template id instead of guessing its generated value.
++            if (actionId && !/^[A-Za-z0-9_.:-]{1,160}$/.test(actionId)) return { handled: true, response: {} };
++        }
++        else if (!(SELECT_ACTIONS.has(actionId) || SELECT_NAMES.has(selectionName))) {
++            return { handled: true, response: {} };
++        }
 +        const allowedParams = new Set(['version']);
 +        if (hasSubmit) allowedParams.add('submit_form_fields');
 +        else {
@@ -1405,7 +1465,7 @@ index a0f646b033971f7f83f7948166e7361712d317e7..bac89a232fd988202aec4c148989e133
  /** Delivery adapter for the configured DingTalk interactive-card template. */
  export interface InteractionCardSender {
 diff --git a/lib/interaction-card.js b/lib/interaction-card.js
-index 11b0821a2cd3344bde5d4a873163cc41f9111619..98d613c257c9762eb51766e233530d0bf2823978 100644
+index 11b0821a2cd3344bde5d4a873163cc41f9111619..d58aab7b9febdbba27cc6344d4f2f967924576b7 100644
 --- a/lib/interaction-card.js
 +++ b/lib/interaction-card.js
 @@ -40,26 +40,27 @@ export class InteractionCards {
@@ -1680,7 +1740,7 @@ index a87cbf31f8387c382c54c39bdce883a0f6859e3a..5624d8f4fc196c492d3000ed2f2427c7
  export interface StreamOptions extends DingTalkAppCredentials {
      debug?: boolean;
 diff --git a/lib/stream.js b/lib/stream.js
-index 0833a5d337f69fe7024b313dadd976a913aa584b..26892601de48852cc529b86afb3afec032a9649d 100644
+index 0833a5d337f69fe7024b313dadd976a913aa584b..b524f2401b7cc03f340a3ff526db74a5653ce369 100644
 --- a/lib/stream.js
 +++ b/lib/stream.js
 @@ -24,14 +24,19 @@ export function normalizeCardCallback(data) {
@@ -1706,7 +1766,12 @@ index 0833a5d337f69fe7024b313dadd976a913aa584b..26892601de48852cc529b86afb3afec0
      };
  }
  const DEDUP_TTL_MS = 30 * 60 * 1000;
-@@ -345,8 +350,11 @@ export async function startStream(opts) {
+@@ -341,12 +346,16 @@ export async function startStream(opts) {
+     });
+     client.registerCallbackListener(TOPIC_CARD, async (res) => {
+         const callbackId = res?.headers?.messageId;
++        const callbackStartedAt = Date.now();
+         let response = {};
          try {
              const data = typeof res?.data === 'string' ? JSON.parse(res.data) : res?.data;
              const callback = normalizeCardCallback(data);
@@ -1714,7 +1779,7 @@ index 0833a5d337f69fe7024b313dadd976a913aa584b..26892601de48852cc529b86afb3afec0
 +            opts.log(`card callback received normalized=${Boolean(callback)} actions=${callback?.actionIds?.length ?? 0} submit=${Boolean(callback?.params?.submit_form_fields)} selection=${typeof callback?.params?.name === 'string'}`);
 +            if (callback && opts.onCardCallback) {
                  response = await opts.onCardCallback(callback);
-+                opts.log(`card callback response emitted keys=${Object.keys(response ?? {}).sort().join(',') || 'none'}`);
++                opts.log(`card callback response emitted keys=${Object.keys(response ?? {}).sort().join(',') || 'none'} elapsedMs=${Date.now() - callbackStartedAt}`);
 +            }
          }
          catch (err) {
