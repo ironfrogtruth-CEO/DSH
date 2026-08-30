@@ -4,7 +4,7 @@
   "name": "钉钉大神控制台",
   "version": "1.0.0",
   "status": "verified-android",
-  "purpose": "把钉钉连接状态、绑定会话和可授权控制投影到同一张可切换的互动卡片；不复制 DSH 状态，也不把卡片当作新的会话入口。",
+  "purpose": "把钉钉连接状态、绑定会话和可授权控制投影到同一张互动卡片；新会话只保存工作模式偏好，真正会话仍由下一条普通消息通过 Host 创建。",
   "runtimeBoundary": {
     "host": "大神 Host",
     "connector": "@dingtalk-real-ai/dsh-dingtalk@0.6.2",
@@ -37,6 +37,11 @@
       "fields": ["modelSlot", "displayName", "providerLabel", "reasoningLevel", "isCurrent"],
       "presentation": "模型选择通过 modelSlot 回查 catalog，不把任意 provider/model 字符串直接信任为动作参数"
     },
+    "presets": {
+      "source": "ctx.agentPresets.list/resolve；过滤 broken preset",
+      "fields": ["presetSlot", "id", "name", "description"],
+      "presentation": "卡片只显示工作模式名称；CyberMarcus 使用兼容 ID reliable-development"
+    },
     "tasks": {
       "source": "同一 bound session 的 agents/sessionQuery 状态与官方 connector /status",
       "fields": ["taskState", "running", "waitingApproval", "updatedAt"],
@@ -53,7 +58,7 @@
     "mutations": "owner",
     "callbackVerification": [
       "验证 callback actionKey 属于本 schema",
-      "验证卡片 sessionRef/modelRef/artifactRef 属于当前 owner 会话且未过期",
+      "验证卡片 sessionRef/modelRef/presetRef/artifactRef 属于当前 owner 会话且未过期",
       "按当前 bindings、sessionQuery、llm 真源重新解析引用；不信任卡片携带的标题或状态",
       "敏感操作继续走官方 connector 的审批，不由控制台绕过"
     ],
@@ -86,7 +91,7 @@
       "exportSha256": "bcec9ddd614d039b4004656e07eb91e41e13de78f4528010b6c74ac8e81ef108"
     },
     "platformAcceptance": {
-      "android": "passed: /menu delivery; session view/select/apply; model plus reasoning joint apply; artifact empty state; task view and no-op submit; success state on primary button; one-click callbacks measured at about 0-400ms after optimization",
+      "android": "passed: /menu delivery; session view/select/apply; model plus reasoning joint apply; artifact empty state; task view; CyberMarcus default selection; new-session preparation; next-message creation with header agentPreset=reliable-development; success state on primary button; one-click callbacks measured at about 0-400ms after optimization",
       "ios": "not accepted in this round by explicit user scope decision"
     },
     "templateVariables": {
@@ -108,6 +113,7 @@
       "sessionSlot",
       "modelSlot",
       "effortSlot",
+      "presetSlot",
       "taskAction"
     ]
   },
@@ -193,9 +199,10 @@
     {
       "viewId": "tasks",
       "title": "任务控制",
-      "goal": "只显示当前绑定会话的运行状态，并提供明确的停止或重开动作。",
-      "sourceTruth": ["tasks", "status"],
+      "goal": "显示当前任务状态，并在新会话创建前选择工作模式；钉钉默认 CyberMarcus，不继承 App 当前的 Avengers。",
+      "sourceTruth": ["tasks", "status", "presets"],
       "displayFields": [
+        {"key": "preset.slot", "label": "工作模式", "type": "string", "sensitive": false},
         {"key": "task.state", "label": "任务状态", "type": "enum:idle|running|waitingApproval|failed|completed", "sensitive": false},
         {"key": "task.running", "label": "执行中", "type": "boolean", "sensitive": false},
         {"key": "task.waitingApproval", "label": "等待审批", "type": "boolean", "sensitive": false},
@@ -203,12 +210,12 @@
       ],
       "buttons": [
         {"label": "停止", "actionKey": "task.stop", "owner": "owner", "params": {}, "fallbackCommand": "/stop"},
-        {"label": "重开", "actionKey": "task.new", "owner": "owner", "params": {}, "fallbackCommand": "/new"},
+        {"label": "新会话", "actionKey": "task.new", "owner": "owner", "params": {"presetSlot": "{{preset.slot}}"}, "fallbackCommand": "/new"},
         {"label": "刷新", "actionKey": "tasks.refresh", "owner": "owner", "params": {}, "fallbackCommand": "/status"}
       ],
       "states": {
         "loading": "正在读取任务状态…",
-        "empty": "当前没有正在执行的任务。",
+        "empty": "当前没有正在执行的任务；仍可选择工作模式并准备新会话。",
         "failed": "任务状态不可确认，已阻止控制动作。",
         "degraded": "请在钉钉中手动发送 /status、/stop 或 /new。"
       },

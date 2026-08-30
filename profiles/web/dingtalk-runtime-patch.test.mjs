@@ -196,6 +196,7 @@ function commandFixture() {
   const replies = []
   const bindings = new MapStore()
   const modelOverrides = new MapStore()
+  const presetOverrides = new MapStore()
   const sessionHeaders = [
     { id: 'root-a', cwd: '/workspace', createdAt: 300, agentPreset: 'CyberMarcus' },
     { id: 'root-b', cwd: '/other', createdAt: 500, agentPreset: 'Avengers' },
@@ -231,14 +232,30 @@ function commandFixture() {
     },
     async resolveCallConfig(config) { return config },
   }
+  const presetRows = [
+    { id: 'reliable-development', name: 'CyberMarcus', description: '可靠工作模式' },
+    { id: 'avengers', name: 'Avengers', description: '直接委派模式' },
+    { id: 'broken-preset', name: '损坏模式', broken: 'invalid' },
+  ]
+  const agentPresets = {
+    async list() { return presetRows },
+    async resolve(id) {
+      const row = presetRows.find((item) => item.id === id)
+      if (!row) throw new Error('unknown preset')
+      return row
+    },
+  }
   const deps = {
     agents: { get: () => undefined },
     outbound: { sendMarkdown: async (_webhook, _title, content) => { replies.push(content); return true } },
     bindings,
     modelOverrides,
+    presetOverrides,
     queue: { depth: () => 0, clear: () => {} },
     sessionQuery,
     llm,
+    agentPresets,
+    defaultPresetId: 'reliable-development',
     isOwner: (msg) => msg.conversationType === 'direct' && msg.senderStaffId === 'owner-staff',
     defaultModel: () => ({ provider: 'provider-a', model: 'model-a' }),
     connectorStatus: () => [],
@@ -247,7 +264,7 @@ function commandFixture() {
     workspaceOverrides: new MapStore(),
     defaultWorkspace: '/workspace',
   }
-  return { commands: new Commands(deps), deps, replies, bindings, modelOverrides, sessionQuery, sessionHeaders, titleById }
+  return { commands: new Commands(deps), deps, replies, bindings, modelOverrides, presetOverrides, sessionQuery, sessionHeaders, titleById, agentPresets }
 }
 
 test('session roster resolves titles only for the ten pre-ranked canonical candidates', async () => {
@@ -272,7 +289,7 @@ test('session roster resolves titles only for the ten pre-ranked canonical candi
 
 test('management commands are owner-only and use the canonical session/model services', async () => {
   const fixture = commandFixture()
-  const { commands, replies, bindings, modelOverrides } = fixture
+  const { commands, replies, bindings, modelOverrides, presetOverrides } = fixture
 
   await commands.handle(commandMessage('/sessions', 'not-owner'))
   assert.equal(replies.at(-1), '当前入口仅管理员可用。')
@@ -315,6 +332,12 @@ test('management commands are owner-only and use the canonical session/model ser
   assert.match(replies.at(-1), /\/session use/)
   await commands.handle(commandMessage('/menu', 'not-owner'))
   assert.match(replies.at(-1), /不伪造按钮/)
+
+  bindings.set('dt-conversation-1', 'root-a')
+  await commands.handle(commandMessage('/new'))
+  assert.equal(bindings.get('dt-conversation-1'), undefined)
+  assert.equal(presetOverrides.get('dt-conversation-1'), 'reliable-development')
+  assert.match(replies.at(-1), /CyberMarcus/)
 })
 
 test('resuming a bound session composes the preset recorded by that session header', async () => {
@@ -338,6 +361,8 @@ test('resuming a bound session composes the preset recorded by that session head
     log: () => {},
     modelOverrides,
     workspaceOverrides: new MapStore(),
+    presetOverrides: new MapStore([['dt-conversation-1', 'avengers']]),
+    defaultPresetId: 'reliable-development',
     sessionQuery: {
       async readTitleSnapshots() {
         return [{ status: 'fulfilled', value: { session: { id: 'root-a', agentPreset: 'CyberMarcus' } } }]
@@ -354,6 +379,33 @@ test('resuming a bound session composes the preset recorded by that session head
   assert.equal(composedPreset, 'CyberMarcus')
   assert.equal(resumeOptions.resumeSessionId, 'root-a')
   assert.equal(resumeOptions.agentOptions.provider, 'provider-a')
+})
+
+test('fresh DingTalk sessions use CyberMarcus by default and a validated conversation override when present', async () => {
+  const created = []
+  const agents = {
+    get: () => undefined,
+    async create(options) {
+      created.push(options)
+      return { agent: { id: options.sessionId, status: 'idle' } }
+    },
+  }
+  const presetOverrides = new MapStore([['dt-conversation-avengers', 'avengers']])
+  const bridge = new Bridge(agents, {}, new MapStore(), {
+    cwd: '/workspace',
+    log: () => {},
+    modelOverrides: new MapStore(),
+    workspaceOverrides: new MapStore(),
+    presetOverrides,
+    defaultPresetId: 'reliable-development',
+    modelSelection: () => ({ provider: 'provider-a', model: 'model-a' }),
+    compose: async (preset) => ({ agentPreset: preset, setup: async () => {} }),
+    onAgentMessage: () => {},
+  })
+  await bridge.agentFor('dt-conversation-default')
+  await bridge.agentFor('dt-conversation-avengers')
+  assert.equal(created[0].meta.agentPreset, 'reliable-development')
+  assert.equal(created[1].meta.agentPreset, 'avengers')
 })
 
 test('artifacts require a known bound non-subagent session and never scan an unknown route', async () => {
@@ -619,6 +671,9 @@ test('model and reasoning selections are submitted as one revalidated route', as
 
 test('task view is reachable and keeps artifact navigation separate', async () => {
   const fixture = commandFixture()
+  assert.equal((await fixture.commands.prepareNewSession('invalid-scope', 'broken-preset')).ok, false)
+  assert.equal(fixture.presetOverrides.get('invalid-scope'), undefined)
+  fixture.bindings.set('dt-conversation-1', 'root-a')
   const requests = []
   const consoleCards = new ConsoleCards({
     interactionCards: { async create(request) { requests.push(request); return true } },
@@ -641,7 +696,10 @@ test('task view is reachable and keeps artifact navigation separate', async () =
     params: { version: '1', name: 'view', type: 'SELECT', view: { index: 5, value: view.options[5].value } },
   })
   const taskFields = JSON.parse(taskView.response.userPrivateData.cardParamMap.form_fields)
-  assert.deepEqual(taskFields.map((field) => field.name), ['status', 'view', 'taskAction'])
+  assert.deepEqual(taskFields.map((field) => field.name), ['status', 'view', 'presetSlot', 'taskAction'])
+  const presetSlot = taskFields.find((field) => field.name === 'presetSlot')
+  assert.equal(presetSlot.default_number, 0)
+  assert.deepEqual(presetSlot.options.map((option) => option.text.zh_CN), ['CyberMarcus', 'Avengers'])
   const taskAction = taskFields.find((field) => field.name === 'taskAction')
   assert.deepEqual(taskAction.options.map((option) => option.text.zh_CN), ['不执行动作', '停止当前任务', '新会话'])
   const applied = await consoleCards.handleCardCallback({
@@ -651,6 +709,26 @@ test('task view is reachable and keeps artifact navigation separate', async () =
     params: { version: '2', submit_form_fields: taskFields },
   })
   assert.equal(applied.response.userPrivateData.cardParamMap.button_text, '✓ 设置已应用')
+  assert.equal(fixture.bindings.get('dt-conversation-1'), 'root-a')
+
+  const appliedFields = JSON.parse(applied.response.userPrivateData.cardParamMap.form_fields)
+  const appliedTask = appliedFields.find((field) => field.name === 'taskAction')
+  const selectedNew = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: [],
+    params: { version: '3', name: 'taskAction', type: 'SELECT', taskAction: { index: 2, value: appliedTask.options[2].value } },
+  })
+  const newFields = JSON.parse(selectedNew.response.userPrivateData.cardParamMap.form_fields)
+  const prepared = await consoleCards.handleCardCallback({
+    outTrackId: first.outTrackId,
+    userId: 'owner-staff',
+    actionIds: ['node_submit_button'],
+    params: { version: '4', submit_form_fields: newFields },
+  })
+  assert.equal(fixture.presetOverrides.get('dt-conversation-1'), 'reliable-development')
+  assert.equal(fixture.bindings.get('dt-conversation-1'), undefined)
+  assert.equal(prepared.response.userPrivateData.cardParamMap.button_text, '✓ 新会话已准备：CyberMarcus')
 })
 
 test('stream normalizer keeps dynamic-form callbacks with empty actionIds and rejects malformed params', async () => {

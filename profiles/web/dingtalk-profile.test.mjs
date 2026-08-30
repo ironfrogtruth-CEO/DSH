@@ -35,6 +35,7 @@ test('web profile keeps the original balance bundle and uses the pinned DingTalk
   assert.match(patch, /tools:\s*\n\s+enabled: false/)
   assert.match(patch, /debug: false/)
   assert.match(patch, /consoleCardTemplateId: f42ee85c-bdb9-4197-b8b7-4379e9b64878\.schema/)
+  assert.match(patch, /defaultDingTalkPresetId: reliable-development/)
   assert.match(patch, /id: dsh-dingtalk-status/)
   assert.match(patch, /clientIdRef: DINGTALK_CLIENT_ID/)
   assert.match(patch, /clientSecretRef: DINGTALK_CLIENT_SECRET/)
@@ -56,6 +57,9 @@ test('web profile keeps the original balance bundle and uses the pinned DingTalk
   assert.match(runtimePatch, /listSessions\(\)/)
   assert.match(runtimePatch, /resolveCallConfig/)
   assert.match(runtimePatch, /consoleCardTemplateId/)
+  assert.match(runtimePatch, /defaultDingTalkPresetId/)
+  assert.match(runtimePatch, /presetOverrides/)
+  assert.match(runtimePatch, /presetSlot/)
   assert.match(runtimePatch, /submit_form_fields/)
   assert.match(runtimePatch, /userPrivateData/)
 

@@ -1,11 +1,15 @@
 diff --git a/lib/bridge.d.ts b/lib/bridge.d.ts
-index b20642a481a870c455d95f447ef656cbdd38fd1d..406d68f2440c85ad1096bb91cb51b7c4fd89b727 100644
+index b20642a481a870c455d95f447ef656cbdd38fd1d..cf13b2a40dfe748a552c651776ee997edc9e08f8 100644
 --- a/lib/bridge.d.ts
 +++ b/lib/bridge.d.ts
-@@ -12,13 +12,18 @@ export interface BridgeOptions {
+@@ -12,13 +12,22 @@ export interface BridgeOptions {
      modelOverrides: JsonStore<ModelOverride>;
      /** Per-conversation workspace override store (set via /cd). */
      workspaceOverrides: JsonStore<string>;
++    /** Per-conversation preferred preset for the next fresh DingTalk session. */
++    presetOverrides?: JsonStore<string>;
++    /** DingTalk-specific default preset; independent from the App's current picker. */
++    defaultPresetId?: string;
 +    /** Canonical host session headers used to preserve the target preset on resume. */
 +    sessionQuery?: {
 +        readTitleSnapshots(sessionIds: readonly string[]): Promise<readonly unknown[]>;
@@ -23,7 +27,7 @@ index b20642a481a870c455d95f447ef656cbdd38fd1d..406d68f2440c85ad1096bb91cb51b7c4
          setup?: (agentCtx: HostAgentContext) => Promise<void>;
      }>;
 diff --git a/lib/bridge.js b/lib/bridge.js
-index c177704034ef311410587bf7b1012bebdc59c47b..5ed2e62afb31810ae7b672612b0a41b3b37fd146 100644
+index c177704034ef311410587bf7b1012bebdc59c47b..08e03413644812796d6660321fc9942c6e428e2f 100644
 --- a/lib/bridge.js
 +++ b/lib/bridge.js
 @@ -55,14 +55,31 @@ export class Bridge {
@@ -60,19 +64,20 @@ index c177704034ef311410587bf7b1012bebdc59c47b..5ed2e62afb31810ae7b672612b0a41b3
              try {
                  const handle = await this.agents.resume({
                      resumeSessionId: sessionId(bound),
-@@ -76,6 +93,7 @@ export class Bridge {
+@@ -76,6 +93,8 @@ export class Bridge {
                  this.opts.log(`resume ${bound} failed (${err instanceof Error ? err.message : err}); creating fresh`);
              }
          }
-+        const composition = await this.opts.compose();
++        const preferredPreset = this.opts.presetOverrides?.get(conversationId) || this.opts.defaultPresetId;
++        const composition = await this.opts.compose(preferredPreset);
          const id = sessionId(randomUUID());
          const handle = await this.agents.create({
              sessionId: id,
 diff --git a/lib/commands.d.ts b/lib/commands.d.ts
-index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..e611d45a88a0fb7aa380c5cea060436481d1c4ee 100644
+index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..2266cd324ddce764f6ff492efaefe208f6a08f01 100644
 --- a/lib/commands.d.ts
 +++ b/lib/commands.d.ts
-@@ -7,16 +7,46 @@ import type { Queue } from './queue.js';
+@@ -7,16 +7,52 @@ import type { Queue } from './queue.js';
  export interface ModelOverride {
      provider: string;
      model: string;
@@ -93,6 +98,12 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..e611d45a88a0fb7aa380c5cea0604364
      outbound: Outbound;
      bindings: Bindings;
      modelOverrides: JsonStore<ModelOverride>;
++    presetOverrides?: JsonStore<string>;
++    defaultPresetId?: string;
++    agentPresets?: {
++        list(): Promise<readonly any[]>;
++        resolve(id?: string): Promise<any>;
++    };
      queue: Queue;
 +    /** Canonical host session roster and title observations; no local index. */
 +    sessionQuery?: {
@@ -119,15 +130,18 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..e611d45a88a0fb7aa380c5cea0604364
      } | undefined;
      /** Human-readable connector security/capability lines appended to /status. */
      connectorStatus(): string[];
-@@ -58,6 +88,20 @@ export declare class Commands {
+@@ -58,6 +94,24 @@ export declare class Commands {
      /** Interactive busy cards: outTrackId → conversationId (buttons and text answers share one pending state). */
      private busyCards;
      constructor(deps: CommandDeps);
 +    sessionRowsFor(scopeKey: string): Promise<readonly unknown[]>;
 +    modelRowsFor(): Promise<readonly unknown[]>;
++    presetRowsFor(scopeKey: string): Promise<readonly unknown[]>;
++    presetPreferenceFor(scopeKey: string): string;
 +    statusSnapshot(scopeKey: string): {
 +        bound: string;
 +        model: string;
++        preset: string;
 +        queueDepth: number;
 +        connector: string[];
 +    };
@@ -136,15 +150,16 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..e611d45a88a0fb7aa380c5cea0604364
 +    useEffort(scopeKey: string, effort: string): Promise<{ ok: boolean; error?: string; route?: ModelOverride }>;
 +    stopSession(scopeKey: string): { ok: boolean; reason?: string };
 +    resetSession(scopeKey: string): { ok: true };
++    prepareNewSession(scopeKey: string, presetId: string): Promise<{ ok: boolean; error?: string; row?: any }>;
 +    artifactRowsFor(scopeKey: string): Promise<readonly unknown[] | undefined>;
      markBusyNotice(conversationId: string, ctx: BusyContext): void;
      registerBusyCard(outTrackId: string, conversationId: string): void;
      /**
 diff --git a/lib/commands.js b/lib/commands.js
-index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368a9daa1ee 100644
+index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65ba9e74f1 100644
 --- a/lib/commands.js
 +++ b/lib/commands.js
-@@ -1,9 +1,11 @@
+@@ -1,22 +1,325 @@
  /**
   * Slash commands — handled locally, never sent to the model:
 - * /status /new /stop /model /help, plus the queue-busy numeric choice
@@ -159,8 +174,9 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
  import { sessionId } from './host.js';
  const HELP = [
      '**可用命令**',
-@@ -11,12 +13,288 @@ const HELP = [
-     '- `/new` 重开会话（清空上下文）',
+     '- `/status` 连接与会话状态',
+-    '- `/new` 重开会话（清空上下文）',
++    '- `/new` 准备新会话（默认 CyberMarcus；卡片可选择工作模式）',
      '- `/stop` 停止当前正在执行的任务',
      '- `/model` 查看当前模型',
 -    '- `/model use <provider>/<model>` 切换本会话模型（会重开会话生效）',
@@ -188,6 +204,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
 +    '当前未配置互动卡片，以上入口使用明确命令，不伪造按钮。',
 +].join('\n');
 +const MAX_SESSIONS = 10;
++const MAX_PRESETS = 10;
 +const MAX_MODEL_ROWS = 60;
 +const MAX_ARTIFACTS = 10;
 +const MAX_ARTIFACT_CANDIDATES = 5000;
@@ -446,10 +463,34 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
 +    }
 +    return rows;
 +}
++
++async function presetRows(deps, key) {
++    const registry = deps.agentPresets;
++    if (!registry || typeof registry.list !== 'function') return [];
++    let rows;
++    try {
++        rows = await registry.list();
++    }
++    catch {
++        return [];
++    }
++    const preferred = deps.presetOverrides?.get?.(key) || deps.defaultPresetId || 'reliable-development';
++    return (Array.isArray(rows) ? rows : [])
++        .filter((row) => typeof row?.id === 'string' && row.id && !row.broken)
++        .map((row) => ({
++            id: String(row.id),
++            name: cleanInline(row.name || row.id, 80),
++            description: cleanInline(row.description || '', 180),
++        }))
++        .sort((left, right) => Number(right.id === preferred) - Number(left.id === preferred)
++            || left.name.localeCompare(right.name, 'zh-CN')
++            || left.id.localeCompare(right.id))
++        .slice(0, MAX_PRESETS);
++}
  /** Commands that must win over a pending human-interaction answer. */
  export function isSessionControl(text) {
      const command = text.trim().split(/\s+/, 1)[0];
-@@ -37,6 +315,108 @@ export class Commands {
+@@ -37,6 +340,131 @@ export class Commands {
      registerBusyCard(outTrackId, conversationId) {
          this.busyCards.set(outTrackId, conversationId);
      }
@@ -461,6 +502,13 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
 +    modelRowsFor() {
 +        return modelRows(this.deps);
 +    }
++    /** Mountable work modes for a fresh DingTalk session. */
++    presetRowsFor(scopeKey) {
++        return presetRows(this.deps, scopeKey);
++    }
++    presetPreferenceFor(scopeKey) {
++        return this.deps.presetOverrides?.get(scopeKey) || this.deps.defaultPresetId || 'reliable-development';
++    }
 +    /** Current bound route and connector state, with no secret-bearing fields. */
 +    statusSnapshot(scopeKey) {
 +        const bound = this.deps.bindings.get(scopeKey);
@@ -469,6 +517,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
 +        return {
 +            bound: bound ? `${bound.slice(0, 8)}…` : '',
 +            model: modelLabel(model),
++            preset: this.presetPreferenceFor(scopeKey),
 +            queueDepth: this.deps.queue.depth(scopeKey),
 +            connector: this.deps.connectorStatus(),
 +        };
@@ -548,6 +597,21 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
 +        this.deps.bindings.delete(scopeKey);
 +        return { ok: true };
 +    }
++    async prepareNewSession(scopeKey, presetId) {
++        const rows = await presetRows(this.deps, scopeKey);
++        const picked = rows.find((row) => row.id === presetId);
++        if (!picked) return { ok: false, error: '工作模式已失效，请刷新后重试。' };
++        try {
++            const resolved = await this.deps.agentPresets?.resolve?.(picked.id);
++            if (!resolved || resolved.broken) return { ok: false, error: '工作模式当前不可用，未创建新会话。' };
++        }
++        catch {
++            return { ok: false, error: '工作模式校验失败，未创建新会话。' };
++        }
++        this.deps.presetOverrides?.set(scopeKey, picked.id);
++        this.resetSession(scopeKey);
++        return { ok: true, row: picked };
++    }
 +    /** Metadata-only artifacts for the current bound canonical session. */
 +    async artifactRowsFor(scopeKey) {
 +        const header = await boundSessionHeader(this.deps, scopeKey);
@@ -558,7 +622,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
      /**
       * Consume a busy-card button press: approve = interrupt, reject = steer.
       * Only the queued message's own sender may decide.
-@@ -122,10 +502,25 @@ export class Commands {
+@@ -122,10 +550,25 @@ export class Commands {
          if (!text.startsWith('/'))
              return false;
          const [cmd, sub, ...rest] = text.split(/\s+/);
@@ -584,16 +648,51 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
              case '/status': {
                  const bound = this.deps.bindings.get(key);
                  const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
-@@ -135,7 +530,7 @@ export class Commands {
+@@ -135,7 +578,8 @@ export class Commands {
                  await reply([
                      '**状态**',
                      `- 会话：${bound ? `\`${bound.slice(0, 8)}…\`${agent ? `（${agent.status === 'running' ? '执行中' : '空闲'}）` : '（未加载，下条消息恢复）'}` : '尚未建立'}`,
 -                    `- 模型：${model?.provider ?? '?'}/${model?.model ?? '?'}${override ? '（本会话覆盖）' : '（默认）'}`,
 +                    `- 模型：${modelLabel(model)}${override ? '（本会话覆盖）' : '（默认）'}`,
++                    `- 工作模式：${cleanInline(this.presetPreferenceFor(key))}`,
                      `- 排队：${this.deps.queue.depth(key)} 条在途`,
                      ...(this.deps.defaultWorkspace
                          ? [`- 工作区：${ws ?? this.deps.defaultWorkspace}${ws ? '（本会话覆盖）' : '（默认）'}`]
-@@ -171,7 +566,7 @@ export class Commands {
+@@ -145,25 +589,16 @@ export class Commands {
+                 ].join('\n'));
+                 return true;
+             }
+-            case '/new':
+-                {
+-                    const bound = this.deps.bindings.get(key);
+-                    const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
+-                    if (agent?.status === 'running') {
+-                        try {
+-                            agent.cancel({ kind: 'user' });
+-                        }
+-                        catch (err) {
+-                            await reply(`⚠️ 旧任务取消失败，会话未重开：${err instanceof Error ? err.message : err}`);
+-                            return true;
+-                        }
+-                    }
++            case '/new': {
++                const presetId = this.presetPreferenceFor(key);
++                const prepared = await this.prepareNewSession(key, presetId);
++                if (!prepared.ok) {
++                    await reply(`⚠️ ${prepared.error}`);
++                    return true;
+                 }
+-                this.pendingBusyChoice.delete(key);
+-                this.deps.queue.clear(key);
+-                this.deps.bindings.delete(key);
+-                await reply('✅ 已重开会话——上下文已清空，直接说新任务吧。');
++                await reply(`✅ 新会话已准备：${prepared.row.name}。下一条普通消息将按该工作模式创建新会话。`);
+                 return true;
++            }
+             case '/stop':
+                 await this.stop(msg, reply, '✅ 已停止当前任务。', key);
+                 return true;
+@@ -171,7 +606,7 @@ export class Commands {
                  if (!sub) {
                      const override = this.deps.modelOverrides.get(key);
                      const model = override ?? this.deps.defaultModel();
@@ -602,7 +701,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
                      return true;
                  }
                  if (sub === 'reset') {
-@@ -181,21 +576,159 @@ export class Commands {
+@@ -181,21 +616,159 @@ export class Commands {
                      return true;
                  }
                  if (sub === 'use') {
@@ -768,28 +867,32 @@ index b186308646d5c7098ee739918f885ee0907b0ade..3a9843242878483207a1b7ca22004368
                  if (!this.deps.listWorkspaces || !this.deps.workspaceOverrides) {
                      await reply('工作区模块未装配。');
 diff --git a/lib/config.d.ts b/lib/config.d.ts
-index db2d69918ef076488d316794a27b6b1ca8947c1f..7033d68d31a768cfa521b92b327de7aa61667f8f 100644
+index db2d69918ef076488d316794a27b6b1ca8947c1f..032926407095f8d91c83f2ba2a7881f53737ae9a 100644
 --- a/lib/config.d.ts
 +++ b/lib/config.d.ts
-@@ -23,6 +23,7 @@ export interface Config {
+@@ -23,6 +23,8 @@ export interface Config {
      workspace: string;
      markdownTitle: string;
      interactionCardTemplateId: string;
 +    consoleCardTemplateId: string;
++    defaultDingTalkPresetId: string;
      ownerStaffId: string;
      senderAccess: SenderAccess;
      allowedSenders: string[];
 diff --git a/lib/config.js b/lib/config.js
-index 3dc84c2a5fdd1475e9be02e74328069488254dff..094a3c4351072408829ad0f64ada523258ac4071 100644
+index 3dc84c2a5fdd1475e9be02e74328069488254dff..8a1d1493993ddbfe754bce4d1434821336b94e94 100644
 --- a/lib/config.js
 +++ b/lib/config.js
-@@ -29,6 +29,9 @@ export const Config = Schema.object({
+@@ -29,6 +29,12 @@ export const Config = Schema.object({
      interactionCardTemplateId: Schema.string()
          .default('')
          .description('可选的审批/Plan Review 互动卡片模板 ID；留空时管理员私聊使用一次性文字确认码，群聊审批拒绝'),
 +    consoleCardTemplateId: Schema.string()
 +        .default('')
 +        .description('可选的大神控制台互动卡片模板 ID；独立于审批模板，留空时 /menu 使用命令 Markdown'),
++    defaultDingTalkPresetId: Schema.string()
++        .default('reliable-development')
++        .description('钉钉新会话默认工作模式；默认 CyberMarcus 的兼容 ID reliable-development'),
      ownerStaffId: Schema.string()
          .default('')
          .description('唯一管理员 staffId；留空时需通过本机 setup 生成的一次性口令在私聊绑定'),
@@ -821,10 +924,10 @@ index 0000000000000000000000000000000000000000..44eafd6a697b6b32100322adf137b9f8
 +}
 diff --git a/lib/console.js b/lib/console.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba318d8dd13
+index 0000000000000000000000000000000000000000..ccab90db2a93d0f1f232f223794a9ed925331a3c
 --- /dev/null
 +++ b/lib/console.js
-@@ -0,0 +1,477 @@
+@@ -0,0 +1,499 @@
 +/**
 + * Owner-only DingTalk control card.
 + *
@@ -842,12 +945,12 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +const MAX_FIELDS = 8;
 +const MAX_OPTIONS = 10;
 +const MAX_PARAMS = 32;
-+const SELECT_NAMES = new Set(['view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
-+const SELECT_ACTIONS = new Set(['', 'select', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'taskAction']);
++const SELECT_NAMES = new Set(['view', 'sessionSlot', 'modelSlot', 'effortSlot', 'presetSlot', 'taskAction']);
++const SELECT_ACTIONS = new Set(['', 'select', 'view', 'sessionSlot', 'modelSlot', 'effortSlot', 'presetSlot', 'taskAction']);
 +const VIEWS = ['首页', '会话', '模型', '推理等级', '产物', '任务'];
 +const ACTIONS = ['不执行动作', '停止当前任务', '新会话'];
 +const ACTION_VALUES = ['none', 'stop', 'new'];
-+const SLOT_PREFIX = { view: 'v', sessionSlot: 's', modelSlot: 'm', effortSlot: 'e', taskAction: 'a' };
++const SLOT_PREFIX = { view: 'v', sessionSlot: 's', modelSlot: 'm', effortSlot: 'e', presetSlot: 'p', taskAction: 'a' };
 +
 +function text(value, max = 240) {
 +    return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
@@ -940,7 +1043,7 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +    if (viewIndex === 2) return new Set(['status', 'view', 'modelSlot']);
 +    if (viewIndex === 3) return new Set(['status', 'view', 'modelSlot', 'effortSlot']);
 +    if (viewIndex === 4) return new Set(['status', 'view', 'artifacts']);
-+    if (viewIndex === 5) return new Set(['status', 'view', 'taskAction']);
++    if (viewIndex === 5) return new Set(['status', 'view', 'presetSlot', 'taskAction']);
 +    return new Set(['status', 'view']);
 +}
 +
@@ -998,6 +1101,7 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +        const statusText = [
 +            `会话：${text(status.bound || '尚未建立')}`,
 +            `模型：${text(status.model)}`,
++            `工作模式：${text(status.preset || 'CyberMarcus')}`,
 +            `排队：${status.queueDepth} 条在途`,
 +            ...status.connector.map((line) => text(line)),
 +        ].join('\n');
@@ -1010,6 +1114,7 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +        let models = [];
 +        let efforts = [];
 +        let artifacts = [];
++        let presets = [];
 +        if (viewIndex === 1) {
 +            sessions = (await commands.sessionRowsFor(record.scopeKey)).slice(0, MAX_OPTIONS);
 +            fields.push(selectField('sessionSlot', '会话', sessions.map((item) => text(item.title)), record.selections.sessionSlot, 's', record.version));
@@ -1045,19 +1150,26 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +            fields.push(textField('artifacts', '近期产物', artifactText));
 +        }
 +        else if (viewIndex === 5) {
++            presets = (await commands.presetRowsFor(record.scopeKey)).slice(0, MAX_OPTIONS);
++            if (!Number.isSafeInteger(record.selections.presetSlot)) {
++                const preferred = commands.presetPreferenceFor(record.scopeKey);
++                const preferredIndex = presets.findIndex((item) => item.id === preferred);
++                record.selections.presetSlot = preferredIndex >= 0 ? preferredIndex : (presets.length ? 0 : undefined);
++            }
++            fields.push(selectField('presetSlot', '工作模式', presets.map((item) => text(item.name || item.id)), record.selections.presetSlot, 'p', record.version));
 +            fields.push(selectField('taskAction', '动作', ACTIONS, record.selections.taskAction, 'a', record.version));
 +        }
-+        return { fields, sessions, models, efforts, artifacts };
++        return { fields, sessions, models, efforts, artifacts, presets };
 +    }
 +    async payload(record, status = 'normal', errorText = '') {
 +        const state = await this.formState(record);
 +        record.viewState = state;
-+        return { payload: outputPayload(state.fields, status, errorText, record.notice ? '✓ 设置已应用' : ''), state };
++        return { payload: outputPayload(state.fields, status, errorText, record.successButtonText || (record.notice ? '✓ 设置已应用' : '')), state };
 +    }
 +    payloadFromCached(record, state, status = 'normal', errorText = '') {
 +        const nextState = { ...state, fields: refreshCachedFields(record, state.fields) };
 +        record.viewState = nextState;
-+        return { payload: outputPayload(nextState.fields, status, errorText, record.notice ? '✓ 设置已应用' : ''), state: nextState };
++        return { payload: outputPayload(nextState.fields, status, errorText, record.successButtonText || (record.notice ? '✓ 设置已应用' : '')), state: nextState };
 +    }
 +    async open(msg, scopeKey) {
 +        if (!this.deps.interactionCards || !this.deps.isOwner?.(msg)) return false;
@@ -1071,8 +1183,9 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +            scopeKey,
 +            version: 1,
 +            expiresAt: Date.now() + CONSOLE_CARD_TTL_MS,
-+            selections: { view: 0, sessionSlot: undefined, modelSlot: undefined, effortSlot: undefined, taskAction: 0 },
++            selections: { view: 0, sessionSlot: undefined, modelSlot: undefined, effortSlot: undefined, presetSlot: undefined, taskAction: 0 },
 +            notice: '',
++            successButtonText: '',
 +            responses: new Map(),
 +            expiryTimer: undefined,
 +        };
@@ -1144,6 +1257,7 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +        if (name === 'view') {
 +            if (index >= VIEWS.length || paramsObject(selected)?.value !== `v${record.version}:v${index + 1}`) return undefined;
 +            record.notice = '';
++            record.successButtonText = '';
 +            record.selections.view = index;
 +            record.version += 1;
 +            const next = await this.payload(record);
@@ -1155,6 +1269,7 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +        if (!field || field.type !== 'SELECT' || index >= field.options.length) return undefined;
 +        if (typeof paramsObject(selected)?.value !== 'string' || paramsObject(selected).value !== field.options[index].value) return undefined;
 +        record.notice = '';
++        record.successButtonText = '';
 +        record.selections[name] = index;
 +        if (name === 'modelSlot') record.selections.effortSlot = undefined;
 +        record.version += 1;
@@ -1189,10 +1304,12 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +        const targetSession = state.sessions[indices.sessionSlot];
 +        const targetModel = state.models[indices.modelSlot];
 +        const targetEffort = state.efforts[indices.effortSlot];
++        const targetPreset = state.presets[indices.presetSlot];
 +        const task = ACTION_VALUES[indices.taskAction];
 +        if (indices.sessionSlot !== undefined && !targetSession) return undefined;
 +        if (indices.modelSlot !== undefined && !targetModel) return undefined;
 +        if (indices.effortSlot !== undefined && !targetEffort) return undefined;
++        if (indices.presetSlot !== undefined && !targetPreset) return undefined;
 +        if (targetModel) {
 +            const result = await this.deps.commands.useModel(record.scopeKey, targetModel.provider, targetModel.model, targetEffort);
 +            if (!result.ok) return { error: result.error || '模型校验失败，未执行切换。' };
@@ -1206,8 +1323,16 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +            if (!result.ok) return { error: '会话映射已变化，请刷新后重试。' };
 +        }
 +        if (task === 'stop') this.deps.commands.stopSession(record.scopeKey);
-+        if (task === 'new') this.deps.commands.resetSession(record.scopeKey);
-+        record.selections = { view: viewField.default_number, sessionSlot: indices.sessionSlot, modelSlot: indices.modelSlot, effortSlot: indices.effortSlot, taskAction: 0 };
++        if (task === 'new') {
++            if (!targetPreset) return { error: '请选择工作模式后再新建会话。' };
++            const prepared = await this.deps.commands.prepareNewSession(record.scopeKey, targetPreset.id);
++            if (!prepared.ok) return { error: prepared.error || '新会话准备失败。' };
++            record.successButtonText = `✓ 新会话已准备：${text(prepared.row?.name || targetPreset.name || targetPreset.id, 50)}`;
++        }
++        else {
++            record.successButtonText = '✓ 设置已应用';
++        }
++        record.selections = { view: viewField.default_number, sessionSlot: indices.sessionSlot, modelSlot: indices.modelSlot, effortSlot: indices.effortSlot, presetSlot: indices.presetSlot, taskAction: 0 };
 +        record.notice = '设置已应用。';
 +        record.version += 1;
 +        const next = this.payloadFromCached(record, state, 'normal');
@@ -1303,7 +1428,7 @@ index 0000000000000000000000000000000000000000..872bd1923160248835096cf67a9eeba3
 +    return byName;
 +}
 diff --git a/lib/index.js b/lib/index.js
-index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa340e85c8fa 100644
+index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b6fa8f068 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -22,6 +22,7 @@ import { Commands, isSessionControl } from './commands.js';
@@ -1319,19 +1444,28 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
  import { cardTarget } from './targets.js';
  export const name = 'dingtalk-channel';
 -export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm'];
-+export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm', 'sessionQuery'];
++export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm', 'sessionQuery', 'agentPresets'];
  export { Config };
  export async function apply(ctx, config) {
      const log = (line) => console.log(`[dsh-dingtalk ${new Date().toTimeString().slice(0, 8)}] ${line}`);
-@@ -78,6 +79,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -78,6 +79,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
      const { clientId, clientSecret } = account;
      const log = (line) => console.log(`[dsh-dingtalk:${account.id} ${new Date().toTimeString().slice(0, 8)}] ${line}`);
      const interactionCardTemplateId = config.interactionCardTemplateId || process.env.DINGTALK_INTERACTION_CARD_TEMPLATE_ID || '';
 +    const consoleCardTemplateId = config.consoleCardTemplateId || process.env.DINGTALK_CONSOLE_CARD_TEMPLATE_ID || '';
++    const defaultPresetId = config.defaultDingTalkPresetId || 'reliable-development';
      const stateDir = accountStateDir(resolveStateDir(), account.id);
      let streamStatus = 'connecting';
      const owner = new OwnerBinding({
-@@ -128,6 +130,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -113,6 +116,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     void workspace.start();
+     // Host services are typed structurally (see host.ts); inject guarantees presence.
+     const agents = ctx.agents;
++    const agentPresets = ctx.agentPresets;
+     const defaultModel = ctx.agentDefaultModel;
+     const currentDefault = () => {
+         try {
+@@ -128,6 +132,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
      const interactionCards = interactionCardTemplateId
          ? new InteractionCards(() => outbound.token(), clientId, interactionCardTemplateId, log)
          : undefined;
@@ -1341,15 +1475,25 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
      const cardCapabilityFile = path.join(stateDir, 'capabilities.json');
      const cardCapability = new CardCapability((reason) => {
          fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
-@@ -168,6 +173,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -152,6 +159,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     });
+     const bindings = new JsonStore(path.join(stateDir, 'bindings.json'), log);
+     const modelOverrides = new JsonStore(path.join(stateDir, 'models.json'), log);
++    const presetOverrides = new JsonStore(path.join(stateDir, 'presets.json'), log);
+     const workspaceOverrides = new JsonStore(path.join(stateDir, 'workspaces.json'), log);
+     const queue = new Queue(log);
+     const questions = new QuestionManager({
+@@ -168,6 +176,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          log,
          modelOverrides,
          workspaceOverrides,
++        presetOverrides,
++        defaultPresetId,
 +        sessionQuery: ctx.sessionQuery,
          modelSelection: currentDefault,
          resolveImage: async (downloadCode, scopeKey) => {
              const legacyMode = config.attachImages === true ? 'always' : config.attachImages === false ? 'never' : undefined;
-@@ -201,7 +207,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -201,15 +212,15 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              questions.bindSession(agent.id, msg);
              void workspace.attach(agent.id);
          },
@@ -1357,8 +1501,9 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
 +        compose: async (presetId) => {
              // Optional service: a deployment without a roster runs preset-less
              // (host-composition tools only), matching apiproxy's fallback.
-             const presets = ctx.get?.('agentPresets');
-@@ -209,7 +215,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+-            const presets = ctx.get?.('agentPresets');
++            const presets = agentPresets;
+             if (!presets) {
                  return { setup: async (agentCtx) => questions.install(agentCtx) };
              }
              try {
@@ -1367,7 +1512,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
                  return {
                      agentPreset: resolved.id,
                      setup: async (agentCtx) => {
-@@ -224,12 +230,26 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -224,12 +235,29 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              }
          },
      });
@@ -1384,6 +1529,9 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
          outbound,
          bindings,
          modelOverrides,
++        presetOverrides,
++        defaultPresetId,
++        agentPresets,
          queue,
 +        sessionQuery: ctx.sessionQuery,
 +        llm: ctx.llm,
@@ -1394,7 +1542,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
          defaultModel: currentDefault,
          toolsStatusLine: () => dwsTools.statusLine(),
          workspaceOverrides,
-@@ -270,6 +290,17 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -270,6 +298,17 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          markdownTitle: config.markdownTitle,
          log,
      });
@@ -1412,7 +1560,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..9365286e010709850a7cebbf0980fa34
      ctx.on('session/event', (session, event) => {
          renderer.onSessionEvent(session, event);
      });
-@@ -438,14 +469,19 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -438,14 +477,19 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              });
          },
          onCardCallback: async (callback) => {
