@@ -7729,7 +7729,14 @@ window.__ModuleLoader__.load({
 						await fetch("/api/webbridge/activate", {
 							method: "POST",
 							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ protocol: 2, tabId: Number(operation.tabId) })
+							body: JSON.stringify({
+								protocol: 2,
+								tabId: Number(operation.tabId),
+								preview: true,
+								activate: true,
+								userInitiated: true,
+								reason: "user_clicked_chrome_operation_indicator"
+							})
 						});
 					} finally {
 						setActivating(false);

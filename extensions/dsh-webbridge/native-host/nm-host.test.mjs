@@ -42,8 +42,26 @@ test('ResultRouter retains all screenshot frames until result_end', async () => 
   assert.equal(router.accept({ type: 'result_chunk', protocol: 2, cmdId: 'shot-1', index: 0, total: 2, data: 'data:image/png;base64,' }), true)
   assert.equal(router.pending.has('shot-1'), true)
   assert.equal(router.accept({ type: 'result_chunk', protocol: 2, cmdId: 'shot-1', index: 1, total: 2, data: 'AAAA' }), true)
-  assert.equal(router.accept({ type: 'result_end', protocol: 2, cmdId: 'shot-1', final: { ok: true, screenshotChunks: 2 } }), true)
-  assert.deepEqual(await result, { ok: true, dataUrl: 'data:image/png;base64,AAAA' })
+  assert.equal(router.accept({
+    type: 'result_end',
+    protocol: 2,
+    cmdId: 'shot-1',
+    final: {
+      ok: true,
+      screenshotChunks: 2,
+      capture_method: 'cdp_background',
+      activation_reason: '',
+      browser_focus: { before: { tabId: 7, windowId: 2 }, after: { tabId: 7, windowId: 2 } },
+    },
+  }), true)
+  assert.deepEqual(await result, {
+    ok: true,
+    screenshotChunks: 2,
+    capture_method: 'cdp_background',
+    activation_reason: '',
+    browser_focus: { before: { tabId: 7, windowId: 2 }, after: { tabId: 7, windowId: 2 } },
+    dataUrl: 'data:image/png;base64,AAAA',
+  })
   assert.equal(router.pending.size, 0)
 })
 

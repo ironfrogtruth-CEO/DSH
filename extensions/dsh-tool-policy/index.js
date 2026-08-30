@@ -39,14 +39,20 @@ function errorText(error) { return String(error?.message || error || 'unknown er
 
 const RENDER_LIMIT = 12_000
 const DETACHED_BACKGROUND_MESSAGE = '后台任务必须移除脱管语法并使用 run_in_background: true；跨重启请使用 schedule/heartbeat/canonical run'
+const SHRIMP_RUN_API_BYPASS_MESSAGE = '禁止通过 shell/bash/command 直接写入虾缸运行 API；请使用 shrimp_run 工具。'
 const SHELL_TOOL_NAMES = new Set([
   'bash',
   'shell',
   'sh',
+  'zsh',
+  'dash',
+  'ksh',
+  'fish',
   'tool-bash',
   'dsh-tool-bash',
   '@deepseek-ai/dsh-tool-bash',
 ])
+const COMMAND_TOOL_NAMES = new Set(['command', 'exec', 'terminal'])
 const COMMAND_KEYS = new Set(['command', 'cmd', 'shell', 'script', 'argv', 'args'])
 
 const AVENGERS_PRESET_ID = 'avengers'
@@ -72,16 +78,82 @@ const AVENGERS_PARENT_TOOLS = new Set([
   'memory_record',
   'memory_save',
   'memory_search',
+  'policy_evaluate',
+  'policy_metrics',
+  'policy_list',
   'send_message',
   'skill',
+  'shrimp_list',
+  'shrimp_match',
+  'shrimp_knowledge_list',
+  'shrimp_knowledge_search',
+  'shrimp_run_status',
   'todo_write',
   'update_goal',
 ])
 
+function sessionRoot(agent) {
+  return agent?.session && typeof agent.session === 'object' ? agent.session : {}
+}
+
+function sessionField(agent, field) {
+  const session = sessionRoot(agent)
+  const header = session.header && typeof session.header === 'object' ? session.header : {}
+  const value = session[field]
+  if (value !== null && value !== undefined && String(value).trim() !== '') return value
+  const headerValue = header[field]
+  return headerValue !== null && headerValue !== undefined && String(headerValue).trim() !== '' ? headerValue : undefined
+}
+
+function sessionAgentPreset(agent) {
+  const session = sessionRoot(agent)
+  const events = Array.isArray(session.events) ? session.events : []
+  // A later live selection supersedes the creation-time preset persisted on
+  // the session root. Ignore malformed selection events and continue to the
+  // next compatibility source.
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index]
+    if (event?.type !== 'agent-preset/selected') continue
+    const selected = event.data?.agentPreset
+    if (selected !== null && selected !== undefined && String(selected).trim() !== '') return selected
+  }
+  // The persisted session root is authoritative when no later selection is
+  // recorded. Older sessions only expose agentPreset in session.header.
+  const rootPreset = session.agentPreset ?? session.agent_preset
+  if (rootPreset !== null && rootPreset !== undefined && String(rootPreset).trim() !== '') return rootPreset
+  return sessionField(agent, 'agentPreset')
+}
+
+/**
+ * Resolve the preset that governs this live agent, not only its creation-time
+ * header. Blank sessions may record a later `agent-preset/selected` event, and
+ * a mounted preset is the strongest live source because it is the composition
+ * whose tools and listeners actually cover the agent.
+ */
+export function effectiveAgentPreset(agent) {
+  const agentCtx = agent?.ctx
+  if (agentCtx) {
+    const candidates = []
+    try { if (agentCtx.agentPresets) candidates.push(agentCtx.agentPresets) } catch { /* fall through to ctx.get */ }
+    try {
+      if (typeof agentCtx.get === 'function') candidates.push(agentCtx.get('agentPresets'))
+    } catch { /* fall through to the session log */ }
+    for (const agentPresets of candidates) {
+      if (!agentPresets || typeof agentPresets.composedPreset !== 'function') continue
+      try {
+        const preset = agentPresets.composedPreset(agentCtx)
+        if (typeof preset === 'string' && preset.trim()) return preset
+      } catch { /* fall through to the session log */ }
+    }
+  }
+  return sessionAgentPreset(agent)
+}
+
 export function avengersAgentRole(agent) {
-  const header = agent?.session?.header
-  if (header?.agentPreset !== AVENGERS_PRESET_ID) return 'other'
-  return header.origin === 'subagent' || Number(header.delegationDepth || 0) > 0 ? 'child' : 'parent'
+  if (effectiveAgentPreset(agent) !== AVENGERS_PRESET_ID) return 'other'
+  const origin = sessionField(agent, 'origin')
+  const delegationDepth = sessionField(agent, 'delegationDepth')
+  return origin === 'subagent' || Number(delegationDepth || 0) > 0 ? 'child' : 'parent'
 }
 
 export function avengersParentToolDecision(exec) {
@@ -107,6 +179,13 @@ export function createAvengersRequestListener() {
 function shellToolName(toolName) {
   const value = String(toolName ?? '').trim().toLowerCase()
   return SHELL_TOOL_NAMES.has(value) || /(?:^|[-_:])(?:bash|shell)(?:$|[-_:])/.test(value)
+}
+
+function commandToolName(toolName) {
+  const value = String(toolName ?? '').trim().toLowerCase()
+  return shellToolName(value)
+    || COMMAND_TOOL_NAMES.has(value)
+    || /(?:^|[-_:])(?:command|exec|terminal)(?:$|[-_:])/.test(value)
 }
 
 // For ampersand detection, replace quoted and escaped text with spaces while
@@ -169,6 +248,73 @@ function commandValues(value, fieldName = '', depth = 0) {
   }
   if (typeof value !== 'object') return []
   return Object.entries(value).flatMap(([key, child]) => commandValues(child, key, depth + 1))
+}
+
+function commandTexts(args) {
+  const values = typeof args === 'string' ? [args] : commandValues(args)
+  if (args && typeof args === 'object' && !Array.isArray(args)) {
+    for (const key of COMMAND_KEYS) {
+      if (!Array.isArray(args[key])) continue
+      const tokens = args[key].filter((item) => typeof item === 'string')
+      if (tokens.length) values.push(tokens.join(' '))
+    }
+  }
+  return [...new Set(values.map((value) => String(value).replace(/\\\//g, '/')))]
+}
+
+const SHRIMP_RUN_ENDPOINT_RE = /(?:https?:\/\/)?127\.0\.0\.1:7843\/(?:api\/v1\/pipelines\/[A-Za-z0-9_.-]+\/runs|api\/pipelines\/[A-Za-z0-9_.-]+\/run)(?=[/?#\s"'`),;]|$)/iu
+
+function shellCommandSegments(source) {
+  return String(source || '').split(/(?:&&|\|\||[;\n])/u)
+}
+
+function curlWritesShrimpRunApi(source) {
+  for (const segment of shellCommandSegments(source)) {
+    if (!/\bcurl\b/iu.test(segment) || !SHRIMP_RUN_ENDPOINT_RE.test(segment)) continue
+    const explicit = segment.match(/(?:^|\s)(?:-X|--request)(?:\s*=\s*|\s*)(GET|HEAD|OPTIONS|POST|PUT|PATCH|DELETE)\b/iu)
+    if (explicit) {
+      if (/^(?:POST|PUT)$/iu.test(explicit[1])) return true
+      continue
+    }
+    if (/(?:^|\s)(?:-G|--get)(?:\s*=|\s|$)/iu.test(segment)) continue
+    // curl sends POST when a data flag is present; -T/--upload-file sends PUT.
+    if (/(?:^|\s)(?:-d|--data(?:-raw|-binary|-urlencode)?|--json|--form|-F|--upload-file|-T)(?:\s*=|\s|$)/iu.test(segment)) return true
+  }
+  return false
+}
+
+function structuredClientWritesShrimpRunApi(source) {
+  const text = String(source || '')
+  if (!SHRIMP_RUN_ENDPOINT_RE.test(text)) return false
+  // requests/httpx/axios/client.post(...) and request('POST', ...) forms.
+  if (/\.\s*(?:post|put)\s*\(/iu.test(text)) return true
+  if (/\b(?:request|request_async|request_sync)\s*\(\s*["']?(?:POST|PUT)\b/iu.test(text)) return true
+  // urllib Request(..., method='POST') and urlopen(..., data=...) forms.
+  if (/\bmethod\s*[:=]\s*["']?(?:POST|PUT)\b/iu.test(text)) return true
+  if (/\b(?:Request|urlopen)\s*\([\s\S]{0,320}\bdata\s*[:=]/iu.test(text)) return true
+  // Generic fetch/http clients and command-line HTTP clients.
+  if (/\b(?:method\s*[:=]\s*["']?(?:POST|PUT)|(?:POST|PUT)\s+https?:\/\/)/iu.test(text)) return true
+  if (/\b(?:http|httpie)\s+(?:[^\s]+\s+)*(?:POST|PUT)\b[\s\S]{0,240}127\.0\.0\.1:7843/iu.test(text)) return true
+  if (/\bwget\b[\s\S]{0,240}(?:--method\s*=\s*|--method\s+)(?:POST|PUT)\b/iu.test(text)) return true
+  return false
+}
+
+/**
+ * Global hard gate for attempts to bypass shrimp_run through a command tool.
+ * Read-only health/summary requests and non-command tools are intentionally
+ * outside this gate. The gate is independent of policy mode and Avengers
+ * parent restrictions.
+ */
+export function shrimpRunApiBypassReason(toolName, args = {}) {
+  if (!commandToolName(toolName)) return undefined
+  const texts = commandTexts(args)
+  for (const text of texts) {
+    if (!SHRIMP_RUN_ENDPOINT_RE.test(text)) continue
+    if (curlWritesShrimpRunApi(text) || structuredClientWritesShrimpRunApi(text)) {
+      return { kind: 'deny', code: 'SHRIMP_RUN_API_BYPASS_BLOCKED', reason: SHRIMP_RUN_API_BYPASS_MESSAGE }
+    }
+  }
+  return undefined
 }
 
 function hasStandaloneAmpersand(value) {
@@ -457,6 +603,13 @@ export async function apply(ctx, config) {
   }, 'list')
 
   const listener = async (exec, next) => {
+    const shrimpBypass = shrimpRunApiBypassReason(exec?.name || '', exec?.arguments || {})
+    if (shrimpBypass) {
+      // This hard gate is global: policy observe mode and Avengers role
+      // restrictions must not turn a direct API bypass into an allow/ask.
+      policy.evaluate(exec?.name || '', exec?.arguments || {}, { id: 'shrimp-run-api-bypass', decision: shrimpBypass })
+      return shrimpBypass
+    }
     const avengersDecision = avengersParentToolDecision(exec)
     if (avengersDecision) return avengersDecision
     const detached = blockDetachedBackground ? detachedBackgroundReason(exec?.name || '', exec?.arguments || {}) : undefined
@@ -476,6 +629,7 @@ export async function apply(ctx, config) {
     policy,
     classifyToolCall,
     detachedBackgroundReason,
+    shrimpRunApiBypassReason,
     avengersAgentRole,
     avengersParentToolDecision,
     avengersChildRoute: { ...AVENGERS_CHILD_ROUTE },

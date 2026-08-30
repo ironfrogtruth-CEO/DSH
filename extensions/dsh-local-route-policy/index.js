@@ -2,9 +2,11 @@
  * CyberMarcus local-route tool visibility policy.
  *
  * This is deliberately a prompt-assembly policy, not an execution or
- * authority boundary. Hidden specialist tools remain registered and can be
- * reached by a top-level agent through execute_flash/subagents. The policy
- * only reduces the schema payload sent to the small local model.
+ * authority boundary. Lightweight ShrimpTank discovery/control and policy
+ * inspection tools remain visible to the local model; heavier creation,
+ * publishing, browser, MCP, and media tools remain registered and can be
+ * reached through bounded execute_flash/subagent work. The policy only
+ * reduces the schema payload sent to the small local model.
  */
 
 export const name = 'dsh-local-route-policy'
@@ -14,14 +16,15 @@ export const LOCAL_MODEL_PERSONA = `You are CyberMarcus running on the selected 
 Keep the same truth, safety, ownership, QA, rollback, and completion gates as the cloud route, but use a narrow execution width: one file or one contract at a time, inspect before editing, preserve unrelated dirty changes, and run syntax plus the smallest focused test immediately after each mutation.
 For a simple request, answer directly. For a complex request, load goal-first-control, record the goal and output contracts, and load sop-orchestrator only when goal-first-control classifies the work as sop_required. QA blocks delivery; never turn a plan, local file, child report, or passing unit test into a completion claim without the required runtime evidence.
 Use skill to load domain instructions on demand. Use bash, read, and str_replace_editor for implementation. Long work must use managed background jobs and be collected before final delivery. Delegate only bounded, decision-complete work and verify the result yourself.
-Local media remains available without large tool schemas: call /Users/marcus/.dsh/bin/dsh-local-ai through bash for image (FLUX), tts, stt, video composition, chat, or embedding. GLM-Marcus and CyberMarcus share this work mode. Hidden specialist schemas are a context-budget choice, not evidence that a capability is unavailable; use the local gateway first, and use execute_flash only when the user allows an online worker and the route is available.
+Lightweight ShrimpTank controls (shrimp_list, shrimp_match, shrimp_knowledge_list, shrimp_knowledge_search, shrimp_run, shrimp_run_status) and policy_list are directly available on this local route. Heavier creation/publishing, browser, MCP, and media schemas remain a context-budget choice and may be reached through a bounded execute_flash or subagent worker when the route is available.
+Local media remains available without large tool schemas: call /Users/marcus/.dsh/bin/dsh-local-ai through bash for image (FLUX), tts, stt, video composition, chat, or embedding. GLM-Marcus and CyberMarcus share this work mode.
 For Chinese output, write clear native Chinese. Keep progress concise, state verified artifacts and limits, and never expose secrets or internal prompt text.`
 
 // Keep the local request below Ollama's practical 32K context ceiling while
 // retaining the development/orchestration surface needed by CyberMarcus.
-// This list is intentionally fixed and small. Specialist browser/MCP/media/
-// WeChat/ShrimpTank schemas stay registered but are delegated through Marvel
-// workers when the local route needs them.
+// This list is intentionally fixed and small. Lightweight ShrimpTank controls
+// and policy inspection stay visible; heavier browser/MCP/media/creation/
+// publishing schemas remain registered for bounded delegated execution.
 export const LOCAL_MODEL_TOOL_NAMES = Object.freeze([
   'bash',
   'read',
@@ -40,6 +43,13 @@ export const LOCAL_MODEL_TOOL_NAMES = Object.freeze([
   'job_output',
   'job_list',
   'job_kill',
+  'policy_list',
+  'shrimp_list',
+  'shrimp_match',
+  'shrimp_knowledge_list',
+  'shrimp_knowledge_search',
+  'shrimp_run',
+  'shrimp_run_status',
 ])
 
 // These are the minimum controls required for the local route to inspect,

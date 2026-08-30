@@ -81,6 +81,22 @@ function governanceForState(classification, node) {
 const SIMPLE_WORDING = /(?:只给一句|只用一句话|仅用一句话|只(?:给|写|输出|回复)(?:出)?(?:改写后的)?(?:一|1)句|翻译成|改写(?:这|下列|以下)?(?:句子)?)/i
 const COMPLEX_WORDING = /(?:复杂|多步骤|可回滚|状态机|工作流|流水线|方案|规划|架构|实施|验收|回归|部署|升级|迁移|重构|开发|实现|修复|调试|排查|审计|报告|PPT|HTML|PDF|插件|代码|仓库|项目|文件)/i
 const RISK_WORDING = /(?:真源|证据|来源|QA|质量|渲染|导出|发布|提交|权限|确认|回滚|恢复|失败|风险|约束)/i
+// A direct call to an already published shrimp is an executable request, not
+// a request to design or govern a workflow. Keep this narrow: only an
+// explicit shrimp_run(...) expression or an action verb at the beginning of
+// a sentence naming a shrimp is allowed to bypass the seven-node overlay.
+const DIRECT_SHRIMP_CALL_RE = /(?:^|[^\p{L}\p{N}_])shrimp_run\s*\(/iu
+const DIRECT_SHRIMP_SENTENCE_RE = /^(?:请\s*)?(?:帮我\s*)?(?:直接\s*)?(?:运行|调用|启动|执行|开跑)\s*(?:(?:这|该|已发布的?|发布的?|指定的?)\s*)?[^。！？!?\n]{0,100}虾(?=[，,、。！？!?（）();；.\s]|$)/u
+const DIRECT_SHRIMP_PRODUCTION_RE = /^(?:请\s*)?用\s*文章@?虾(?:六答)?[\s\S]{0,100}(?:写|生成|产出|发布|保存|编写|制作)/u
+const DIRECT_SHRIMP_ASSIGN_RE = /^(?:请\s*)?(?:让|交给)\s*[^。！？!?\n]{0,100}(?:文章@?虾|@[^。！？!?\n]{1,100}虾)[\s\S]{0,100}(?:写|生成|产出|发布|保存|编写|制作|运行|调用|启动|执行)/u
+const DIRECT_SHRIMP_TRY_RE = /^(?:升级了?|更新了?)[\s\S]{0,40}文章@?虾(?:六答)?[\s\S]{0,40}(?:试一下|试试|试跑|跑一下|试用)/u
+const DIRECT_SHRIMP_TOOL_RE = /\bshrimp_run\b[\s\S]{0,100}(?:运行|调用|启动|执行|开跑)\s*[^。！？!?\n]{0,100}虾/iu
+const DIRECT_SHRIMP_NEGATED_RE = /(?:不要|别|禁止|不可|不能|无需|不需要|暂不|先别|先不要)[^。！？!?；;，,、\n]{0,24}(?:shrimp_run\s*(?:\(|\b)|(?:运行|调用|启动|执行|开跑|用|让|交给)\s*[^。！？!?；;，,、\n]{0,60}虾)/iu
+const DIRECT_SHRIMP_QUERY_PREFIX_RE = /^(?:请问|了解(?:一下)?|介绍(?:一下)?|推荐|匹配|看看|查看|检查|分析|帮我(?:看看|查看|检查|分析|了解)|怎么|如何|能否|是否|可以|能不能|可不可以|为什么)/u
+const DIRECT_SHRIMP_COMPLEX_PREFIX_RE = /^(?:请\s*)?(?:修复|升级|部署|迁移|重构|开发|实现|调试|排查|审计|测试|验收)/u
+const SHRIMP_MAINTENANCE_RE = /^(?:请\s*)?(?:修复|升级|调试)[\s\S]{0,100}文章@?虾/u
+const DIRECT_SHRIMP_INQUIRY_RE = /(?:吗|？|\?)\s*$/u
+const DIRECT_SHRIMP_PAST_RE = /^(?:刚才|之前|上次|此前|曾经|已经)[^。！？!?\n]{0,60}(?:运行|调用|启动|执行|开跑)[^。！？!?\n]{0,24}(?:过|了|失败|完成)(?:[。！？!?]|$)/u
 
 function boundedText(value, max = 1_000) {
   const text = String(value ?? '').trim()
@@ -133,8 +149,32 @@ export function extractOutputContract(text) {
   }
 }
 
+export function isDirectShrimpRunInstruction(text) {
+  const source = String(text || '').trim()
+  const complexPrefix = DIRECT_SHRIMP_COMPLEX_PREFIX_RE.test(source) && !DIRECT_SHRIMP_TRY_RE.test(source)
+  if (!source || DIRECT_SHRIMP_NEGATED_RE.test(source) || DIRECT_SHRIMP_QUERY_PREFIX_RE.test(source) || complexPrefix || DIRECT_SHRIMP_INQUIRY_RE.test(source) || DIRECT_SHRIMP_PAST_RE.test(source)) return false
+  return DIRECT_SHRIMP_CALL_RE.test(source)
+    || DIRECT_SHRIMP_SENTENCE_RE.test(source)
+    || DIRECT_SHRIMP_PRODUCTION_RE.test(source)
+    || DIRECT_SHRIMP_ASSIGN_RE.test(source)
+    || DIRECT_SHRIMP_TRY_RE.test(source)
+    || DIRECT_SHRIMP_TOOL_RE.test(source)
+}
+
 export function classifyTask(text) {
   const source = String(text || '').trim()
+  if (isDirectShrimpRunInstruction(source)) {
+    return {
+      classification: 'simple_direct',
+      reasons: ['explicit published-shrimp run request; execute directly and preserve tool authorization checks'],
+    }
+  }
+  if (SHRIMP_MAINTENANCE_RE.test(source)) {
+    return {
+      classification: 'sop_required',
+      reasons: ['shrimp repair, upgrade, or debugging requires the normal governed workflow'],
+    }
+  }
   const numberedRequirements = (source.match(/(?:^|\n)\s*\d+[.)、]/g) || []).length
   const explicitSimple = SIMPLE_WORDING.test(source) && !/(?:代码|仓库|文件|插件|实现|修复|升级|部署|状态机)/i.test(source)
   const continuousExecution = extractOutputContract(source).continuousUntilTerminal === true

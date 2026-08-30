@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { createInitialState, extractOutputContract, renderStateContext, transitionState, userText } from './machine.js'
+import { createInitialState, extractOutputContract, isDirectShrimpRunInstruction, renderStateContext, transitionState, userText } from './machine.js'
 import { GoalFirstStateError, GoalFirstStateStore } from './state-store.js'
 import { enforceOneSentenceStream } from './stream-contract.js'
 import { goalFirstCardTitle } from './tool-cards.js'
@@ -237,6 +237,8 @@ export async function apply(ctx, config = {}) {
     if (decision.kind === 'reject') return decision
     signal.throwIfAborted()
     const human = userText(messages)
+    const latestText = latestHumanText(messages)
+    const directShrimpRun = isDirectShrimpRunInstruction(latestText)
     let state = await store.load(agent.id)
     if (state && state.sourceEventSeq > agent.session.seq) {
       state = await store.append(agent.id, {
@@ -249,10 +251,16 @@ export async function apply(ctx, config = {}) {
         updatedAt: Date.now(),
       }, state.revision)
     }
-    const rehydrated = rehydrateOutputContract(state, latestHumanText(messages), Math.max(agent.session.seq - 1, 0))
+    const rehydrated = rehydrateOutputContract(state, latestText, Math.max(agent.session.seq - 1, 0))
     if (rehydrated) state = await store.append(agent.id, rehydrated, state.revision)
-    if (human && (!state || state.phase === 'complete' || state.classification === 'simple_direct')) {
-      const initial = createInitialState({ sessionId: agent.id, text: human, sourceEventSeq: Math.max(agent.session.seq - 1, 0), turn })
+    // A direct published-shrimp request is a new executable task. It must
+    // replace an older active SOP snapshot so stale route/structure gates do
+    // not force the child through unrelated goal-first nodes. Only the latest
+    // top-level user message can trigger this reset; ordinary repair,
+    // upgrade, inquiry, and negative messages keep the active SOP intact.
+    if ((latestText && directShrimpRun) || (human && (!state || state.phase === 'complete' || state.classification === 'simple_direct'))) {
+      const initialText = directShrimpRun ? latestText : human
+      const initial = createInitialState({ sessionId: agent.id, text: initialText, sourceEventSeq: Math.max(agent.session.seq - 1, 0), turn })
       state = await store.append(agent.id, initial, state?.revision ?? 0)
     }
     if (!state) return decision

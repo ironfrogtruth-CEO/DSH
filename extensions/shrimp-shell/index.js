@@ -903,16 +903,25 @@ export async function runShrimpWithReceipt({
   }
 }
 
-// shrimp_run 的 approval=never 兼容只接受当前用户回合的一次性、有界授权。
-// 授权保存在进程内存中，既不写持久会话，也不触碰心跳状态；Host 重启后自然失效。
+// shrimp_run 的 approval=never 兼容只接受当前用户明确给出的、有界批次授权。
+// 授权在同一 agent/session 内最多保留一小时；它只存在进程内存中，不写持久
+// 会话，也不触碰心跳状态，因此 Host 重启后自然失效。
 export const SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES = 1
 export const SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES = 2
 export const SHRIMP_AUTH_RECEIPT_MAX_USES = SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES
-export const SHRIMP_AUTH_RECEIPT_TTL_MS = 15 * 60 * 1000
+export const SHRIMP_AUTH_RECEIPT_TTL_MS = 60 * 60 * 1000
+export const SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS = 10
 const SHRIMP_RUN_ACTION_RE = /调用|运行|启动|执行|开跑|跑通|交给|驱动/u
+const SHRIMP_RUN_ACTION_TARGET_RE = /(?:调用|运行|启动|执行|开跑|跑通)\s*[^。！？!?；;，,、\n]{0,80}虾|虾[^。！？!?；;，,、\n]{0,80}(?:调用|运行|启动|执行|开跑|跑通)/u
 const SHRIMP_RUN_RECOVERY_RE = /(?:遇阻(?:断|碍)?|遇到阻断|遇到阻碍)(?:后)?[，,、\s]*(?:请)?(?:自行)?修复(?:并)?跑通/u
-const SHRIMP_RUN_NEGATED_RE = /(?:不要|别|禁止|不可|不能|无需|不需要|暂不|先别|先不要)[\s\S]{0,18}(?:调用|运行|启动|执行|开跑|跑通)/u
-const SHRIMP_RUN_INQUIRY_RE = /^(?:请问|了解(?:一下)?|介绍(?:一下)?|推荐|匹配|看看|查看|检查(?:一下)?|分析(?:一下)?|怎么|如何|能否|是否|可以|能不能|可不可以|为什么|什么是)/u
+const SHRIMP_RUN_PRODUCTION_RE = /(?:用|让|交给)\s*文章@?虾(?:六答)?[\s\S]{0,100}(?:写|生成|产出|发布|保存|编写|制作)/u
+const SHRIMP_RUN_TRY_RE = /(?:升级了?|更新了?)[\s\S]{0,40}文章@?虾(?:六答)?[\s\S]{0,40}(?:试一下|试试|试跑|跑一下|试用)/u
+const SHRIMP_RUN_COMPLEX_PREFIX_RE = /^(?:请\s*)?(?:修复|升级|部署|迁移|重构|开发|实现|调试|排查|审计|测试|验收)/u
+// Negation must be attached to a shrimp execution target. A separate
+// restriction such as “禁止直接调用 7843 API” must not cancel an otherwise
+// explicit “运行文章虾” request.
+const SHRIMP_RUN_NEGATED_RE = /(?:不要|别|禁止|不可|不能|无需|不需要|暂不|先别|先不要)[^。！？!?；;，,、\n]{0,24}(?:shrimp_run\s*(?:\(|\b)|(?:运行|调用|启动|执行|开跑|跑通|用|让|交给)\s*[^。！？!?；;，,、\n]{0,60}虾)/iu
+const SHRIMP_RUN_INQUIRY_RE = /^(?:请问|了解(?:一下)?|介绍(?:一下)?|推荐|匹配|看看|查看|检查(?:一下)?|分析(?:一下)?|帮我(?:看看|查看|检查|分析)|怎么|如何|能否|是否|可以|能不能|可不可以|为什么|什么是)/u
 const SHRIMP_RUN_PAST_ONLY_RE = /^(?:刚才|之前|上次|此前|曾经|已经)[^。！？!?]{0,40}(?:运行|调用|启动|执行)[^。！？!?]{0,24}(?:过|了|失败|完成)(?:[。！？!?]|$)/u
 
 function messageText(value) {
@@ -946,15 +955,22 @@ function humanMessageText(input) {
 export function explicitShrimpRunIntent(input) {
   const text = humanMessageText(input)
   const recovery = SHRIMP_RUN_RECOVERY_RE.test(text)
-  const action = SHRIMP_RUN_ACTION_RE.test(text)
+  const action = (SHRIMP_RUN_ACTION_RE.test(text) && SHRIMP_RUN_ACTION_TARGET_RE.test(text)) || SHRIMP_RUN_PRODUCTION_RE.test(text) || SHRIMP_RUN_TRY_RE.test(text)
   const negated = SHRIMP_RUN_NEGATED_RE.test(text)
   const inquiry = SHRIMP_RUN_INQUIRY_RE.test(text) || /(?:吗|？|\?)\s*$/u.test(text)
   const pastOnly = SHRIMP_RUN_PAST_ONLY_RE.test(text)
+  const complexPrefix = SHRIMP_RUN_COMPLEX_PREFIX_RE.test(text) && !SHRIMP_RUN_TRY_RE.test(text)
+  const batchCount = shrimpRunBatchCount(text)
   return {
-    explicit: Boolean(text && !negated && !inquiry && !pastOnly && (action || recovery)),
+    explicit: Boolean(text && !negated && !inquiry && !pastOnly && !complexPrefix && (action || recovery)),
     action,
     recovery,
     text,
+    batchCount,
+    maxUses: Math.min(
+      SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS,
+      batchCount * (recovery ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES),
+    ),
   }
 }
 
@@ -1049,11 +1065,139 @@ function receiptPart(value) {
   return value === null || value === undefined || String(value).trim() === '' ? null : String(value)
 }
 
-function receiptKey(agentId, turn, pipelineSlug) {
+/**
+ * The live session object is the authoritative lineage record. Older Host
+ * versions nested these fields under session.header, so keep that as a
+ * compatibility fallback only. In particular, a child session's
+ * parentSession is a session id, not an agent id.
+ */
+function shrimpSessionMetadata(agent) {
+  const session = agent?.session && typeof agent.session === 'object' ? agent.session : {}
+  const header = session.header && typeof session.header === 'object' ? session.header : {}
+  const first = (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim() !== '')
+  return {
+    id: first(session.id, session.sessionId, header.id, header.sessionId, agent?.id),
+    origin: first(session.origin, header.origin),
+    parentSession: first(session.parentSession, header.parentSession),
+    delegationDepth: first(session.delegationDepth, header.delegationDepth),
+  }
+}
+
+function receiptSessionId(agent, sessionId) {
+  return receiptPart(sessionId || shrimpSessionMetadata(agent).id)
+}
+
+export function shrimpAgentIdentity(agent) {
+  const metadata = shrimpSessionMetadata(agent)
+  return {
+    // Live agents normally expose id separately; session.id is a safe
+    // compatibility fallback for Host callbacks that only pass the session
+    // root object.
+    agentId: receiptPart(agent?.id || metadata.id),
+    sessionId: receiptPart(metadata.id),
+  }
+}
+
+function receiptKey(agentId, sessionId, pipelineSlug) {
   const agent = receiptPart(agentId)
-  const currentTurn = receiptPart(turn)
+  const session = receiptPart(sessionId) || agent
   const slug = receiptPart(pipelineSlug)
-  return agent && currentTurn && slug ? `${agent}\u0000${currentTurn}\u0000${slug}` : null
+  return agent && session && slug ? `${agent}\u0000${session}\u0000${slug}` : null
+}
+
+const SHRIMP_BATCH_NUMBER_RE = '[0-9０-９一二两三四五六七八九十百]+'
+
+function parseShrimpBatchNumber(value) {
+  const normalized = String(value || '').normalize('NFKC').trim()
+  if (/^\d+$/u.test(normalized)) return Number(normalized)
+  const digits = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 零: 0 }
+  if (normalized === '十') return 10
+  if (!normalized.includes('十')) return [...normalized].reduce((total, char) => total * 10 + (digits[char] ?? 0), 0)
+  const [left, right] = normalized.split('十')
+  return (left ? (digits[left] || Number(left) || 1) : 1) * 10 + (right ? (digits[right] || Number(right) || 0) : 0)
+}
+
+function boundedShrimpBatchCount(value) {
+  const number = Number(value)
+  return Number.isFinite(number) && number >= 1
+    ? Math.min(SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS, Math.floor(number))
+    : 1
+}
+
+/** Parse only explicit multi-item wording; "第 3 篇" remains one item. */
+export function shrimpRunBatchCount(input) {
+  const text = String(input || '').normalize('NFKC')
+  const range = text.match(new RegExp(`第\\s*(${SHRIMP_BATCH_NUMBER_RE})\\s*(?:到|至|-|—|~|～)\\s*第?\\s*(${SHRIMP_BATCH_NUMBER_RE})\\s*篇`, 'u'))
+  if (range) {
+    const start = parseShrimpBatchNumber(range[1])
+    const end = parseShrimpBatchNumber(range[2])
+    if (Number.isFinite(start) && Number.isFinite(end) && end >= start) return boundedShrimpBatchCount(end - start + 1)
+  }
+  const numberedItems = [...text.matchAll(new RegExp(`第\\s*${SHRIMP_BATCH_NUMBER_RE}\\s*篇`, 'gu'))]
+  if (numberedItems.length > 1) return boundedShrimpBatchCount(numberedItems.length)
+  const list = text.match(new RegExp(`第\\s*(${SHRIMP_BATCH_NUMBER_RE}(?:\\s*[、,，]\\s*${SHRIMP_BATCH_NUMBER_RE})+)\\s*篇`, 'u'))
+  if (list) return boundedShrimpBatchCount(list[1].split(/[、,，]/u).filter(Boolean).length)
+  const articleCounts = []
+  for (const match of text.matchAll(new RegExp(`(${SHRIMP_BATCH_NUMBER_RE})\\s*篇`, 'gu'))) {
+    const prefix = text.slice(0, match.index).trimEnd()
+    if (prefix.endsWith('第')) continue
+    const count = parseShrimpBatchNumber(match[1])
+    if (count > 0) articleCounts.push(count)
+  }
+  if (articleCounts.length > 1) return boundedShrimpBatchCount(articleCounts.reduce((total, count) => total + count, 0))
+  return articleCounts[0] > 1 ? boundedShrimpBatchCount(articleCounts[0]) : 1
+}
+
+function stableShrimpValue(value) {
+  if (Array.isArray(value)) return value.map((item) => stableShrimpValue(item))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, stableShrimpValue(value[key])]),
+    )
+  }
+  if (typeof value === 'string') return value.trim().replace(/\\s+/gu, ' ')
+  return value
+}
+
+export function normalizeShrimpRunInputs(value) {
+  return stableShrimpValue(value && typeof value === 'object' ? value : {})
+}
+
+function stableShrimpJson(value) {
+  return JSON.stringify(stableShrimpValue(value)) || 'null'
+}
+
+function shrimpRunRequestKey({ agentId, sessionId, pipelineSlug, payload } = {}) {
+  const digest = createHash('sha256').update(stableShrimpJson({
+    agentId: receiptPart(agentId),
+    sessionId: receiptPart(sessionId) || receiptPart(agentId),
+    pipelineSlug: String(pipelineSlug || '').trim(),
+    inputs: normalizeShrimpRunInputs(payload),
+  }), 'utf8').digest('hex').slice(0, 32)
+  return digest
+}
+
+export function stableShrimpRunIdempotencyKey({ agentId, sessionId, turn, pipelineSlug, payload } = {}) {
+  const slug = String(pipelineSlug || '').trim() || 'unknown'
+  const digest = createHash('sha256').update(stableShrimpJson({
+    agentId: receiptPart(agentId),
+    sessionId: receiptPart(sessionId) || receiptPart(agentId),
+    turn: receiptPart(turn) || 'turn',
+    pipelineSlug: slug,
+    inputs: normalizeShrimpRunInputs(payload),
+  }), 'utf8').digest('hex').slice(0, 32)
+  return `dsh-shrimp:${slug}:${digest}`
+}
+
+function shrimpRunItemKey(payload) {
+  const normalized = normalizeShrimpRunInputs(payload)
+  const identity = normalized.topic || normalized.title || normalized.goal || normalized.subject || normalized.core_viewpoint
+  return shrimpRunRequestKey({
+    agentId: '',
+    sessionId: '',
+    pipelineSlug: '',
+    payload: identity ? { item: identity } : normalized,
+  })
 }
 
 export class ShrimpAuthorizationReceipts {
@@ -1068,44 +1212,207 @@ export class ShrimpAuthorizationReceipts {
     for (const [key, entry] of this.entries) if (entry.expiresAt <= now) this.entries.delete(key)
   }
 
-  issue({ agentId, turn, pipelineSlug, requestText, targetDisplayName, maxUses = this.maxUses, now = this.now() } = {}) {
-    const key = receiptKey(agentId, turn, pipelineSlug)
+  issue({ agentId, sessionId, turn, pipelineSlug, requestText, targetDisplayName, maxUses = this.maxUses, batchCount = 1, itemMaxUses = 1, recovery = false, now = this.now() } = {}) {
+    const key = receiptKey(agentId, sessionId || agentId, pipelineSlug)
     if (!key) return null
     this.prune(now)
     const current = this.entries.get(key)
-    if (current) return { ...current }
-    const boundedMaxUses = Math.max(1, Math.min(SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES, Math.floor(Number(maxUses) || this.maxUses)))
+    const normalizedRequestText = String(requestText || '').trim()
+    if (current && current.requestText === normalizedRequestText) return this._copy(current)
+    const boundedBatchCount = boundedShrimpBatchCount(batchCount)
+    const requestedItemMaxUses = Number(itemMaxUses)
+    const boundedItemMaxUses = Math.max(1, Math.min(2, Math.floor(Number.isFinite(requestedItemMaxUses) ? requestedItemMaxUses : (recovery ? 2 : 1))))
+    const requestedMaxUses = Math.floor(Number(maxUses) || boundedBatchCount * boundedItemMaxUses)
+    const boundedMaxUses = Math.max(1, Math.min(SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS, requestedMaxUses))
+    const identity = receiptSessionId({ id: agentId }, sessionId)
     const entry = {
       agentId: String(agentId),
-      turn: String(turn),
+      sessionId: String(identity || agentId),
+      // Compatibility field for older observers; authorization identity no
+      // longer includes turn so one batch can safely cross turn boundaries.
+      turn: turn === null || turn === undefined ? null : String(turn),
+      issuedTurn: turn === null || turn === undefined ? null : String(turn),
       pipelineSlug: String(pipelineSlug),
-      requestText: String(requestText || '').trim(),
+      requestText: normalizedRequestText,
       targetDisplayName: String(targetDisplayName || '').trim() || null,
       issuedAt: now,
       expiresAt: now + this.ttlMs,
       uses: 0,
       maxUses: boundedMaxUses,
+      batchCount: boundedBatchCount,
+      itemMaxUses: boundedItemMaxUses,
+      recovery: Boolean(recovery),
+      itemUses: {},
     }
     this.entries.set(key, entry)
-    return { ...entry }
+    return this._copy(entry)
   }
 
-  peek({ agentId, turn, pipelineSlug, now = this.now() } = {}) {
-    const key = receiptKey(agentId, turn, pipelineSlug)
+  _copy(entry) {
+    return entry ? { ...entry, itemUses: { ...(entry.itemUses || {}) } } : null
+  }
+
+  peek({ agentId, sessionId, turn, pipelineSlug, now = this.now() } = {}) {
+    const key = receiptKey(agentId, sessionId || agentId, pipelineSlug)
     if (!key) return null
     this.prune(now)
     const entry = this.entries.get(key)
-    return entry ? { ...entry } : null
+    return this._copy(entry)
   }
 
-  consume({ agentId, turn, pipelineSlug, now = this.now() } = {}) {
-    const key = receiptKey(agentId, turn, pipelineSlug)
+  consume({ agentId, sessionId, turn, pipelineSlug, itemKey = '__default__', now = this.now() } = {}) {
+    const key = receiptKey(agentId, sessionId || agentId, pipelineSlug)
     if (!key) return null
     this.prune(now)
     const entry = this.entries.get(key)
     if (!entry || entry.uses >= entry.maxUses) return null
+    const normalizedItemKey = String(itemKey || '__default__')
+    const itemUses = entry.itemUses || (entry.itemUses = {})
+    const currentItemUses = Number(itemUses[normalizedItemKey] || 0)
+    if (currentItemUses >= entry.itemMaxUses) return null
     entry.uses += 1
-    return { ...entry, remainingUses: Math.max(0, entry.maxUses - entry.uses) }
+    itemUses[normalizedItemKey] = currentItemUses + 1
+    return { ...this._copy(entry), remainingUses: Math.max(0, entry.maxUses - entry.uses), item_key: normalizedItemKey }
+  }
+
+  /**
+   * Subagent fallback: the delegation message is not the user's original
+   * instruction, so the child cannot sign its own receipt. When its own
+   * agentId misses, the parent session's valid receipt for the same slug may
+   * be reused — same TTL, same one-shot maxUses, same negation filtering
+   * upstream. Turn is deliberately ignored because parent and child turns
+   * differ; only unconsumed entries are returned so consume cannot fail
+   * after downstream already allowed.
+   */
+  peekConsumable({ agentId, sessionId, pipelineSlug, now = this.now() } = {}) {
+    const agent = receiptPart(agentId)
+    const session = receiptPart(sessionId)
+    const slug = receiptPart(pipelineSlug)
+    if ((!agent && !session) || !slug) return null
+    this.prune(now)
+    let best = null
+    for (const entry of this.entries.values()) {
+      if (agent && entry.agentId !== agent) continue
+      if (session && entry.sessionId !== session) continue
+      if (entry.pipelineSlug !== slug) continue
+      if (entry.expiresAt <= now || entry.uses >= entry.maxUses) continue
+      if (!best || entry.issuedAt > best.issuedAt) best = entry
+    }
+    return this._copy(best)
+  }
+}
+
+export class ShrimpRunRequestRegistry {
+  constructor({ ttlMs = SHRIMP_AUTH_RECEIPT_TTL_MS, maxEntries = 256, now = () => Date.now() } = {}) {
+    this.ttlMs = Math.max(1, Number(ttlMs) || SHRIMP_AUTH_RECEIPT_TTL_MS)
+    this.maxEntries = Math.max(1, Math.floor(Number(maxEntries) || 256))
+    this.now = now
+    this.entries = new Map()
+  }
+
+  prune(now = this.now()) {
+    for (const [key, entry] of this.entries) {
+      if (entry.expiresAt <= now || SHRIMP_RUN_TERMINAL_STATUS_SET.has(String(entry.status || '').toLowerCase())) this.entries.delete(key)
+    }
+  }
+
+  key({ agentId, sessionId, pipelineSlug, payload } = {}) {
+    return shrimpRunRequestKey({ agentId, sessionId, pipelineSlug, payload })
+  }
+
+  active({ agentId, sessionId, pipelineSlug, payload, now = this.now() } = {}) {
+    this.prune(now)
+    const entry = this.entries.get(this.key({ agentId, sessionId, pipelineSlug, payload }))
+    if (!entry || SHRIMP_RUN_TERMINAL_STATUS_SET.has(String(entry.status || '').toLowerCase())) return null
+    return { ...entry }
+  }
+
+  remember({ agentId, sessionId, pipelineSlug, payload, runId, operationId = null, idempotencyKey = '', status = 'running', now = this.now() } = {}) {
+    const key = this.key({ agentId, sessionId, pipelineSlug, payload })
+    const id = String(runId || '').trim()
+    if (!key || !id) return null
+    this.prune(now)
+    const entry = {
+      key,
+      agentId: String(agentId || ''),
+      sessionId: String(sessionId || agentId || ''),
+      pipelineSlug: String(pipelineSlug || ''),
+      runId: id,
+      operationId: operationId ? String(operationId) : null,
+      idempotencyKey: String(idempotencyKey || ''),
+      status: String(status || 'running').toLowerCase(),
+      updatedAt: now,
+      expiresAt: now + this.ttlMs,
+    }
+    this.entries.set(key, entry)
+    while (this.entries.size > this.maxEntries) this.entries.delete(this.entries.keys().next().value)
+    return { ...entry }
+  }
+
+  updateByRunId(runId, status, now = this.now()) {
+    const id = String(runId || '').trim()
+    if (!id) return null
+    let updated = null
+    for (const entry of this.entries.values()) {
+      if (entry.runId !== id) continue
+      entry.status = String(status || '').toLowerCase()
+      entry.updatedAt = now
+      updated = { ...entry }
+    }
+    this.prune(now)
+    return updated
+  }
+}
+
+/** Execute a run once per session/input while steering repeats to status-only polling. */
+export async function runShrimpWithDedupe({ registry, requestKey, launch, readSummary, readArtifacts, timeoutMs = SHRIMP_RUN_WAIT_TIMEOUT_MS, pollIntervalMs = SHRIMP_RUN_POLL_INTERVAL_MS, sleep, now } = {}) {
+  if (!registry || typeof registry.active !== 'function' || typeof launch !== 'function') throw new TypeError('registry 和 launch 必须是函数')
+  const existing = registry.active({ ...(requestKey || {}), now: now ? now() : undefined })
+  if (existing) {
+    const receipt = await waitForShrimpRunTerminal({
+      runId: existing.runId,
+      readSummary,
+      readArtifacts,
+      timeoutMs: 0,
+      pollIntervalMs: 0,
+      ...(sleep ? { sleep } : {}),
+      ...(now ? { now } : {}),
+    })
+    registry.updateByRunId(existing.runId, receipt.final_status, now ? now() : undefined)
+    return {
+      ...receipt,
+      operation_id: existing.operationId,
+      idempotency_key: existing.idempotencyKey || undefined,
+      deduplicated: true,
+      next_action: receipt.still_running ? {
+        tool: 'shrimp_run_status',
+        run_id: existing.runId,
+        wait_seconds: 120,
+      } : receipt.next_action,
+    }
+  }
+  const receipt = await runShrimpWithReceipt({
+    launch,
+    readSummary,
+    readArtifacts,
+    timeoutMs,
+    pollIntervalMs,
+    ...(sleep ? { sleep } : {}),
+    ...(now ? { now } : {}),
+  })
+  if (receipt.run_id && receipt.still_running) {
+    registry.remember({
+      ...requestKey,
+      runId: receipt.run_id,
+      operationId: receipt.operation_id,
+      idempotencyKey: requestKey.idempotencyKey,
+      status: receipt.final_status || 'running',
+      now: now ? now() : undefined,
+    })
+  }
+  return {
+    ...receipt,
+    idempotency_key: requestKey.idempotencyKey || undefined,
   }
 }
 
@@ -1141,25 +1448,37 @@ export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogF
       return []
     }
   }
-  const ask = { kind: 'ask', reason: '请确认运行这只已发布虾；只有当前回合明确点名并授权的目标才可免重复确认。' }
+  const ask = { kind: 'ask', reason: '请确认运行这只已发布虾；只有当前会话批次明确点名并授权的目标才可免重复确认。' }
 
   return {
     receipts,
     async preStep({ agent, messages, turn, signal } = {}, next = async () => ({ kind: 'enter', messages: [] })) {
       const decision = await next()
       if (!decision || decision.kind !== 'enter' || signal?.aborted) return decision
+      // A subagent's incoming message is a delegation from its parent, not a
+      // new user authorization. It may consume a receipt signed by the top
+      // level user, but must never mint one from the dispatch wording itself.
+      // Read lineage from the live session root first; the helper keeps old
+      // session.header records compatible.
+      if (shrimpSessionMetadata(agent).origin === 'subagent') return decision
       const intent = explicitShrimpRunIntent(messages)
       if (!intent.explicit) return decision
       const target = findShrimpTarget(await safeCatalog(true), intent.text)
       const pipelineSlug = pipelineSlugForItem(target)
       if (!target || !pipelineSlug || turn === null || turn === undefined) return decision
+      const identity = shrimpAgentIdentity(agent)
+      if (!identity.agentId || !identity.sessionId) return decision
       receipts.issue({
-        agentId: agent?.id,
+        agentId: identity.agentId,
+        sessionId: identity.sessionId,
         turn,
         pipelineSlug,
         requestText: intent.text,
         targetDisplayName: target.display_name || target.name || target.title,
-        maxUses: intent.recovery ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES,
+        batchCount: intent.batchCount,
+        itemMaxUses: intent.recovery ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES,
+        maxUses: intent.maxUses,
+        recovery: intent.recovery,
         now: now(),
       })
       return decision
@@ -1174,11 +1493,34 @@ export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogF
         const pipelineSlug = String(args.pipelineSlug || '').trim()
         if (turn === null || !pipelineSlug) return { ...ask }
         const target = findShrimpPipeline(await safeCatalog(), pipelineSlug)
-        const receipt = receipts.peek({ agentId: exec.agent.id, turn, pipelineSlug, now: now() })
+        const identity = shrimpAgentIdentity(exec.agent)
+        if (!identity.agentId || !identity.sessionId) return { ...ask }
+        const itemKey = shrimpRunItemKey(args.payload)
+        let receipt = receipts.peek({ agentId: identity.agentId, sessionId: identity.sessionId, turn, pipelineSlug, now: now() })
+        if (!receipt) {
+          // 子代理收到的用户消息是父代理的委派词，签不出自己的回执；
+          // 真实 Host 把 origin/parentSession 放在 session 根对象，其中
+          // parentSession 指向父会话 id。旧版本才放在 session.header，且
+          // 这里必须按 sessionId 查找，不能把父会话 id误当成 agentId。
+          const lineage = shrimpSessionMetadata(exec.agent)
+          const parentSession = lineage.origin === 'subagent'
+            ? receiptPart(lineage.parentSession)
+            : null
+          if (parentSession && parentSession !== identity.sessionId) {
+            receipt = receipts.peekConsumable({ sessionId: parentSession, pipelineSlug, now: now() })
+          }
+        }
         if (!target || !receipt || !shrimpTargetMentioned(target, receipt.requestText)) return { ...ask }
         const downstream = await next()
         if (!downstream || downstream.kind !== 'allow') return downstream
-        if (!receipts.consume({ agentId: exec.agent.id, turn, pipelineSlug, now: now() })) return { ...ask }
+        if (!receipts.consume({
+          agentId: receipt.agentId,
+          sessionId: receipt.sessionId,
+          turn,
+          pipelineSlug,
+          itemKey,
+          now: now(),
+        })) return { ...ask }
         return downstream
       }
       return next()
@@ -1718,6 +2060,7 @@ export function apply(ctx, config = {}) {
   }
   if (ctx.tools && typeof ctx.tools.register === 'function') {
     const shrimpAuthorization = createShrimpAuthorizationGate({ readCatalog: config.readShrimpCatalog })
+    const shrimpRunRegistry = new ShrimpRunRequestRegistry()
     ctx.tools.register(defineTool({
       name: 'shrimp_list',
       description: '读取虾缸中的虾、草稿、试跑与已发布工作流列表。只读，不会启动运行。',
@@ -1850,7 +2193,7 @@ export function apply(ctx, config = {}) {
 
     ctx.tools.register(defineTool({
       name: 'shrimp_run',
-      description: '运行一只已明确点名的已发布虾。必须显式 confirm=true、提供 pipelineSlug 和完整输入；匹配推荐不会自动触发此工具。当前用户回合若已明确点名并授权该目标，Host 会用短期、有界授权跳过重复 approval=never 拒绝，否则仍要求原生确认。创建后会自动只读轮询 /api/v1/runs/{run_id}/summary，并在终态读取 /artifacts，最终回传 run_id、终态、进度、当前节点、错误和产物摘要；超时会返回 still_running=true，绝不声称已完成。不要用裸 curl 绕过此工具，否则不会生成可回传的任务回执；此工具不会读取或修改心跳任务。',
+      description: '运行一只已明确点名的已发布虾。必须显式 confirm=true、提供 pipelineSlug 和完整输入；匹配推荐不会自动触发此工具。用户点名单篇或批次后，同一 agent/session 可在 1 小时内消费有界授权，批次最多 10 项且每项严格限次；不同 agent/session/slug、否定/取消语义仍需重新确认。创建后自动只读轮询 /api/v1/runs/{run_id}/summary，并在终态读取 /artifacts，最终回传 run_id、终态、进度、当前节点、错误和产物摘要；超时会返回 still_running=true，重复请求只引导 shrimp_run_status，不会创建第二条运行。不要用裸 curl 绕过此工具，否则不会生成可回传的任务回执；此工具不会读取或修改心跳任务。',
       parameters: {
         pipelineSlug: { type: 'string', required: true, description: '已发布虾的 pipeline slug' },
         payload: {
@@ -1865,29 +2208,50 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: SHRIMP_RUN_TOOL_TIMEOUT_MS,
-      async execute(args) {
+      async execute(args, exec) {
         const slug = String(args.pipelineSlug || '').trim()
         if (!/^[A-Za-z0-9_.-]+$/.test(slug)) return { ok: false, error: 'pipelineSlug 格式无效' }
         if (args.confirm !== true) return { ok: false, blocked: true, error: '需要用户明确确认后才能运行虾' }
         if (!args.payload || typeof args.payload !== 'object' || Array.isArray(args.payload)) return { ok: false, error: '运行输入必须是对象' }
-        const idempotencyKey = `dsh-shrimp:${slug}:${Date.now()}:${randomUUID()}`
-        return runShrimpWithReceipt({
+        const identity = shrimpAgentIdentity(exec?.agent)
+        const turn = currentAgentTurn(exec?.agent)
+        const agentId = identity.agentId || 'shrimp-run-agent'
+        const sessionId = identity.sessionId || agentId
+        const idempotencyKey = stableShrimpRunIdempotencyKey({
+          agentId,
+          sessionId,
+          turn,
+          pipelineSlug: slug,
+          payload: args.payload,
+        })
+        const requestKey = {
+          agentId,
+          sessionId,
+          pipelineSlug: slug,
+          payload: args.payload,
+          idempotencyKey,
+        }
+        const readSummary = (runId) => toolCall({
+            path: `/api/v1/runs/${encodeURIComponent(runId)}/summary`,
+            method: 'GET',
+            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+          })
+        const readArtifacts = (runId) => toolCall({
+            path: `/api/v1/runs/${encodeURIComponent(runId)}/artifacts`,
+            method: 'GET',
+            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+          })
+        return runShrimpWithDedupe({
+          registry: shrimpRunRegistry,
+          requestKey,
           launch: () => toolCall({
             path: `/api/v1/pipelines/${encodeURIComponent(slug)}/runs`,
             method: 'POST',
             body: buildRunBody(args.payload, { workContractChecksum: args.work_contract_checksum, pipelineVersionId: args.pipeline_version_id }),
             headers: { 'idempotency-key': idempotencyKey },
           }),
-          readSummary: (runId) => toolCall({
-            path: `/api/v1/runs/${encodeURIComponent(runId)}/summary`,
-            method: 'GET',
-            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
-          }),
-          readArtifacts: (runId) => toolCall({
-            path: `/api/v1/runs/${encodeURIComponent(runId)}/artifacts`,
-            method: 'GET',
-            timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
-          }),
+          readSummary,
+          readArtifacts,
         })
       },
       presentCall(args) { return { card: 'generic', title: runCardTitle(`运行虾：${args.pipelineSlug || '未命名'}`) } },
@@ -1909,7 +2273,7 @@ export function apply(ctx, config = {}) {
         const waitSeconds = Number.isFinite(requestedSeconds)
           ? Math.max(0, Math.min(120, requestedSeconds))
           : 30
-        return waitForShrimpRunTerminal({
+        const receipt = await waitForShrimpRunTerminal({
           runId,
           timeoutMs: waitSeconds * 1000,
           readSummary: (id) => toolCall({
@@ -1923,11 +2287,13 @@ export function apply(ctx, config = {}) {
             timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
           }),
         })
+        shrimpRunRegistry.updateByRunId(runId, receipt.final_status)
+        return receipt
       },
       presentCall(args) { return { card: 'generic', title: `查询虾运行：${String(args.runId || '').slice(0, 42)}` } },
     }))
-    // 未获得当前用户回合的明确目标授权时，保留原生 approval；明确授权由
-    // agent/pre-step 建立短期 receipt，tools/pre-execute 再按目标和回合核验。
+    // 未获得当前会话批次的明确目标授权时，保留原生 approval；明确授权由
+    // agent/pre-step 建立 1 小时、有界 receipt，tools/pre-execute 再按目标和会话核验。
     if (typeof ctx.on === 'function') {
       ctx.on('agent/pre-step', shrimpAuthorization.preStep)
       ctx.on('tools/pre-execute', shrimpAuthorization.preExecute)

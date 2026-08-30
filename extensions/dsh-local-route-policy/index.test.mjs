@@ -31,7 +31,7 @@ test('local helper preserves order, keeps core tools, and hides specialist tools
   assert.equal(filtered.some((tool) => tool.name === 'mcp_wechat_publish'), false)
   assert.equal(filtered.some((tool) => tool.name === 'git_push'), false)
   assert.equal(filtered.length <= 50, true)
-  assert.equal(LOCAL_MODEL_TOOL_NAMES.length <= 20, true)
+  assert.equal(LOCAL_MODEL_TOOL_NAMES.length <= 30, true)
   assert.equal(LOCAL_MODEL_PERSONA.length <= 2000, true)
 })
 
@@ -66,10 +66,27 @@ test('missing core tools fail closed instead of returning an incomplete catalog'
 })
 
 test('route helper returns non-local catalogs unchanged and filters Ollama', () => {
-  const tools = [{ name: 'bash' }, { name: 'read' }, { name: 'skill' }, { name: 'subagent' }, { name: 'execute_flash' }, { name: 'goal_first_state_get' }, { name: 'goal_first_state_transition' }, { name: 'browser_open' }]
+  const lightweightShrimpTools = ['policy_list', 'shrimp_list', 'shrimp_match', 'shrimp_knowledge_list', 'shrimp_knowledge_search', 'shrimp_run', 'shrimp_run_status']
+  const tools = [
+    { name: 'bash' },
+    { name: 'read' },
+    { name: 'skill' },
+    { name: 'subagent' },
+    { name: 'execute_flash' },
+    { name: 'goal_first_state_get' },
+    { name: 'goal_first_state_transition' },
+    ...lightweightShrimpTools.map((name) => ({ name })),
+    { name: 'browser_open' },
+    { name: 'mcp_wechat_publish' },
+  ]
   assert.strictEqual(filterToolsForProvider(tools, 'deepseek-official'), tools)
   assert.strictEqual(filterToolsForProvider(tools, 'execute_flash'), tools)
-  assert.deepEqual(filterToolsForProvider(tools, 'ollama-local').map((tool) => tool.name), REQUIRED_CORE_TOOL_NAMES)
+  assert.deepEqual(filterToolsForProvider(tools, 'ollama-local').map((tool) => tool.name), [
+    ...REQUIRED_CORE_TOOL_NAMES,
+    ...lightweightShrimpTools,
+  ])
+  assert.equal(filterToolsForProvider(tools, 'ollama-local').some((tool) => tool.name === 'browser_open'), false)
+  assert.equal(filterToolsForProvider(tools, 'ollama-local').some((tool) => tool.name === 'mcp_wechat_publish'), false)
 })
 
 test('waterfall awaits next and filters only the final Ollama assembly', async () => {

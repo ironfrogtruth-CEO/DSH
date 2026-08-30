@@ -11,11 +11,13 @@ import {
   classifyToolCall,
   createAvengersRequestListener,
   detachedBackgroundReason,
+  effectiveAgentPreset,
+  shrimpRunApiBypassReason,
   ToolPolicy,
 } from './index.js'
 
-function agent(preset, header = {}) {
-  return { session: { header: { agentPreset: preset, ...header } } }
+function agent(preset, header = {}, events = [], root = {}) {
+  return { session: { ...root, header: { agentPreset: preset, ...header }, events } }
 }
 
 test('Avengers role and parent execution gate are preset-scoped', async () => {
@@ -37,6 +39,116 @@ test('Avengers role and parent execution gate are preset-scoped', async () => {
   })
   assert.equal(avengersParentToolDecision({ agent: child, name: 'bash' }), undefined)
   assert.equal(avengersParentToolDecision({ agent: cyberMarcus, name: 'bash' }), undefined)
+})
+
+test('effective preset follows live composition and latest selection event over a stale header', () => {
+  const selectedCyberMarcus = agent('avengers', {}, [{ type: 'agent-preset/selected', data: { agentPreset: 'reliable-development' } }])
+  assert.equal(effectiveAgentPreset(selectedCyberMarcus), 'reliable-development')
+  assert.equal(avengersAgentRole(selectedCyberMarcus), 'other')
+  assert.equal(avengersParentToolDecision({ agent: selectedCyberMarcus, name: 'bash' }), undefined)
+
+  const selectedAvengers = agent('reliable-development', {}, [{ type: 'agent-preset/selected', data: { agentPreset: 'avengers' } }])
+  assert.equal(effectiveAgentPreset(selectedAvengers), 'avengers')
+  assert.equal(avengersAgentRole(selectedAvengers), 'parent')
+  assert.equal(avengersParentToolDecision({ agent: selectedAvengers, name: 'bash' })?.code, 'AVENGERS_PARENT_EXECUTION_BLOCKED')
+
+  const liveComposition = agent('avengers', {}, [{ type: 'agent-preset/selected', data: { agentPreset: 'avengers' } }])
+  liveComposition.ctx = {
+    get(name) {
+      assert.equal(name, 'agentPresets')
+      return { composedPreset: () => 'reliable-development' }
+    },
+  }
+  assert.equal(effectiveAgentPreset(liveComposition), 'reliable-development')
+  assert.equal(avengersAgentRole(liveComposition), 'other')
+
+  const directComposition = agent('avengers')
+  directComposition.ctx = { agentPresets: { composedPreset: () => 'reliable-development' } }
+  assert.equal(effectiveAgentPreset(directComposition), 'reliable-development')
+  assert.equal(avengersAgentRole(directComposition), 'other')
+})
+
+test('effective preset safely falls back when live composition is unavailable', () => {
+  const fromDirectService = agent('avengers', {}, [{ type: 'agent-preset/selected', data: { agentPreset: 'reliable-development' } }])
+  fromDirectService.ctx = { agentPresets: { composedPreset: () => { throw new Error('unavailable') } } }
+  assert.equal(effectiveAgentPreset(fromDirectService), 'reliable-development')
+
+  const fromHeader = agent('reliable-development')
+  fromHeader.ctx = { get() { throw new Error('unavailable') } }
+  assert.equal(effectiveAgentPreset(fromHeader), 'reliable-development')
+})
+
+test('live session root fields take precedence over conflicting headers for Avengers role', () => {
+  const child = agent(
+    'reliable-development',
+    { origin: 'parent', delegationDepth: 0 },
+    [],
+    { agentPreset: 'avengers', origin: 'subagent', delegationDepth: 1, id: 'session-child' },
+  )
+  assert.equal(effectiveAgentPreset(child), 'avengers')
+  assert.equal(avengersAgentRole(child), 'child')
+  assert.equal(avengersParentToolDecision({ agent: child, name: 'shrimp_run' }), undefined)
+
+  const parent = agent(
+    'reliable-development',
+    { origin: 'subagent', delegationDepth: 1 },
+    [],
+    { agentPreset: 'avengers', origin: 'parent', delegationDepth: 0, id: 'session-parent' },
+  )
+  assert.equal(effectiveAgentPreset(parent), 'avengers')
+  assert.equal(avengersAgentRole(parent), 'parent')
+  assert.equal(avengersParentToolDecision({ agent: parent, name: 'bash' })?.code, 'AVENGERS_PARENT_EXECUTION_BLOCKED')
+
+  const cyberMarcus = agent(
+    'avengers',
+    { origin: 'parent', delegationDepth: 0 },
+    [],
+    { agentPreset: 'reliable-development', origin: 'subagent', delegationDepth: 1, id: 'session-cyber' },
+  )
+  assert.equal(effectiveAgentPreset(cyberMarcus), 'reliable-development')
+  assert.equal(avengersAgentRole(cyberMarcus), 'other')
+  assert.equal(avengersParentToolDecision({ agent: cyberMarcus, name: 'bash' }), undefined)
+})
+
+test('latest preset selection event supersedes creation-time session root preset', () => {
+  const selectedCyberMarcus = agent(
+    'avengers',
+    { agentPreset: 'avengers' },
+    [{ type: 'agent-preset/selected', data: { agentPreset: 'reliable-development' } }],
+    { agentPreset: 'avengers' },
+  )
+  assert.equal(effectiveAgentPreset(selectedCyberMarcus), 'reliable-development')
+  assert.equal(avengersAgentRole(selectedCyberMarcus), 'other')
+  assert.equal(avengersParentToolDecision({ agent: selectedCyberMarcus, name: 'bash' }), undefined)
+
+  const selectedAvengers = agent(
+    'reliable-development',
+    { agentPreset: 'reliable-development' },
+    [{ type: 'agent-preset/selected', data: { agentPreset: 'avengers' } }],
+    { agentPreset: 'reliable-development' },
+  )
+  assert.equal(effectiveAgentPreset(selectedAvengers), 'avengers')
+  assert.equal(avengersAgentRole(selectedAvengers), 'parent')
+  assert.equal(avengersParentToolDecision({ agent: selectedAvengers, name: 'bash' })?.code, 'AVENGERS_PARENT_EXECUTION_BLOCKED')
+})
+
+test('Avengers parent can inspect policy and shrimp state but cannot execute bash or shrimp_run', () => {
+  const parent = agent('avengers')
+  for (const name of [
+    'policy_evaluate',
+    'policy_metrics',
+    'policy_list',
+    'shrimp_list',
+    'shrimp_match',
+    'shrimp_knowledge_list',
+    'shrimp_knowledge_search',
+    'shrimp_run_status',
+  ]) assert.equal(avengersParentToolDecision({ agent: parent, name }), undefined, name)
+  for (const name of ['bash', 'shrimp_run', 'shrimp_create_draft', 'read', 'grep']) {
+    assert.equal(avengersParentToolDecision({ agent: parent, name })?.code, 'AVENGERS_PARENT_EXECUTION_BLOCKED', name)
+  }
+  const child = agent('avengers', { origin: 'subagent', delegationDepth: 1 })
+  assert.equal(avengersParentToolDecision({ agent: child, name: 'bash' }), undefined)
 })
 
 test('Avengers child requests are fixed to GLM Flash Medium without changing parent or CyberMarcus', async () => {
@@ -98,6 +210,68 @@ test('detached background hard gate catches shell escape forms without false pos
   assert.equal(detachedBackgroundReason('bash', { command: 'echo nohup-wrapper' }), undefined)
   assert.equal(detachedBackgroundReason('python', { command: 'nohup python worker.py &' }), undefined)
   assert.equal(detachedBackgroundReason('bash', { description: 'nohup is only documentation' }), undefined)
+})
+
+test('shrimp run API bypass hard gate blocks shell POST/PUT forms but permits reads and non-shell tools', () => {
+  const endpoint = 'http://127.0.0.1:7843/api/v1/pipelines/shrimp-c433b57dac59419d/runs'
+  const legacyEndpoint = 'http://127.0.0.1:7843/api/pipelines/shrimp-c433b57dac59419d/run'
+  const blocked = [
+    ['bash', { command: `curl -sS -X POST ${endpoint} -d '{}'` }],
+    ['shell', { command: `python -c "import requests; requests.post('${endpoint}', json={})"` }],
+    ['command', { command: `python -c "from urllib.request import Request; Request('${legacyEndpoint}', method='PUT')"` }],
+    ['exec', { argv: ['curl', '--request', 'PUT', legacyEndpoint] }],
+    ['terminal', { command: `fetch('${endpoint}', { method: 'POST', body: '{}' })` }],
+    ['dsh-command', { command: `http POST ${endpoint}` }],
+  ]
+  for (const [toolName, args] of blocked) {
+    assert.deepEqual(shrimpRunApiBypassReason(toolName, args), {
+      kind: 'deny',
+      code: 'SHRIMP_RUN_API_BYPASS_BLOCKED',
+      reason: '禁止通过 shell/bash/command 直接写入虾缸运行 API；请使用 shrimp_run 工具。',
+    }, `${toolName}: ${JSON.stringify(args)}`)
+  }
+
+  const allowed = [
+    ['bash', { command: 'curl -sS http://127.0.0.1:7843/health' }],
+    ['bash', { command: 'curl -sS -X GET http://127.0.0.1:7843/api/v1/runs/run-1/summary' }],
+    ['bash', { command: `python -c "import requests; requests.get('${endpoint}')"` }],
+    ['bash', { command: 'curl -X POST http://127.0.0.1:7843/health -d \"{}\"' }],
+    ['shrimp_run', { command: `curl -X POST ${endpoint}` }],
+    ['article_runner', { command: `curl -X POST ${endpoint}` }],
+  ]
+  for (const [toolName, args] of allowed) assert.equal(shrimpRunApiBypassReason(toolName, args), undefined, `${toolName}: ${JSON.stringify(args)}`)
+})
+
+test('shrimp run API bypass is a global hard gate before Avengers role policy, including observe mode', async () => {
+  const endpoint = 'http://127.0.0.1:7843/api/v1/pipelines/shrimp-c433b57dac59419d/runs'
+  const listeners = new Map()
+  const ctx = {
+    toolPolicyConfig: { mode: 'observe', operationMode: 'act' },
+    tools: { register() {} },
+    on(event, listener) { listeners.set(event, listener); return () => listeners.delete(event) },
+    effect(factory) { return factory() },
+    provide() {},
+  }
+  await apply(ctx)
+  const listener = listeners.get('tools/pre-execute')
+  let nextCalls = 0
+  const next = async () => { nextCalls += 1; return { kind: 'allow' } }
+  const agents = [
+    { session: { agentPreset: 'avengers', origin: 'parent' } },
+    { session: { agentPreset: 'avengers', origin: 'subagent', parentSession: 'parent', delegationDepth: 1 } },
+    { session: { agentPreset: 'reliable-development' } },
+  ]
+  for (const agentContext of agents) {
+    const denied = await listener({ agent: agentContext, name: 'bash', arguments: { command: `curl -X POST ${endpoint}` } }, next)
+    assert.deepEqual(denied, {
+      kind: 'deny',
+      code: 'SHRIMP_RUN_API_BYPASS_BLOCKED',
+      reason: '禁止通过 shell/bash/command 直接写入虾缸运行 API；请使用 shrimp_run 工具。',
+    })
+  }
+  const readOnly = await listener({ agent: agents[1], name: 'bash', arguments: { command: 'curl -X GET http://127.0.0.1:7843/api/v1/runs/run-1/summary' } }, next)
+  assert.deepEqual(readOnly, { kind: 'allow' })
+  assert.equal(nextCalls, 1)
 })
 
 test('operation modes and patterns produce explicit decisions', async () => {

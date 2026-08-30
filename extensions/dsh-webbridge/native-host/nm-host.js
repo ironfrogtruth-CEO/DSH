@@ -168,7 +168,13 @@ export class ResultRouter {
       if (message.protocol !== PROTOCOL_VERSION || state.chunks === null || state.received !== state.total || state.chunks.some((item) => item === undefined)) {
         return this.finish(key, { ok: false, error: 'incomplete result frames' })
       }
-      return this.finish(key, { ok: true, dataUrl: state.chunks.join('') })
+      // Keep non-payload result metadata (capture_method, activation_reason,
+      // browser_focus) alongside the reassembled data URL. The extension puts
+      // this evidence on result_end because the image itself is sent in
+      // separate native frames.
+      const final = message.final && typeof message.final === 'object' ? message.final : {}
+      const { dataUrl: _ignoredDataUrl, ...metadata } = final
+      return this.finish(key, { ...metadata, ok: final.ok !== false, dataUrl: state.chunks.join('') })
     }
 
     if (Object.hasOwn(message, 'final')) {

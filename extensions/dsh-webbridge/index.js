@@ -27,6 +27,45 @@ const publicCommandKinds = new Set([
   'paste_html', 'clipboard_html', 'eval', 'runtime_reload',
 ])
 
+const SILENT_DEFAULTS = Object.freeze({
+  preview: false,
+  activate: false,
+  userInitiated: false,
+  reason: '',
+})
+
+function normalizeCommand(command) {
+  return { ...SILENT_DEFAULTS, ...(command || {}) }
+}
+
+function activationPermission(command) {
+  const reason = String(command?.reason || '').trim()
+  return (command?.preview === true || command?.activate === true)
+    && command?.userInitiated === true
+    && reason.length > 0
+}
+
+function activationError(detail = 'browser activation requires explicit user preview/activation') {
+  return {
+    ok: false,
+    code: 'ACTIVATION_REQUIRES_USER',
+    error: `ACTIVATION_REQUIRES_USER: ${detail}`,
+  }
+}
+
+function commandContractError(command) {
+  if (command?.kind === 'activate_tab' && !activationPermission(command)) {
+    return activationError()
+  }
+  if (command?.kind === 'open_tab' && command?.active === true && !activationPermission(command)) {
+    return activationError('open_tab active=true requires preview/activate=true, userInitiated=true and a reason')
+  }
+  if ((command?.preview === true || command?.activate === true) && !activationPermission(command)) {
+    return activationError('preview/activate requires userInitiated=true and a non-empty reason')
+  }
+  return null
+}
+
 function schemaOf(props) {
   const properties = {}
   for (const [k, v] of Object.entries(props)) {
@@ -122,10 +161,13 @@ function registerRoutes(ctx) {
         if (message?.protocol !== protocolVersion) {
           return send(409, { ok: false, error: 'webbridge protocol mismatch', expected: protocolVersion })
         }
-        const command = message.command
-        if (!command || typeof command !== 'object' || Array.isArray(command) || !publicCommandKinds.has(command.kind)) {
+        const rawCommand = message.command
+        if (!rawCommand || typeof rawCommand !== 'object' || Array.isArray(rawCommand) || !publicCommandKinds.has(rawCommand.kind)) {
           return send(400, { ok: false, error: 'unsupported or missing webbridge command kind' })
         }
+        const command = normalizeCommand(rawCommand)
+        const contractError = commandContractError(command)
+        if (contractError) return send(400, contractError)
         const timeoutMs = Math.min(Math.max(Number(message.timeoutMs) || 45000, 1000), 180000)
         return send(200, await executeCommand(command, timeoutMs))
       }
@@ -170,7 +212,20 @@ function registerRoutes(ctx) {
         }
         const tabId = Number(message.tabId)
         if (!Number.isFinite(tabId)) return send(400, { ok: false, error: 'activate tabId is required' })
-        return send(200, await executeCommand({ kind: 'activate_tab', tabId }, 8000))
+        const command = normalizeCommand({
+          kind: 'activate_tab',
+          tabId,
+          // Even the visible indicator route must carry the explicit user
+          // activation contract.  Do not infer consent merely because a
+          // caller reached this endpoint.
+          preview: message.preview === true,
+          activate: message.activate === true,
+          userInitiated: message.userInitiated === true,
+          reason: String(message.reason || '').trim(),
+        })
+        const contractError = commandContractError(command)
+        if (contractError) return send(400, contractError)
+        return send(200, await executeCommand(command, 8000))
       }
       if (req.method === 'POST' && contentType === 'application/json' && (op === 'next' || op === '')) {
         let message
@@ -263,20 +318,23 @@ function registerRoutes(ctx) {
 }
 
 function executeCommand(cmd, timeoutMs) {
+  const command = normalizeCommand(cmd)
+  const contractError = commandContractError(command)
+  if (contractError) return Promise.resolve(contractError)
   return new Promise((resolve) => {
     const cmdId = 'w' + (++seq) + '-' + Date.now().toString(36)
     const startedAt = Date.now()
-    touchOperation(cmd, startedAt)
+    touchOperation(command, startedAt)
     const timer = setTimeout(() => {
       if (results.has(cmdId)) {
         results.delete(cmdId)
         resolve({ ok: false, error: 'timeout: 扩展未响应(检查 Chrome 已加载扩展且保持运行)' })
       }
     }, timeoutMs || 45000)
-    results.set(cmdId, { resolve, timer, command: cmd, startedAt })
+    results.set(cmdId, { resolve, timer, command, startedAt })
     const waiter = waiters.shift()
-    if (waiter) waiter({ cmdId, ...cmd })
-    else queue.push({ cmdId, ...cmd })
+    if (waiter) waiter({ cmdId, ...command })
+    else queue.push({ cmdId, ...command })
   })
 }
 
@@ -317,13 +375,21 @@ export function apply(ctx) {
     },
     {
       name: 'webbridge_open_tab',
-      description: '在用户 Chrome 新建一个由本任务持有的标签页，默认后台打开，返回 tabId。',
+      description: '在用户 Chrome 新建一个由本任务持有的后台标签页，默认不激活、不聚焦窗口。active=true 必须同时显式提供用户预览授权。',
       parameters: schemaOf({
         url: { type: 'string', description: '初始 URL' },
         active: { type: 'boolean', description: '是否激活标签页，默认 false' },
+        preview: { type: 'boolean', description: '是否为用户明确预览，默认 false' },
+        activate: { type: 'boolean', description: '是否允许激活标签页，默认 false' },
+        userInitiated: { type: 'boolean', description: '是否来自用户明确点击/查看动作，默认 false' },
+        reason: { type: 'string', description: '激活原因（显式激活时必填）' },
       }),
       async run(args) {
-        return await executeCommand({ kind: 'open_tab', url: args.url, active: args.active }, 65000)
+        return await executeCommand({
+          kind: 'open_tab', url: args.url, active: args.active,
+          preview: args.preview, activate: args.activate,
+          userInitiated: args.userInitiated, reason: args.reason,
+        }, 65000)
       },
     },
     {
@@ -336,10 +402,20 @@ export function apply(ctx) {
     },
     {
       name: 'webbridge_activate_tab',
-      description: '激活指定 Chrome 标签页，仅在需要用户查看或截取可见区域时使用。',
-      parameters: schemaOf({ tabId: { type: 'integer', description: 'Chrome 标签页 ID' } }),
+      description: '激活指定 Chrome 标签页。仅用户明确查看/验收时使用，必须提供 preview 或 activate、userInitiated=true 和 reason。',
+      parameters: schemaOf({
+        tabId: { type: 'integer', description: 'Chrome 标签页 ID' },
+        preview: { type: 'boolean', description: '是否为用户明确预览' },
+        activate: { type: 'boolean', description: '是否允许激活' },
+        userInitiated: { type: 'boolean', description: '是否来自用户明确动作' },
+        reason: { type: 'string', description: '激活原因' },
+      }),
       async run(args) {
-        return await executeCommand({ kind: 'activate_tab', tabId: args.tabId }, 8000)
+        return await executeCommand({
+          kind: 'activate_tab', tabId: args.tabId,
+          preview: args.preview, activate: args.activate,
+          userInitiated: args.userInitiated, reason: args.reason,
+        }, 8000)
       },
     },
     {
@@ -437,15 +513,23 @@ export function apply(ctx) {
     },
     {
       name: 'webbridge_screenshot',
-      description: '截取用户浏览器当前可见区域为 PNG 文件,返回本地路径,供视觉核对。',
+      description: '优先在后台通过 CDP 截图；后台 CDP 不可用时默认失败，不抢占用户焦点。只有用户明确预览并提供授权才允许切到前台。',
       parameters: schemaOf({
         tabId: { type: 'integer', description: '可选 Chrome 标签页 ID' },
         css: { type: 'string', description: '可选元素选择器，提供时只截元素' },
         text: { type: 'string', description: '可选文字定位，提供时只截元素' },
         allFrames: { type: 'boolean', description: '是否搜索 iframe' },
+        preview: { type: 'boolean', description: '是否为用户明确预览' },
+        activate: { type: 'boolean', description: '是否允许激活' },
+        userInitiated: { type: 'boolean', description: '是否来自用户明确动作' },
+        reason: { type: 'string', description: '激活原因（预览激活时必填）' },
       }),
       async run(args) {
-        const r = await executeCommand({ kind: 'screenshot', tabId: args.tabId, css: args.css, text: args.text, allFrames: args.allFrames })
+        const r = await executeCommand({
+          kind: 'screenshot', tabId: args.tabId, css: args.css, text: args.text, allFrames: args.allFrames,
+          preview: args.preview, activate: args.activate,
+          userInitiated: args.userInitiated, reason: args.reason,
+        })
         if (!r.ok || !r.dataUrl) return r
         try {
           const b64 = String(r.dataUrl).split(',')[1]

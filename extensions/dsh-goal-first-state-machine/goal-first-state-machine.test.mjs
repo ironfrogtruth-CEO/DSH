@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { apply, transitionParameters } from './index.js'
-import { classifyTask, createInitialState, extractOutputContract, FAILURE_FINGERPRINT_KEYS, governanceForNode, renderStateContext, transitionState, validateStructureContract, validateWorkContract } from './machine.js'
+import { classifyTask, createInitialState, extractOutputContract, FAILURE_FINGERPRINT_KEYS, governanceForNode, isDirectShrimpRunInstruction, renderStateContext, transitionState, validateStructureContract, validateWorkContract } from './machine.js'
 import { GoalFirstStateStore } from './state-store.js'
 import { enforceOneSentenceStream, rewriteOneSentenceChunks } from './stream-contract.js'
 import { goalFirstCardTitle } from './tool-cards.js'
@@ -52,6 +52,47 @@ test('classifier keeps one-sentence rewrite simple and routes risky plugin work 
     maxChars: 20,
     forbidden: ['解释'],
   })
+})
+
+test('published shrimp run requests bypass goal-first nodes while workflow repair remains SOP', () => {
+  const longPayload = `shrimp_run(pipelineSlug="shrimp-c433b57dac59419d", payload=${JSON.stringify({
+    title: '一篇需要完整素材、校验和公众号草稿保存的文章',
+    body: '请按已发布文章虾的既有生产逻辑生成、检查并保存，'.repeat(80),
+  })}, confirm=true)`
+  assert.equal(longPayload.length > 260, true)
+  assert.equal(isDirectShrimpRunInstruction(longPayload), true)
+  assert.equal(classifyTask(longPayload).classification, 'simple_direct')
+
+  const sentence = '运行文章虾，连续产出两篇并保存到公众号草稿箱。'
+  assert.equal(isDirectShrimpRunInstruction(sentence), true)
+  assert.equal(classifyTask(sentence).classification, 'simple_direct')
+  for (const direct of ['帮我运行文章虾，产出一篇文章。', '让文章@虾六答，产出一篇文章并保存草稿。']) {
+    assert.equal(isDirectShrimpRunInstruction(direct), true, direct)
+    assert.equal(classifyTask(direct).classification, 'simple_direct', direct)
+  }
+  for (const direct of [
+    '升级了文章虾，试一下。一篇资讯，一篇关于过去12小时我们对大神升级的总结。',
+    '用文章虾写一篇关于本周发布的文章。',
+    '交给文章虾生成并发布一篇文章。',
+    '运行文章虾...；禁止直接调用 7843 API。',
+    '你是内容子代理，任务：使用 shrimp_run 工具运行文章虾两篇。',
+  ]) {
+    assert.equal(isDirectShrimpRunInstruction(direct), true, direct)
+    assert.equal(classifyTask(direct).classification, 'simple_direct', direct)
+  }
+
+  const upgrade = '修复并升级文章虾插件/工作流，补齐测试、验收和回滚方案。'
+  assert.equal(isDirectShrimpRunInstruction(upgrade), false)
+  assert.equal(classifyTask(upgrade).classification, 'sop_required')
+  for (const maintenance of ['修复文章虾。', '升级文章虾。', '调试文章虾。']) {
+    assert.equal(isDirectShrimpRunInstruction(maintenance), false, maintenance)
+    assert.equal(classifyTask(maintenance).classification, 'sop_required', maintenance)
+  }
+  assert.equal(isDirectShrimpRunInstruction('请修复后再调用 shrimp_run(pipelineSlug="shrimp-c433b57dac59419d")'), false)
+  assert.equal(isDirectShrimpRunInstruction('是否可以调用 shrimp_run(pipelineSlug="shrimp-c433b57dac59419d")？'), false)
+  assert.equal(isDirectShrimpRunInstruction('帮我看看能否运行文章虾？'), false)
+  assert.equal(isDirectShrimpRunInstruction('不要让文章@虾六答运行。'), false)
+  assert.equal(isDirectShrimpRunInstruction('描述历史产物，之前文章虾生成的内容有问题。'), false)
 })
 
 test('output contract captures continuous final-delivery instructions without changing ordinary phased work', () => {
@@ -303,6 +344,75 @@ test('Host hooks inject state, deny export before QA, steer once, then block', a
     const blocked = await new GoalFirstStateStore(fixture.root).load(agent.id)
     assert.equal(blocked.phase, 'blocked')
     assert.equal(blocked.failure.code, 'STATE_TRANSITION_MISSING')
+  } finally { await fixture.cleanup() }
+})
+
+test('latest direct shrimp instruction resets an active SOP snapshot, while ordinary repair keeps it', async () => {
+  const fixture = await temporaryStore()
+  try {
+    const runtime = fakeRuntime(fixture.root)
+    await apply(runtime.ctx, runtime.config)
+    const store = new GoalFirstStateStore(fixture.root)
+    const preStep = runtime.listeners.get('agent/pre-step')[0]
+    const transitions = { actualBindings: { skills: ['test-skill'], execution: 'test_deterministic' }, artifacts: [{ name: 'test-artifact', checksum: 'sha256:test' }] }
+
+    const directAgent = { id: 'direct-reset-session', session: { events: [{ type: 'step/start', data: { turn: 4, step: 1 } }], seq: 4 }, steer() {} }
+    runtime.sessions.set(directAgent.id, directAgent.session)
+    runtime.setAgent(directAgent)
+    let state = createInitialState({ sessionId: directAgent.id, text: '实现复杂插件并测试导出', sourceEventSeq: 0, turn: 1 })
+    state = transitionState(state, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 1 })
+    state = transitionState(state, { action: 'complete_node', node: 'parse', evidence: ['parse ok'], ...transitions }, { turn: 2, sourceEventSeq: 2 })
+    state = transitionState(state, { action: 'complete_node', node: 'structure', evidence: ['structure ok'], workContract: validWorkContract(), confirm: true, ...transitions }, { turn: 3, sourceEventSeq: 3 })
+    assert.equal(state.classification, 'sop_required')
+    assert.equal(state.currentNode, 'generate')
+    await store.append(directAgent.id, state, 0)
+
+    const directMessage = { role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: '运行文章虾（文章@虾六答，shrimp-c433b57dac59419d），连续产出资讯和总结两篇并保存到公众号草稿箱' }] }
+    await preStep({ agent: directAgent, messages: [directMessage], turn: 4, step: 1, signal: new AbortController().signal }, async () => ({ kind: 'enter', messages: [directMessage] }))
+    const reset = await store.load(directAgent.id)
+    assert.equal(reset.classification, 'simple_direct')
+    assert.equal(reset.currentNode, 'direct')
+    assert.equal(reset.phase, 'active')
+    assert.equal(reset.taskFingerprint, createInitialState({ sessionId: directAgent.id, text: directMessage.content[0].text }).taskFingerprint)
+
+    const seedActiveSop = async (id) => {
+      const agent = { id, session: { events: [{ type: 'step/start', data: { turn: 4, step: 1 } }], seq: 4 }, steer() {} }
+      let seeded = createInitialState({ sessionId: id, text: '实现复杂插件并测试导出', sourceEventSeq: 0, turn: 1 })
+      seeded = transitionState(seeded, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 1 })
+      seeded = transitionState(seeded, { action: 'complete_node', node: 'parse', evidence: ['parse ok'], ...transitions }, { turn: 2, sourceEventSeq: 2 })
+      seeded = transitionState(seeded, { action: 'complete_node', node: 'structure', evidence: ['structure ok'], workContract: validWorkContract(), confirm: true, ...transitions }, { turn: 3, sourceEventSeq: 3 })
+      await store.append(id, seeded, 0)
+      return agent
+    }
+    for (const [index, text] of [
+      '升级了文章虾，试一下。一篇资讯，一篇关于过去12小时我们对大神升级的总结。',
+      '用文章虾写一篇关于本周发布的文章。',
+      '让文章@虾六答产出两篇文章并保存到草稿箱。',
+      '交给文章虾生成并发布一篇文章。',
+      '你是内容子代理，任务：使用 shrimp_run 工具运行文章虾两篇。',
+    ].entries()) {
+      const naturalAgent = await seedActiveSop(`natural-direct-session-${index}`)
+      const naturalMessage = { role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text }] }
+      await preStep({ agent: naturalAgent, messages: [naturalMessage], turn: 4, step: 1, signal: new AbortController().signal }, async () => ({ kind: 'enter', messages: [naturalMessage] }))
+      const routed = await store.load(naturalAgent.id)
+      assert.equal(routed.classification, 'simple_direct', text)
+      assert.equal(routed.currentNode, 'direct', text)
+    }
+
+    const ordinaryAgent = { id: 'ordinary-sop-session', session: { events: [{ type: 'step/start', data: { turn: 4, step: 1 } }], seq: 4 }, steer() {} }
+    runtime.sessions.set(ordinaryAgent.id, ordinaryAgent.session)
+    runtime.setAgent(ordinaryAgent)
+    let ordinaryState = createInitialState({ sessionId: ordinaryAgent.id, text: '实现复杂插件并测试导出', sourceEventSeq: 0, turn: 1 })
+    ordinaryState = transitionState(ordinaryState, { action: 'record_goal', goalContract: goalContract() }, { turn: 1, sourceEventSeq: 1 })
+    ordinaryState = transitionState(ordinaryState, { action: 'complete_node', node: 'parse', evidence: ['parse ok'], ...transitions }, { turn: 2, sourceEventSeq: 2 })
+    ordinaryState = transitionState(ordinaryState, { action: 'complete_node', node: 'structure', evidence: ['structure ok'], workContract: validWorkContract(), confirm: true, ...transitions }, { turn: 3, sourceEventSeq: 3 })
+    await store.append(ordinaryAgent.id, ordinaryState, 0)
+    const ordinaryMessage = { role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: '请修复并升级文章虾插件/工作流，继续当前节点。' }] }
+    await preStep({ agent: ordinaryAgent, messages: [ordinaryMessage], turn: 4, step: 1, signal: new AbortController().signal }, async () => ({ kind: 'enter', messages: [ordinaryMessage] }))
+    const preserved = await store.load(ordinaryAgent.id)
+    assert.equal(preserved.classification, 'sop_required')
+    assert.equal(preserved.currentNode, 'generate')
+    assert.equal(preserved.runId, ordinaryState.runId)
   } finally { await fixture.cleanup() }
 })
 

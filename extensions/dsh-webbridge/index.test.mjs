@@ -139,10 +139,25 @@ test('operation lease drives Chrome indicator and activate routes to the owned t
   assert.equal(active.body.operation.operationId, 'op-1')
   assert.equal(active.body.operation.source, 'lease')
 
-  const activating = request(route, {
+  const deniedActivation = await request(route, {
     method: 'POST',
     url: '/api/webbridge/activate',
     body: { protocol: 2, tabId: 77 },
+  })
+  assert.equal(deniedActivation.statusCode, 400)
+  assert.equal(deniedActivation.body.code, 'ACTIVATION_REQUIRES_USER')
+
+  const activating = request(route, {
+    method: 'POST',
+    url: '/api/webbridge/activate',
+    body: {
+      protocol: 2,
+      tabId: 77,
+      preview: true,
+      activate: true,
+      userInitiated: true,
+      reason: 'user_clicked_chrome_operation_indicator',
+    },
   })
   const next = await request(route, {
     method: 'POST',
