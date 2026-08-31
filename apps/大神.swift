@@ -3,10 +3,14 @@
 // 编译: swiftc -O -o 大神 大神.swift -framework Cocoa -framework WebKit -framework Speech -framework AVFoundation
 // ⚠️ 本机 DSH shell 跑在 Rosetta(x86_64), 上面默认命令会编出 Intel 二进制并触发 macOS "即将结束 Intel App 支持" 警告。
 // ✅ 必须用显式 arm64 目标: swiftc -O -target arm64-apple-macos13.0 -o 大神 大神.swift -framework Cocoa -framework WebKit -framework Speech -framework AVFoundation
+// 速记员编译还需要: -framework ScreenCaptureKit -framework CoreMedia -framework AudioToolbox
 import Cocoa
 import WebKit
 import Speech
 import AVFoundation
+import CoreMedia
+import AudioToolbox
+import ScreenCaptureKit
 
 let PORT = 3080
 let UI_URL = "http://127.0.0.1:\(PORT)"
@@ -14,6 +18,876 @@ let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/en
 let STOP_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/disable-host"
 let BACKGROUND_LAUNCH_SENTINEL = NSHomeDirectory() + "/.dsh/private/background-launch"
 let BACKGROUND_LAUNCH_MAX_AGE: TimeInterval = 5 * 60
+
+// 速记员的桥接合同固定输出 16 kHz / mono / signed little-endian PCM16。
+let STENOGRAPHER_SAMPLE_RATE: Double = 16_000
+let STENOGRAPHER_CHANNEL_COUNT: AVAudioChannelCount = 1
+let STENOGRAPHER_CHUNK_FRAMES = 8_000 // 500 ms, 16 KB
+let STENOGRAPHER_MAX_PENDING_UPLOADS = 24
+let STENOGRAPHER_MAX_CHUNK_BYTES = 1_048_576
+
+func stenographerNowMs() -> Int64 {
+    return Int64(Date().timeIntervalSince1970 * 1_000.0)
+}
+
+struct StenographerChunk {
+    let sessionId: String
+    let uploadUrl: URL
+    let token: String
+    let source: String
+    let seq: Int
+    let capturedAtMs: Int64
+    let data: Data
+}
+
+// Serialises uploads so seq order is preserved per source.  The pending list
+// is deliberately bounded; a slow/dead Host reports an explicit event instead
+// of allowing an unbounded audio-memory queue to grow for hours.
+final class StenographerUploadQueue {
+    typealias EventHandler = ([String: Any]) -> Void
+
+    private let stateQueue = DispatchQueue(label: "local.dsh.stenographer.upload")
+    private let urlSession: URLSession
+    private let maxPending: Int
+    private let eventHandler: EventHandler
+    private var pending: [StenographerChunk] = []
+    private var inFlight = false
+    private var finishing = false
+    private var finishHandler: (() -> Void)?
+
+    init(maxPending: Int = STENOGRAPHER_MAX_PENDING_UPLOADS, eventHandler: @escaping EventHandler) {
+        self.maxPending = max(1, maxPending)
+        self.eventHandler = eventHandler
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 8
+        configuration.timeoutIntervalForResource = 15
+        configuration.httpMaximumConnectionsPerHost = 1
+        self.urlSession = URLSession(configuration: configuration)
+    }
+
+    func enqueue(_ chunk: StenographerChunk) {
+        guard chunk.data.count <= STENOGRAPHER_MAX_CHUNK_BYTES else {
+            report(code: "chunk_too_large", message: "PCM chunk exceeds the upload contract", chunk: chunk)
+            return
+        }
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard !self.finishing else {
+                self.report(code: "queue_closed", message: "Upload queue is already flushing", chunk: chunk)
+                return
+            }
+            guard self.pending.count < self.maxPending else {
+                self.report(code: "upload_queue_overflow", message: "Upload queue is full; audio chunk was dropped", chunk: chunk)
+                return
+            }
+            self.pending.append(chunk)
+            self.pump()
+        }
+    }
+
+    func finish(completion: (() -> Void)? = nil) {
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.finishing = true
+            self.finishHandler = completion
+            self.pump()
+        }
+    }
+
+    func cancel() {
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.pending.removeAll(keepingCapacity: false)
+            self.finishing = true
+            self.finishHandler = nil
+        }
+    }
+
+    private func pump() {
+        guard !inFlight else { return }
+        guard !pending.isEmpty else {
+            if finishing {
+                let handler = finishHandler
+                finishHandler = nil
+                handler?()
+            }
+            return
+        }
+
+        let chunk = pending.removeFirst()
+        guard var components = URLComponents(url: chunk.uploadUrl, resolvingAgainstBaseURL: false) else {
+            report(code: "invalid_upload_url", message: "Upload URL cannot be represented", chunk: chunk)
+            pump()
+            return
+        }
+        var query = components.queryItems ?? []
+        query.append(URLQueryItem(name: "source", value: chunk.source))
+        query.append(URLQueryItem(name: "seq", value: String(chunk.seq)))
+        query.append(URLQueryItem(name: "capturedAtMs", value: String(chunk.capturedAtMs)))
+        components.queryItems = query
+        guard let requestURL = components.url else {
+            report(code: "invalid_upload_url", message: "Upload URL query could not be encoded", chunk: chunk)
+            pump()
+            return
+        }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 8
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue(chunk.token, forHTTPHeaderField: "X-Stenographer-Token")
+        request.httpBody = chunk.data
+        inFlight = true
+        urlSession.dataTask(with: request) { [weak self] _, response, error in
+            guard let self = self else { return }
+            self.stateQueue.async {
+                self.inFlight = false
+                if let error = error {
+                    self.report(code: "upload_failed", message: error.localizedDescription, chunk: chunk)
+                } else if let status = (response as? HTTPURLResponse)?.statusCode, !(200..<300).contains(status) {
+                    self.report(code: "upload_http_error", message: "Host returned HTTP \(status)", chunk: chunk)
+                } else if response == nil {
+                    self.report(code: "upload_failed", message: "Host returned no response", chunk: chunk)
+                }
+                self.pump()
+            }
+        }.resume()
+    }
+
+    private func report(code: String, message: String, chunk: StenographerChunk) {
+        eventHandler([
+            "schema": "stenographer_native_event.v1",
+            "kind": "error",
+            "state": "degraded",
+            "action": "upload",
+            "status": "upload_failed",
+            "errorCode": code,
+            "message": message,
+            "error": ["code": code, "message": message],
+            "sessionId": chunk.sessionId,
+            "source": chunk.source,
+            "seq": chunk.seq,
+            "capturedAtMs": chunk.capturedAtMs,
+            "recoverable": true
+        ])
+    }
+}
+
+// Accumulates small callback buffers into bounded 500 ms chunks.  The
+// accumulator is only touched by StenographerController's serial control queue.
+struct StenographerChunkAccumulator {
+    private var bytes = Data()
+    private var firstCapturedAtMs: Int64?
+
+    mutating func append(_ data: Data, capturedAtMs: Int64) -> [(Data, Int64)] {
+        guard !data.isEmpty else { return [] }
+        if bytes.isEmpty { firstCapturedAtMs = capturedAtMs }
+        bytes.append(data)
+        var chunks: [(Data, Int64)] = []
+        let chunkBytes = STENOGRAPHER_CHUNK_FRAMES * MemoryLayout<Int16>.size
+        while bytes.count >= chunkBytes {
+            let chunk = Data(bytes.prefix(chunkBytes))
+            let timestamp = firstCapturedAtMs ?? capturedAtMs
+            chunks.append((chunk, timestamp))
+            bytes.removeFirst(chunkBytes)
+            if bytes.isEmpty {
+                firstCapturedAtMs = nil
+            } else {
+                firstCapturedAtMs = timestamp + Int64(Double(STENOGRAPHER_CHUNK_FRAMES) * 1_000.0 / STENOGRAPHER_SAMPLE_RATE)
+            }
+        }
+        return chunks
+    }
+
+    mutating func flush() -> (Data, Int64)? {
+        guard !bytes.isEmpty else { return nil }
+        let result = (bytes, firstCapturedAtMs ?? stenographerNowMs())
+        bytes.removeAll(keepingCapacity: false)
+        firstCapturedAtMs = nil
+        return result
+    }
+
+    mutating func reset() {
+        bytes.removeAll(keepingCapacity: false)
+        firstCapturedAtMs = nil
+    }
+}
+
+// AVAudioEngine input formats are hardware-dependent.  AVAudioConverter keeps
+// its resampler state between callbacks and guarantees the bridge's PCM16
+// format without forcing the hardware to reconfigure to 16 kHz.
+final class StenographerPCM16Normalizer {
+    private let targetFormat: AVAudioFormat
+    private var converter: AVAudioConverter?
+    private var sourceSignature: String?
+
+    init() {
+        targetFormat = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: STENOGRAPHER_SAMPLE_RATE,
+            channels: STENOGRAPHER_CHANNEL_COUNT,
+            interleaved: true
+        )!
+    }
+
+    func convert(_ input: AVAudioPCMBuffer) -> Data? {
+        guard input.frameLength > 0 else { return nil }
+        let format = input.format
+        let signature = "\(format.sampleRate):\(format.channelCount):\(format.commonFormat.rawValue):\(format.isInterleaved)"
+        if sourceSignature != signature {
+            converter = AVAudioConverter(from: format, to: targetFormat)
+            sourceSignature = signature
+        }
+
+        let ratio = STENOGRAPHER_SAMPLE_RATE / max(1.0, format.sampleRate)
+        let capacity = max(1, AVAudioFrameCount(ceil(Double(input.frameLength) * ratio)) + 64)
+        guard let output = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: capacity),
+              let converter = converter else { return nil }
+
+        var provided = false
+        var conversionError: NSError?
+        let status = converter.convert(to: output, error: &conversionError) { _, inputStatus in
+            if provided {
+                inputStatus.pointee = .noDataNow
+                return nil
+            }
+            provided = true
+            inputStatus.pointee = .haveData
+            return input
+        }
+        guard status == .haveData || status == .inputRanDry || output.frameLength > 0,
+              let channelData = output.int16ChannelData else { return nil }
+        let byteCount = Int(output.frameLength) * MemoryLayout<Int16>.size
+        return Data(bytes: channelData[0], count: byteCount)
+    }
+}
+
+final class StenographerMicrophoneCapture {
+    private let engine = AVAudioEngine()
+    private let normalizer = StenographerPCM16Normalizer()
+    private let audioHandler: (Data, Int64) -> Void
+    private let errorHandler: (String, String) -> Void
+    private var tapInstalled = false
+
+    init(audioHandler: @escaping (Data, Int64) -> Void, errorHandler: @escaping (String, String) -> Void) {
+        self.audioHandler = audioHandler
+        self.errorHandler = errorHandler
+    }
+
+    func start() throws {
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw NSError(domain: "local.dsh.stenographer", code: 1001, userInfo: [NSLocalizedDescriptionKey: "No microphone input format is available"])
+        }
+        if tapInstalled { input.removeTap(onBus: 0); tapInstalled = false }
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
+            guard let self = self else { return }
+            guard let pcm = self.normalizer.convert(buffer), !pcm.isEmpty else {
+                self.errorHandler("microphone_capture_error", "Could not normalize a microphone buffer to PCM16")
+                return
+            }
+            self.audioHandler(pcm, stenographerNowMs())
+        }
+        tapInstalled = true
+        engine.prepare()
+        do {
+            try engine.start()
+        } catch {
+            if tapInstalled { input.removeTap(onBus: 0); tapInstalled = false }
+            throw error
+        }
+    }
+
+    func stop() {
+        let input = engine.inputNode
+        if tapInstalled {
+            input.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+        if engine.isRunning { engine.stop() }
+    }
+}
+
+// ScreenCaptureKit delivers an AudioBufferList.  It is configured for 16 kHz
+// mono and converted defensively from float/int PCM so the native bridge still
+// enforces the exact PCM16 contract if the OS supplies a different packing.
+final class StenographerSystemCapture: NSObject, SCStreamOutput, SCStreamDelegate {
+    private let audioHandler: (Data, Int64) -> Void
+    private let startedHandler: () -> Void
+    private let errorHandler: (String, String) -> Void
+    private let outputQueue = DispatchQueue(label: "local.dsh.stenographer.system-audio", qos: .userInitiated)
+    private var stream: SCStream?
+    private var stopping = false
+
+    init(audioHandler: @escaping (Data, Int64) -> Void, startedHandler: @escaping () -> Void, errorHandler: @escaping (String, String) -> Void) {
+        self.audioHandler = audioHandler
+        self.startedHandler = startedHandler
+        self.errorHandler = errorHandler
+    }
+
+    func start() {
+        guard #available(macOS 13.0, *) else {
+            errorHandler("system_audio_unavailable", "ScreenCaptureKit audio requires macOS 13 or newer")
+            return
+        }
+        if !CGPreflightScreenCaptureAccess() {
+            let granted = CGRequestScreenCaptureAccess()
+            if !granted {
+                errorHandler("system_audio_permission_denied", "Screen Recording permission is required for system audio")
+                return
+            }
+        }
+        SCShareableContent.getExcludingDesktopWindows(true, onScreenWindowsOnly: true) { [weak self] content, error in
+            guard let self = self else { return }
+            guard let content = content, let display = content.displays.first else {
+                self.errorHandler("system_audio_unavailable", error?.localizedDescription ?? "No capturable display is available")
+                return
+            }
+            let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
+            let configuration = SCStreamConfiguration()
+            configuration.width = 2
+            configuration.height = 2
+            configuration.minimumFrameInterval = CMTime(value: 1, timescale: 1)
+            configuration.queueDepth = 3
+            configuration.capturesAudio = true
+            configuration.sampleRate = Int(STENOGRAPHER_SAMPLE_RATE)
+            configuration.channelCount = Int(STENOGRAPHER_CHANNEL_COUNT)
+            configuration.excludesCurrentProcessAudio = true
+            let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
+            do {
+                try newStream.addStreamOutput(self, type: .audio, sampleHandlerQueue: self.outputQueue)
+            } catch {
+                self.errorHandler("system_audio_start_failed", error.localizedDescription)
+                return
+            }
+            self.stream = newStream
+            self.stopping = false
+            newStream.startCapture { [weak self] error in
+                guard let self = self else { return }
+                if let error = error {
+                    self.errorHandler("system_audio_start_failed", error.localizedDescription)
+                } else {
+                    self.startedHandler()
+                }
+            }
+        }
+    }
+
+    func stop(completion: (() -> Void)? = nil) {
+        guard let current = stream else {
+            completion?()
+            return
+        }
+        guard !stopping else {
+            completion?()
+            return
+        }
+        stopping = true
+        current.stopCapture { [weak self] error in
+            self?.stream = nil
+            if let error = error, self?.stopping == true {
+                self?.errorHandler("system_audio_stop_failed", error.localizedDescription)
+            }
+            completion?()
+        }
+    }
+
+    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+        guard type == .audio, CMSampleBufferDataIsReady(sampleBuffer), let data = pcm16Data(from: sampleBuffer), !data.isEmpty else { return }
+        audioHandler(data, stenographerNowMs())
+    }
+
+    func stream(_ stream: SCStream, didStopWithError error: Error) {
+        errorHandler("system_audio_capture_error", error.localizedDescription)
+    }
+
+    private func pcm16Data(from sampleBuffer: CMSampleBuffer) -> Data? {
+        guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer),
+              let asbdPointer = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription) else { return nil }
+        let asbd = asbdPointer.pointee
+        guard asbd.mSampleRate > 0, asbd.mChannelsPerFrame > 0 else { return nil }
+        var listSize = 0
+        let sizeStatus = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
+            sampleBuffer,
+            bufferListSizeNeededOut: &listSize,
+            bufferListOut: nil,
+            bufferListSize: 0,
+            blockBufferAllocator: nil,
+            blockBufferMemoryAllocator: nil,
+            flags: UInt32(kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment),
+            blockBufferOut: nil
+        )
+        guard sizeStatus == noErr, listSize > 0 else { return nil }
+        let rawBufferList = UnsafeMutableRawPointer.allocate(byteCount: listSize, alignment: MemoryLayout<AudioBufferList>.alignment)
+        defer { rawBufferList.deallocate() }
+        let bufferListPointer = rawBufferList.bindMemory(to: AudioBufferList.self, capacity: 1)
+        var retainedBlockBuffer: CMBlockBuffer?
+        let listStatus = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
+            sampleBuffer,
+            bufferListSizeNeededOut: &listSize,
+            bufferListOut: bufferListPointer,
+            bufferListSize: listSize,
+            blockBufferAllocator: nil,
+            blockBufferMemoryAllocator: nil,
+            flags: UInt32(kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment),
+            blockBufferOut: &retainedBlockBuffer
+        )
+        guard listStatus == noErr else { return nil }
+        let buffers = UnsafeMutableAudioBufferListPointer(bufferListPointer)
+        let channels = max(1, Int(asbd.mChannelsPerFrame))
+        let bytesPerSample = max(1, Int(asbd.mBitsPerChannel) / 8)
+        let isFloat = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0
+        let isSigned = (asbd.mFormatFlags & kAudioFormatFlagIsSignedInteger) != 0
+        let isNonInterleaved = (asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved) != 0
+        guard isFloat || isSigned, bytesPerSample <= 8 else { return nil }
+
+        let frameCount: Int
+        if isNonInterleaved || buffers.count > 1 {
+            frameCount = buffers.first.map { Int($0.mDataByteSize) / bytesPerSample } ?? 0
+        } else {
+            frameCount = buffers.first.map { Int($0.mDataByteSize) / max(bytesPerSample * channels, 1) } ?? 0
+        }
+        guard frameCount > 0 else { return nil }
+        var result = Data(count: frameCount * MemoryLayout<Int16>.size)
+        result.withUnsafeMutableBytes { destination in
+            guard let destination = destination.baseAddress else { return }
+            for frame in 0..<frameCount {
+                var mixed: Float = 0
+                var contributingChannels = 0
+                if isNonInterleaved || buffers.count > 1 {
+                    for channel in 0..<min(channels, buffers.count) {
+                        let buffer = buffers[channel]
+                        guard let data = buffer.mData else { continue }
+                        let offset = frame * bytesPerSample
+                        mixed += sampleValue(data: data, offset: offset, bytesPerSample: bytesPerSample, isFloat: isFloat, isSigned: isSigned, bitsPerChannel: Int(asbd.mBitsPerChannel))
+                        contributingChannels += 1
+                    }
+                } else if let buffer = buffers.first, let data = buffer.mData {
+                    for channel in 0..<channels {
+                        let offset = frame * bytesPerSample * channels + channel * bytesPerSample
+                        mixed += sampleValue(data: data, offset: offset, bytesPerSample: bytesPerSample, isFloat: isFloat, isSigned: isSigned, bitsPerChannel: Int(asbd.mBitsPerChannel))
+                        contributingChannels += 1
+                    }
+                }
+                if contributingChannels > 0 { mixed /= Float(contributingChannels) }
+                let clamped = max(-1.0, min(1.0, mixed))
+                let integer = clamped <= -1.0 ? Int16.min : Int16(clamped * Float(Int16.max))
+                let bits = UInt16(bitPattern: integer).littleEndian
+                destination.storeBytes(of: bits, toByteOffset: frame * 2, as: UInt16.self)
+            }
+        }
+        return result
+    }
+
+    private func sampleValue(data: UnsafeMutableRawPointer, offset: Int, bytesPerSample: Int, isFloat: Bool, isSigned: Bool, bitsPerChannel: Int) -> Float {
+        if isFloat && bytesPerSample == 4 {
+            var value: Float = 0
+            memcpy(&value, data.advanced(by: offset), 4)
+            return value
+        }
+        if isFloat && bytesPerSample == 8 {
+            var value: Double = 0
+            memcpy(&value, data.advanced(by: offset), 8)
+            return Float(value)
+        }
+        guard isSigned else { return 0 }
+        if bytesPerSample == 2 {
+            var value: Int16 = 0
+            memcpy(&value, data.advanced(by: offset), 2)
+            return Float(value) / Float(Int16.max)
+        }
+        if bytesPerSample == 4 {
+            var value: Int32 = 0
+            memcpy(&value, data.advanced(by: offset), 4)
+            return Float(value) / Float(Int32.max)
+        }
+        if bytesPerSample == 1 {
+            var value: Int8 = 0
+            memcpy(&value, data.advanced(by: offset), 1)
+            return Float(value) / Float(Int8.max)
+        }
+        // Packed widths other than the common 8/16/32-bit PCM are not emitted.
+        _ = bitsPerChannel
+        return 0
+    }
+}
+
+struct StenographerStartConfig {
+    let sessionId: String
+    let source: String
+    let uploadUrl: URL
+    let uploadToken: String
+    let sampleRate: Int
+
+    var sources: [String] {
+        source == "both" ? ["microphone", "system"] : [source]
+    }
+}
+
+final class StenographerController {
+    typealias EventHandler = ([String: Any]) -> Void
+
+    private let controlQueue = DispatchQueue(label: "local.dsh.stenographer.control", qos: .userInitiated)
+    private let eventHandler: EventHandler
+    private var sessionId: String?
+    private var config: StenographerStartConfig?
+    private var paused = false
+    private var stopping = false
+    private var pendingAction = "start"
+    private var requestedSources = Set<String>()
+    private var startedSources = Set<String>()
+    private var nextSeq: [String: Int] = ["microphone": 0, "system": 0]
+    private var accumulators: [String: StenographerChunkAccumulator] = [
+        "microphone": StenographerChunkAccumulator(),
+        "system": StenographerChunkAccumulator()
+    ]
+    private var uploadQueue: StenographerUploadQueue?
+    private var microphoneCapture: StenographerMicrophoneCapture?
+    private var systemCapture: StenographerSystemCapture?
+
+    init(eventHandler: @escaping EventHandler) {
+        self.eventHandler = eventHandler
+    }
+
+    var isActive: Bool {
+        return controlQueue.sync { sessionId != nil }
+    }
+
+    func handleMessage(_ body: Any) {
+        guard let message = parseDictionary(body), let action = message["action"] as? String else {
+            emitError(action: "unknown", sessionId: nil, code: "invalid_request", message: "stenographer expects a JSON object with action")
+            return
+        }
+        switch action {
+        case "start":
+            guard let config = parseStartConfig(message) else {
+                emitError(action: action, sessionId: message["sessionId"] as? String, code: "invalid_request", message: "start requires sessionId, source, uploadUrl, uploadToken and sampleRate=16000")
+                return
+            }
+            controlQueue.async { [weak self] in self?.start(config) }
+        case "pause", "resume", "stop":
+            let id = message["sessionId"] as? String
+            controlQueue.async { [weak self] in self?.handleLifecycle(action: action, sessionId: id) }
+        default:
+            emitError(action: action, sessionId: message["sessionId"] as? String, code: "unsupported_action", message: "Unsupported stenographer action")
+        }
+    }
+
+    // Called synchronously during application termination so capture taps are
+    // detached before the native process exits. The interrupted event is best
+    // effort; local Host persistence remains the source of truth for recovery.
+    func interruptForTermination() {
+        controlQueue.sync {
+            guard let id = sessionId else { return }
+            emit([
+                "schema": "stenographer_native_event.v1",
+                "kind": "state",
+                "action": "interrupt",
+                "status": "interrupted",
+                "state": "interrupted",
+                "sessionId": id,
+                "capturedAtMs": stenographerNowMs(),
+                "recoverable": true
+            ])
+            stopping = true
+            microphoneCapture?.stop()
+            systemCapture?.stop()
+            flushAccumulators()
+            uploadQueue?.finish()
+            microphoneCapture = nil
+            systemCapture = nil
+            sessionId = nil
+            config = nil
+        }
+    }
+
+    private func start(_ startConfig: StenographerStartConfig) {
+        guard sessionId == nil else {
+            emitError(action: "start", sessionId: startConfig.sessionId, code: "session_already_active", message: "A stenographer session is already active")
+            return
+        }
+        sessionId = startConfig.sessionId
+        config = startConfig
+        paused = false
+        stopping = false
+        pendingAction = "start"
+        requestedSources = Set(startConfig.sources)
+        startedSources.removeAll()
+        nextSeq = ["microphone": 0, "system": 0]
+        accumulators["microphone"]?.reset()
+        accumulators["system"]?.reset()
+        uploadQueue = StenographerUploadQueue { [weak self] payload in self?.emit(payload) }
+        emitState(action: "start", status: "starting", state: "starting")
+        if requestedSources.contains("microphone") {
+            requestMicrophonePermission(for: startConfig.sessionId)
+        } else {
+            beginSystemIfNeeded(for: startConfig.sessionId)
+        }
+    }
+
+    private func requestMicrophonePermission(for id: String) {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        switch status {
+        case .authorized:
+            beginMicrophone(for: id)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+                self?.controlQueue.async {
+                    guard let self = self, self.sessionId == id else { return }
+                    if granted { self.beginMicrophone(for: id) }
+                    else { self.failStart(source: "microphone", code: "microphone_permission_denied", message: "Microphone permission was denied") }
+                }
+            }
+        case .denied, .restricted:
+            failStart(source: "microphone", code: "microphone_permission_denied", message: "Microphone permission is denied or restricted")
+        @unknown default:
+            failStart(source: "microphone", code: "microphone_permission_denied", message: "Microphone permission status is unknown")
+        }
+    }
+
+    private func beginMicrophone(for id: String) {
+        guard sessionId == id, let currentConfig = config else { return }
+        let capture = StenographerMicrophoneCapture(
+            audioHandler: { [weak self] data, timestamp in self?.acceptAudio(source: "microphone", data: data, capturedAtMs: timestamp, sessionId: id) },
+            errorHandler: { [weak self] code, message in
+                self?.controlQueue.async {
+                    guard let self = self, self.sessionId == id, !self.stopping else { return }
+                    self.failActive(source: "microphone", code: code, message: message)
+                }
+            }
+        )
+        do {
+            try capture.start()
+        } catch {
+            failStart(source: "microphone", code: "microphone_start_failed", message: error.localizedDescription)
+            return
+        }
+        microphoneCapture = capture
+        startedSources.insert("microphone")
+        if requestedSources.contains("system") {
+            beginSystemIfNeeded(for: currentConfig.sessionId)
+        } else {
+            completeStartIfReady()
+        }
+    }
+
+    private func beginSystemIfNeeded(for id: String) {
+        guard sessionId == id, !startedSources.contains("system") else {
+            completeStartIfReady()
+            return
+        }
+        guard #available(macOS 13.0, *) else {
+            failStart(source: "system", code: "system_audio_unavailable", message: "ScreenCaptureKit audio requires macOS 13 or newer")
+            return
+        }
+        let capture = StenographerSystemCapture(
+            audioHandler: { [weak self] data, timestamp in self?.acceptAudio(source: "system", data: data, capturedAtMs: timestamp, sessionId: id) },
+            startedHandler: { [weak self] in
+                self?.controlQueue.async {
+                    guard let self = self, self.sessionId == id, !self.stopping else { return }
+                    self.startedSources.insert("system")
+                    self.completeStartIfReady()
+                }
+            },
+            errorHandler: { [weak self] code, message in
+                self?.controlQueue.async {
+                    guard let self = self, self.sessionId == id, !self.stopping else { return }
+                    self.failStart(source: "system", code: code, message: message)
+                }
+            }
+        )
+        systemCapture = capture
+        capture.start()
+    }
+
+    private func completeStartIfReady() {
+        guard !requestedSources.isEmpty, startedSources == requestedSources, !stopping else { return }
+        let action = pendingAction
+        pendingAction = "start"
+        emitState(action: action, status: action == "resume" ? "resumed" : "started", state: "recording")
+    }
+
+    private func handleLifecycle(action: String, sessionId id: String?) {
+        guard let currentId = sessionId, id == nil || id == currentId else {
+            emitError(action: action, sessionId: id, code: "session_not_found", message: "No matching active stenographer session")
+            return
+        }
+        switch action {
+        case "pause": pause(currentId)
+        case "resume": resume(currentId)
+        case "stop": stop(currentId)
+        default: break
+        }
+    }
+
+    private func pause(_ id: String) {
+        guard !paused, !stopping else { return }
+        paused = true
+        microphoneCapture?.stop()
+        systemCapture?.stop()
+        flushAccumulators()
+        emitState(action: "pause", status: "paused", state: "paused", sessionId: id)
+    }
+
+    private func resume(_ id: String) {
+        guard paused, !stopping, let currentConfig = config else { return }
+        paused = false
+        startedSources.removeAll()
+        pendingAction = "resume"
+        emitState(action: "resume", status: "resuming", state: "starting", sessionId: id)
+        if requestedSources.contains("microphone") {
+            beginMicrophone(for: id)
+        } else {
+            beginSystemIfNeeded(for: currentConfig.sessionId)
+        }
+    }
+
+    private func stop(_ id: String) {
+        guard !stopping else { return }
+        stopping = true
+        microphoneCapture?.stop()
+        systemCapture?.stop()
+        flushAccumulators()
+        // The Web panel already enters its stopping phase when it posts stop.
+        // Emit only after the bounded queue has drained so finalization cannot
+        // race an in-flight audio upload.
+        let queue = uploadQueue
+        queue?.finish { [weak self] in
+            self?.controlQueue.async {
+                guard let self = self, self.sessionId == id else { return }
+                self.emitState(action: "stop", status: "stopped", state: "stopped", sessionId: id)
+                self.emitState(action: "stop", status: "idle", state: "idle", sessionId: id)
+                self.microphoneCapture = nil
+                self.systemCapture = nil
+                self.uploadQueue = nil
+                self.sessionId = nil
+                self.config = nil
+                self.requestedSources.removeAll()
+                self.startedSources.removeAll()
+                self.stopping = false
+                self.paused = false
+            }
+        }
+    }
+
+    private func failStart(source: String, code: String, message: String) {
+        guard let id = sessionId else { return }
+        microphoneCapture?.stop()
+        systemCapture?.stop()
+        uploadQueue?.cancel()
+        emitError(action: "start", sessionId: id, source: source, code: code, message: message)
+        emitState(action: "start", status: "idle", state: "idle", sessionId: id)
+        microphoneCapture = nil
+        systemCapture = nil
+        uploadQueue = nil
+        sessionId = nil
+        config = nil
+        requestedSources.removeAll()
+        startedSources.removeAll()
+    }
+
+    private func failActive(source: String, code: String, message: String) {
+        guard let id = sessionId else { return }
+        stopping = true
+        microphoneCapture?.stop()
+        systemCapture?.stop()
+        flushAccumulators()
+        emitError(action: "capture", sessionId: id, source: source, code: code, message: message)
+        emitState(action: "capture", status: "idle", state: "idle", sessionId: id)
+        uploadQueue?.finish()
+        microphoneCapture = nil
+        systemCapture = nil
+        uploadQueue = nil
+        sessionId = nil
+        config = nil
+    }
+
+    private func acceptAudio(source: String, data: Data, capturedAtMs: Int64, sessionId id: String) {
+        controlQueue.async { [weak self] in
+            guard let self = self, self.sessionId == id, !self.paused, !self.stopping, var accumulator = self.accumulators[source] else { return }
+            let chunks = accumulator.append(data, capturedAtMs: capturedAtMs)
+            self.accumulators[source] = accumulator
+            for (chunkData, timestamp) in chunks { self.enqueue(source: source, data: chunkData, capturedAtMs: timestamp) }
+        }
+    }
+
+    private func flushAccumulators() {
+        for source in ["microphone", "system"] {
+            guard var accumulator = accumulators[source] else { continue }
+            if let (data, timestamp) = accumulator.flush() { enqueue(source: source, data: data, capturedAtMs: timestamp) }
+            accumulators[source] = accumulator
+        }
+    }
+
+    private func enqueue(source: String, data: Data, capturedAtMs: Int64) {
+        guard let currentConfig = config, let id = sessionId, let queue = uploadQueue else { return }
+        let seq = nextSeq[source, default: 0]
+        nextSeq[source] = seq + 1
+        queue.enqueue(StenographerChunk(sessionId: id, uploadUrl: currentConfig.uploadUrl, token: currentConfig.uploadToken, source: source, seq: seq, capturedAtMs: capturedAtMs, data: data))
+    }
+
+    private func parseStartConfig(_ body: [String: Any]) -> StenographerStartConfig? {
+        guard let sessionId = body["sessionId"] as? String, !sessionId.isEmpty,
+              sessionId.range(of: #"^[A-Za-z0-9_-]{1,96}$"#, options: .regularExpression) != nil,
+              let source = body["source"] as? String, ["microphone", "system", "both"].contains(source),
+              let uploadUrlString = body["uploadUrl"] as? String,
+              let uploadUrl = URL(string: uploadUrlString), isAllowedUploadURL(uploadUrl, sessionId: sessionId),
+              let uploadToken = body["uploadToken"] as? String, (16...512).contains(uploadToken.count),
+              let sampleRateNumber = body["sampleRate"] as? NSNumber,
+              sampleRateNumber.intValue == Int(STENOGRAPHER_SAMPLE_RATE) else { return nil }
+        return StenographerStartConfig(sessionId: sessionId, source: source, uploadUrl: uploadUrl, uploadToken: uploadToken, sampleRate: sampleRateNumber.intValue)
+    }
+
+    private func isAllowedUploadURL(_ url: URL, sessionId: String) -> Bool {
+        guard url.scheme == "http", url.host == "127.0.0.1", url.port == PORT,
+              url.user == nil, url.password == nil else { return false }
+        let expected = "/api/stenographer/sessions/\(sessionId)/audio"
+        return url.path == expected
+    }
+
+    private func parseDictionary(_ body: Any) -> [String: Any]? {
+        if let dictionary = body as? [String: Any] { return dictionary }
+        if let string = body as? String, let data = string.data(using: .utf8), let object = try? JSONSerialization.jsonObject(with: data), let dictionary = object as? [String: Any] { return dictionary }
+        if let data = body as? Data, let object = try? JSONSerialization.jsonObject(with: data), let dictionary = object as? [String: Any] { return dictionary }
+        return nil
+    }
+
+    private func emitState(action: String, status: String, state: String, sessionId id: String? = nil) {
+        emit([
+            "schema": "stenographer_native_event.v1",
+            "kind": "state",
+            "action": action,
+            "status": status,
+            "state": state,
+            "sessionId": (id ?? sessionId).map { $0 as Any } ?? NSNull(),
+            "capturedAtMs": stenographerNowMs(),
+            "sources": Array(requestedSources).sorted()
+        ])
+    }
+
+    private func emitError(action: String, sessionId id: String?, source: String? = nil, code: String, message: String) {
+        var payload: [String: Any] = [
+            "schema": "stenographer_native_event.v1",
+            "kind": "error",
+            "action": action,
+            "status": "error",
+            "state": "error",
+            "errorCode": code,
+            "message": message,
+            "error": ["code": code, "message": message],
+            "sessionId": id ?? NSNull(),
+            "capturedAtMs": stenographerNowMs(),
+            "recoverable": code != "microphone_permission_denied" && code != "system_audio_permission_denied"
+        ]
+        if let source = source { payload["source"] = source }
+        emit(payload)
+    }
+
+    private func emit(_ payload: [String: Any]) {
+        eventHandler(payload)
+    }
+}
 
 // WKWebView 会吃掉无边框标题栏的鼠标事件。用一条完全透明的原生视图
 // 接管顶部空白区域的按下事件，恢复系统窗口拖动，同时避开左侧红绿灯和右侧工具按钮。
@@ -40,6 +914,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     var hostHealthProbeInFlight = false
     var hostEnsureInFlight = false
     var backgroundRecoveryLaunch = false
+    var stenographerController: StenographerController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         backgroundRecoveryLaunch = consumeBackgroundLaunchSentinel()
@@ -79,6 +954,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         webView.allowsBackForwardNavigationGestures = true
         // 原生↔Web 语音桥: Web 端按钮 → 原生 SFSpeechRecognizer
         webView.configuration.userContentController.add(self, name: "shrimpVoice")
+        // 原生↔Web 速记员桥: start/pause/resume/stop JSON
+        webView.configuration.userContentController.add(self, name: "stenographer")
+        stenographerController = StenographerController { [weak self] payload in
+            self?.notifyStenographerEvent(payload)
+        }
         let contentContainer = NSView(frame: rect)
         contentContainer.autoresizingMask = [.width, .height]
         webView.frame = contentContainer.bounds
@@ -140,6 +1020,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
     func applicationWillTerminate(_ notification: Notification) {
         stopHostHealthMonitoring()
+        stenographerController?.interruptForTermination()
         if audioEngine.isRunning || recognitionRequest != nil || recognitionTask != nil {
             cleanupRecording()
         }
@@ -263,8 +1144,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
     // Web 端按钮 → 原生: window.webkit.messageHandlers.shrimpVoice.postMessage('toggle')
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "shrimpVoice" else { return }
-        micPressed()
+        switch message.name {
+        case "shrimpVoice":
+            micPressed()
+        case "stenographer":
+            stenographerController?.handleMessage(message.body)
+        default:
+            return
+        }
+    }
+
+    // Native status callbacks are always delivered through the page's
+    // __dshStenographerNativeEvent(payload) hook.  JSON serialization keeps
+    // error strings and session IDs safe from JavaScript injection.
+    func notifyStenographerEvent(_ payload: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let js = "window.__dshStenographerNativeEvent && window.__dshStenographerNativeEvent(\(json))"
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript(js) { _, _ in }
+        }
     }
 
     // 录音状态 → Web 按钮: window.__shrimpVoiceState(state)

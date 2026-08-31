@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "export",
+  "status": "completed",
+  "input_checksum": "d4938fcb681ea4ba58a469d1e698a6b7f69cac2e91590702e5a30338f27298fc",
+  "version_refs": {"runtime": "大神.app", "connector": "0.6.2"},
+  "actual_bindings": {"tool": "scripts/restart"},
+  "artifacts": ["live web profile on 127.0.0.1:3080"],
+  "qa_result": {"status": "passed", "checks": ["single listener", "Stream connected", "owner bound", "bound session idle", "startup recovery non-blocking"]},
+  "evidence": ["PID 18946 single listener", "channel up at 07:07:51", "delivery-pending empty on clean startup"],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

@@ -1,0 +1,134 @@
+#!/bin/bash
+set -euo pipefail
+
+COMMAND="${1:-status}"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+RESOURCES_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
+VERSION=$(tr -d '\r\n' < "$RESOURCES_DIR/version.txt")
+SUPPORT_ROOT="${DASHEN_SUPPORT_ROOT:-$HOME/Library/Application Support/大神}"
+DSH_HOME="$SUPPORT_ROOT/dsh-home"
+WORKSPACE="${DASHEN_WORKSPACE:-$HOME/Desktop}"
+PORT="${DASHEN_PORT:-3080}"
+PID_FILE="$SUPPORT_ROOT/host-$PORT.pid"
+LOG_FILE="$SUPPORT_ROOT/host-$PORT.log"
+
+machine_arch=$(uname -m)
+case "$machine_arch" in
+  arm64) runtime_arch=arm64 ;;
+  x86_64) runtime_arch=x86_64 ;;
+  *) echo "不支持的 Mac 架构: $machine_arch" >&2; exit 65 ;;
+esac
+
+NODE_ROOT="$RESOURCES_DIR/runtime/node-$runtime_arch"
+NODE="$NODE_ROOT/bin/node"
+PAYLOAD="$RESOURCES_DIR/payload/dsh-home"
+CONFIGURE="$RESOURCES_DIR/bin/configure-portable.mjs"
+DSH_BIN="$DSH_HOME/install/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+is_owned_pid() {
+  [[ -f "$PID_FILE" ]] || return 1
+  local pid
+  pid=$(tr -cd '0-9' < "$PID_FILE")
+  [[ -n "$pid" ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  ps -p "$pid" -o command= 2>/dev/null | grep -F "$DSH_BIN" >/dev/null
+}
+
+is_healthy() {
+  /usr/bin/curl -fsS --max-time 2 "http://127.0.0.1:$PORT/" >/dev/null 2>&1
+}
+
+install_runtime() {
+  [[ -x "$NODE" ]] || { echo "缺少内置 $runtime_arch Node 运行时" >&2; exit 66; }
+  [[ -d "$PAYLOAD" ]] || { echo "缺少内置 DSH Payload" >&2; exit 66; }
+  if [[ -f "$DSH_HOME/.portable-version" ]] && [[ "$(tr -d '\r\n' < "$DSH_HOME/.portable-version")" == "$VERSION" ]]; then
+    "$NODE" "$CONFIGURE" "$DSH_HOME" "$WORKSPACE" "$NODE" "$SCRIPT_DIR/dashen-runtime" "$PORT" "$VERSION"
+    return
+  fi
+
+  mkdir -p "$SUPPORT_ROOT"
+  local staging="$SUPPORT_ROOT/.installing-$VERSION-$$"
+  local backup="$SUPPORT_ROOT/dsh-home.backup-$(date +%Y%m%d-%H%M%S)"
+  /bin/rm -rf "$staging"
+  mkdir -p "$staging"
+  /usr/bin/ditto --noqtn "$PAYLOAD" "$staging"
+
+  if [[ -d "$DSH_HOME" ]]; then
+    for item in .credentials.yaml sessions attachments logs output storages memories cross-session; do
+      if [[ -e "$DSH_HOME/$item" ]]; then
+        /bin/rm -rf "$staging/$item"
+        /usr/bin/ditto --noqtn "$DSH_HOME/$item" "$staging/$item"
+      fi
+    done
+  fi
+  if [[ -f "$SUPPORT_ROOT/pending-credentials.yaml" ]]; then
+    cp "$SUPPORT_ROOT/pending-credentials.yaml" "$staging/.credentials.yaml"
+    chmod 600 "$staging/.credentials.yaml"
+    rm -f "$SUPPORT_ROOT/pending-credentials.yaml"
+  fi
+
+  if [[ -d "$DSH_HOME" ]]; then mv "$DSH_HOME" "$backup"; fi
+  mv "$staging" "$DSH_HOME"
+  if ! "$NODE" "$CONFIGURE" "$DSH_HOME" "$WORKSPACE" "$NODE" "$SCRIPT_DIR/dashen-runtime" "$PORT" "$VERSION"; then
+    local failed="$SUPPORT_ROOT/dsh-home.failed-$(date +%Y%m%d-%H%M%S)"
+    mv "$DSH_HOME" "$failed"
+    if [[ -d "$backup" ]]; then mv "$backup" "$DSH_HOME"; fi
+    echo "大神运行时初始化失败，已恢复旧版本。失败副本: $failed" >&2
+    exit 70
+  fi
+}
+
+start_host() {
+  install_runtime
+  if is_owned_pid && is_healthy; then exit 0; fi
+  if is_healthy && ! is_owned_pid; then
+    echo "端口 $PORT 已被其他服务占用，大神不会接管该进程。" >&2
+    exit 73
+  fi
+  rm -f "$PID_FILE"
+  mkdir -p "$SUPPORT_ROOT" "$WORKSPACE"
+  export DSH_HOME DSH_PORT="$PORT" DASHEN_PORT="$PORT" DASHEN_NODE="$NODE" DASHEN_HOST_SCRIPT="$SCRIPT_DIR/dashen-runtime" DASHEN_WORKSPACE="$WORKSPACE"
+  export PATH="$NODE_ROOT/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  cd "$WORKSPACE"
+  /usr/bin/nohup "$NODE" "$DSH_BIN" web --host 127.0.0.1 --port "$PORT" --no-open >>"$LOG_FILE" 2>&1 </dev/null &
+  echo $! > "$PID_FILE"
+  for _ in $(seq 1 120); do
+    if is_healthy; then exit 0; fi
+    if ! is_owned_pid; then
+      echo "大神 Host 启动失败，请查看 $LOG_FILE" >&2
+      exit 70
+    fi
+    sleep 0.25
+  done
+  echo "大神 Host 未在 30 秒内就绪，请查看 $LOG_FILE" >&2
+  exit 70
+}
+
+stop_host() {
+  if ! is_owned_pid; then rm -f "$PID_FILE"; exit 0; fi
+  local pid
+  pid=$(tr -cd '0-9' < "$PID_FILE")
+  kill -TERM "$pid" 2>/dev/null || true
+  for _ in $(seq 1 40); do
+    kill -0 "$pid" 2>/dev/null || { rm -f "$PID_FILE"; exit 0; }
+    sleep 0.25
+  done
+  kill -KILL "$pid" 2>/dev/null || true
+  rm -f "$PID_FILE"
+}
+
+case "$COMMAND" in
+  install) install_runtime ;;
+  start) start_host ;;
+  stop) stop_host ;;
+  restart) stop_host; start_host ;;
+  status)
+    if is_owned_pid && is_healthy; then
+      echo "running http://127.0.0.1:$PORT"
+      exit 0
+    fi
+    echo "stopped"
+    exit 1
+    ;;
+  *) echo "用法: dashen-runtime {install|start|stop|restart|status}" >&2; exit 64 ;;
+esac

@@ -1,0 +1,35 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "export",
+  "status": "completed",
+  "input_checksum": "b41d4394692dab75bdaf6c818262d73b18962c2916c6fbb983316d7f370b2e81",
+  "version_refs": {
+    "app_binary_sha256": "3781a179e1a94f140b947a2c63a4a4e5a1804a619bb9f2ff0e5bc807e7b02ffc",
+    "model_manifest_sha256": "0bdae95eacf1a7aa7f37684f70ba89b1197431c53b79a5cf86e4f3619b35206b"
+  },
+  "actual_bindings": {
+    "installed_app": "/Applications/大神.app",
+    "host_profile": "/Users/marcus/.dsh/profiles/web",
+    "signing": "ad-hoc with stable designated requirement identifier local.dsh.dashen"
+  },
+  "artifacts": [
+    "architecture/stenographer-delivery-manifest.v1.json",
+    "/Applications/大神.app"
+  ],
+  "qa_result": {
+    "status": "passed",
+    "checks": [
+      "strict deep codesign verification passes",
+      "Host loads @local/dsh-stenographer",
+      "installed App uses stable bundle-identifier requirement",
+      "rollback backup exists"
+    ]
+  },
+  "evidence": [
+    "codesign reports designated => identifier local.dsh.dashen.",
+    "macOS TCC ScreenCapture record uses the same identifier requirement and auth_value=2.",
+    "Pre-install app backup remains under /Users/marcus/.dsh/backups/stenographer-app-preinstall-20260831-0725."
+  ],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

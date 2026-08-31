@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+ROOT="${DSH_HOME:-$(cd "$(dirname "$0")/.." && pwd)}"
+source "$ROOT/.portable-runtime"
+exec "$DASHEN_HOST_SCRIPT" stop

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import vm from 'node:vm'
 
-test('media renderer and turn-tail process control mount without shadowing the core tool tree', async () => {
+test('media renderer and header process control mount without shadowing the core tool tree', async () => {
   const registrations = []
   const components = new Map()
   let bundle
@@ -62,9 +62,10 @@ test('media renderer and turn-tail process control mount without shadowing the c
   })
 
   assert.equal(registrations.some((entry) => entry.name === 'conversation.chat.node' && entry.key === 'tool-call'), false)
+  assert.equal(registrations.some((entry) => entry.name === 'conversation.chat.assistant-actions'), false)
   assert.equal(overlayRemoved, true)
   assert.ok(components.get('tool.call.toolview:mcp__zhipu__generate_image'))
-  assert.ok(components.get('conversation.chat.assistant-actions:zhipu-process-toggle'))
+  assert.ok(components.get('conversation.session.header.utilities:zhipu-process-switch'))
   assert.equal(source.includes("className: 'zpm-meta'"), false)
   assert.equal(source.includes('parsed.raw'), false)
   assert.equal(source.includes('texts.slice(0, 300)'), false)

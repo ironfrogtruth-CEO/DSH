@@ -11,12 +11,17 @@ import { scanArtifacts } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib
 import { ConsoleCards } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/console.js'
 import { normalizeCardCallback } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/stream.js'
 import { InteractionCards } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/interaction-card.js'
+import { DwsTools } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/tools.js'
+import { AICard, CardCapability } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/aicard.js'
+import { Outbound } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/outbound.js'
+import { DeliveryStore, textChecksum } from './node_modules/@dingtalk-real-ai/dsh-dingtalk/lib/delivery-store.js'
 
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
+  statSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -171,6 +176,181 @@ test('expires the in-memory route after two hours and falls back to Markdown whe
   } finally {
     Date.now = originalNow
   }
+})
+
+test('DingTalk HTTP calls time out even when fetch or the response body never resolves', async () => {
+  const originalFetch = globalThis.fetch
+  try {
+    globalThis.fetch = () => new Promise(() => {})
+    const outbound = new Outbound({ clientId: 'client', clientSecret: 'secret' }, () => {}, { timeoutMs: 15 })
+    const start = Date.now()
+    assert.equal(await outbound.sendMarkdown('https://example.invalid/webhook', 'DSH', 'hello'), false)
+    assert.ok(Date.now() - start < 500)
+
+    globalThis.fetch = async (url) => url.includes('/accessToken')
+      ? { ok: true, status: 200, text: async () => JSON.stringify({ accessToken: 'token', expireIn: 3600 }) }
+      : { ok: false, status: 500, text: () => new Promise(() => {}) }
+    const bodyStart = Date.now()
+    assert.equal(await new Outbound({ clientId: 'client', clientSecret: 'secret' }, () => {}, { timeoutMs: 15 }).sendMarkdown('https://example.invalid/webhook', 'DSH', 'hello'), false)
+    assert.ok(Date.now() - bodyStart < 500)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('AICard serializes stream/finalize and ignores a late non-final frame', async () => {
+  const originalFetch = globalThis.fetch
+  const calls = []
+  try {
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url, body: JSON.parse(init.body) })
+      return { ok: true, status: 200, text: async () => '' }
+    }
+    const card = await AICard.create({
+      token: async () => 'token',
+      robotCode: 'robot',
+      target: { type: 'user', userId: 'user' },
+      capability: new CardCapability(),
+      log: () => {},
+      timeoutMs: 100,
+      maxCardChars: 100,
+    })
+    await Promise.all([card.stream('first'), card.finish('final'), card.stream('late')])
+    const frames = calls
+      .filter((call) => call.url.endsWith('/card/streaming'))
+      .map((call) => call.body.content)
+    assert.deepEqual(frames, ['first', 'final'])
+    assert.equal(calls.at(-1).body.cardData.cardParamMap.flowStatus, '3')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('Renderer waits for an uncertain card timeout, persists pending, and does not send duplicate Markdown', async () => {
+  const root = mkdtempSync('/tmp/dsh-delivery-pending-')
+  try {
+    const store = new DeliveryStore(root)
+    const markdown = []
+    const renderer = new Renderer({
+      timeoutMs: 15,
+      deliveryStore: store,
+      config: {
+        replyMode: { direct: 'aicard', group: 'aicard' },
+        streaming: { enabled: false, throttleMs: 1, maxCardChars: 15000 },
+        asyncMode: false,
+        ackText: 'ack',
+        markdownTitle: 'DSH',
+        emotionFirstResponse: false,
+      },
+      outbound: {
+        sendMarkdown: async (_webhook, _title, text) => { markdown.push(text); return true },
+        sendText: async () => true,
+      },
+      emotion: { recall: async () => {} },
+      createCard: async () => ({ outTrackId: 'dshdt_uncertain', finish: async () => new Promise(() => {}) }),
+      log: () => {},
+    })
+    const settled = renderer.onInbound('session-1', message())
+    drive(renderer, 'session-1', 'turn/start', { turn: 10 })
+    drive(renderer, 'session-1', 'assistant/message', textEvent(10, '本机已完成'))
+    drive(renderer, 'session-1', 'turn/end', { turn: 10, reason: { kind: 'completed' } })
+    await settled
+    assert.deepEqual(markdown, [])
+    assert.deepEqual(store.list().map((entry) => [entry.outTrackId, entry.text, entry.turn]), [['dshdt_uncertain', '本机已完成', 10]])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('Renderer uses Markdown only for a clear card error and recovers the same outTrackId after restart', async () => {
+  const clear = deps({ cardFactory: () => ({ outTrackId: 'dshdt_clear', finish: async () => { throw Object.assign(new Error('HTTP 400'), { uncertain: false }) }, stream: async () => {} }) })
+  const settled = clear.renderer.onInbound('session-1', message())
+  drive(clear.renderer, 'session-1', 'turn/start', { turn: 1 })
+  drive(clear.renderer, 'session-1', 'assistant/message', textEvent(1, '明确失败降级'))
+  drive(clear.renderer, 'session-1', 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  await settled
+  assert.deepEqual(clear.markdown, ['明确失败降级'])
+
+  const root = mkdtempSync('/tmp/dsh-delivery-restart-')
+  try {
+    const store = new DeliveryStore(root)
+    store.put({ scope: 'conversation', session: 'session-1', turn: 10, outTrackId: 'dshdt_restart', text: '重启后补发', sessionWebhook: 'https://example.invalid/webhook', mode: 'aicard', updatedAt: Date.now() })
+    assert.equal(statSync(root).mode & 0o777, 0o700)
+    assert.equal(statSync(join(root, 'delivery-pending.json')).mode & 0o777, 0o600)
+    const options = []
+    const renderer = new Renderer({
+      timeoutMs: 50,
+      deliveryStore: store,
+      config: { replyMode: { direct: 'aicard', group: 'aicard' }, streaming: { enabled: false, throttleMs: 1, maxCardChars: 15000 }, asyncMode: false, ackText: 'ack', markdownTitle: 'DSH', emotionFirstResponse: false },
+      outbound: { sendMarkdown: async () => true, sendText: async () => true },
+      emotion: { recall: async () => {} },
+      createCard: async (_target, opts) => { options.push(opts); return { outTrackId: opts.outTrackId, finish: async () => {} } },
+      log: () => {},
+    })
+    const recovered = await renderer.recoverPending()
+    assert.deepEqual(recovered, { attempted: 1, recovered: 1 })
+    assert.deepEqual(options, [{ existing: true, outTrackId: 'dshdt_restart' }])
+    assert.deepEqual(store.list(), [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('Renderer does not silently settle when the pending journal cannot be written', async () => {
+  const markdown = []
+  let finished = false
+  const renderer = new Renderer({
+    timeoutMs: 20,
+    deliveryStore: {
+      put() { throw new Error('read-only journal') },
+      remove() {},
+    },
+    config: { replyMode: { direct: 'aicard', group: 'aicard' }, streaming: { enabled: false, throttleMs: 1, maxCardChars: 15000 }, asyncMode: false, ackText: 'ack', markdownTitle: 'DSH', emotionFirstResponse: false },
+    outbound: { sendMarkdown: async (_webhook, _title, text) => { markdown.push(text); return true }, sendText: async () => true },
+    emotion: { recall: async () => {} },
+    createCard: async () => ({ outTrackId: 'dshdt-journal-failure', finish: async () => { finished = true } }),
+    log: () => {},
+  })
+  const settled = renderer.onInbound('session-journal-failure', message())
+  drive(renderer, 'session-journal-failure', 'turn/start', { turn: 1 })
+  drive(renderer, 'session-journal-failure', 'assistant/message', textEvent(1, '不应静默完成'))
+  drive(renderer, 'session-journal-failure', 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  await settled
+  assert.equal(finished, false)
+  assert.match(markdown.at(-1), /交付状态暂时无法确认/)
+})
+
+test('Renderer dispose settles an active card with bounded FAILED handling and long replies are split', async () => {
+  const failed = []
+  const renderer = new Renderer({
+    timeoutMs: 50,
+    config: { replyMode: { direct: 'aicard', group: 'aicard' }, streaming: { enabled: false, throttleMs: 1, maxCardChars: 5 }, asyncMode: false, ackText: 'ack', markdownTitle: 'DSH', emotionFirstResponse: false },
+    outbound: { sendMarkdown: async () => true, sendText: async () => true },
+    emotion: { recall: async () => {} },
+    createCard: async (_target) => ({ outTrackId: `card-${failed.length}`, finish: async (text) => { failed.push(text) }, fail: async (text) => { failed.push(`FAILED:${text}`) } }),
+    log: () => {},
+  })
+  const settled = renderer.onInbound('session-dispose', message())
+  await renderer.dispose()
+  await settled
+  assert.ok(failed.some((text) => text.startsWith('FAILED:')))
+
+  const chunks = []
+  const long = new Renderer({
+    config: { replyMode: { direct: 'aicard', group: 'aicard' }, streaming: { enabled: false, throttleMs: 1, maxCardChars: 5 }, asyncMode: false, ackText: 'ack', markdownTitle: 'DSH', emotionFirstResponse: false },
+    outbound: { sendMarkdown: async () => true, sendText: async () => true },
+    emotion: { recall: async () => {} },
+    createCard: async () => ({ outTrackId: `card-${chunks.length}`, finish: async (text) => { chunks.push(text) } }),
+    log: () => {},
+  })
+  const longSettled = long.onInbound('session-long', message())
+  drive(long, 'session-long', 'turn/start', { turn: 1 })
+  drive(long, 'session-long', 'assistant/message', textEvent(1, 'abcdefghijk'))
+  drive(long, 'session-long', 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+  await longSettled
+  assert.ok(chunks.length >= 3)
+  assert.ok(chunks.every((chunk) => chunk.length <= 5))
+  assert.equal(chunks.join(''), 'abcdefghijk')
 })
 
 class MapStore {
@@ -340,6 +520,47 @@ test('management commands are owner-only and use the canonical session/model ser
   assert.match(replies.at(-1), /CyberMarcus/)
 })
 
+test('/replies and /resend are owner-only, use completed canonical turns, and reject snapshot drift', async () => {
+  const fixture = commandFixture()
+  fixture.bindings.set('dt-conversation-1', 'root-a')
+  let events = [
+    { type: 'turn/start', data: { turn: 1 } },
+    { type: 'assistant/message', data: textEvent(1, '第一次已完成') },
+    { type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } },
+    { type: 'turn/start', data: { turn: 10 } },
+    { type: 'assistant/message', data: textEvent(10, '昨晚的完整答复') },
+    { type: 'turn/end', data: { turn: 10, reason: { kind: 'completed' } } },
+    { type: 'turn/start', data: { turn: 11 } },
+    { type: 'assistant/message', data: textEvent(11, '错误结果不应出现') },
+    { type: 'turn/end', data: { turn: 11, reason: { kind: 'error' } } },
+  ]
+  fixture.sessionQuery.readSession = async (id) => ({ session: { id, origin: 'main' }, events })
+  const sent = []
+  fixture.deps.outbound.sendMarkdown = async (_webhook, _title, text) => { sent.push(text); fixture.replies.push(text); return true }
+
+  await fixture.commands.handle(commandMessage('/replies'))
+  assert.match(fixture.replies.at(-1), /turn 10/)
+  assert.match(fixture.replies.at(-1), /turn 1/)
+  assert.equal(fixture.replies.at(-1).includes('https://example.invalid'), false)
+  assert.equal(fixture.replies.at(-1).includes('错误结果不应出现'), false)
+
+  await fixture.commands.handle(commandMessage('/resend 1'))
+  assert.ok(sent.includes('昨晚的完整答复'))
+  await fixture.commands.handle(commandMessage('/resend turn:10'))
+  assert.equal(sent.filter((text) => text === '昨晚的完整答复').length, 2)
+
+  events = events.map((event) => event.data?.turn === 10 && event.type === 'assistant/message'
+    ? { ...event, data: textEvent(10, '内容已漂移') }
+    : event)
+  const before = sent.filter((text) => text === '昨晚的完整答复').length
+  await fixture.commands.handle(commandMessage('/resend 1'))
+  assert.equal(sent.filter((text) => text === '昨晚的完整答复').length, before)
+  assert.match(fixture.replies.at(-1), /清单已变化/)
+
+  await fixture.commands.handle(commandMessage('/replies', 'not-owner'))
+  assert.equal(fixture.replies.at(-1), '当前入口仅管理员可用。')
+})
+
 test('resuming a bound session composes the preset recorded by that session header', async () => {
   let composedPreset
   let resumeOptions
@@ -430,10 +651,13 @@ test('artifact scan is bounded, recent-only, relative, and rejects symlink or se
   try {
     const output = join(root, 'output')
     mkdirSync(join(output, 'nested'), { recursive: true })
+    mkdirSync(join(external, 'nested-external'), { recursive: true })
     mkdirSync(join(output, '.git'), { recursive: true })
     mkdirSync(join(output, 'node_modules'), { recursive: true })
     writeFileSync(join(external, 'outside.txt'), 'must not be followed')
+    writeFileSync(join(external, 'nested-external', 'outside.txt'), 'must not be followed')
     symlinkSync(join(external, 'outside.txt'), join(output, 'symlink.txt'))
+    symlinkSync(join(external, 'nested-external'), join(output, 'nested-link'))
     writeFileSync(join(output, 'credentials.json'), 'must not appear')
     writeFileSync(join(output, 'session-log.md'), 'must not appear')
     writeFileSync(join(output, '.hidden.md'), 'must not appear')
@@ -450,6 +674,7 @@ test('artifact scan is bounded, recent-only, relative, and rejects symlink or se
     assert.ok(rows.every((row) => !row.relativeName.includes('credentials')))
     assert.ok(rows.every((row) => !row.relativeName.includes('session')))
     assert.equal(rows.some((row) => row.relativeName.includes('symlink')), false)
+    assert.equal(rows.some((row) => row.relativeName.includes('nested-link')), false)
     assert.equal(rows.some((row) => row.relativeName.includes('old.txt')), false)
     assert.ok(rows.every((row) => row.type === 'MD'))
     assert.ok(rows.every((row) => row.size.endsWith(' B')))
@@ -476,6 +701,148 @@ test('artifact scan is bounded, recent-only, relative, and rejects symlink or se
     rmSync(root, { recursive: true, force: true })
     rmSync(external, { recursive: true, force: true })
   }
+})
+
+test('/send is owner-only, rescans the bound canonical session, and sends only a numbered artifact', async () => {
+  const root = mkdtempSync('/tmp/dsh-artifact-send-')
+  const now = Date.now()
+  try {
+    const output = join(root, 'output')
+    mkdirSync(output, { recursive: true })
+    const first = join(output, 'first.pdf')
+    const second = join(output, 'second.png')
+    writeFileSync(first, 'first')
+    utimesSync(first, new Date(now - 500), new Date(now - 500))
+    writeFileSync(second, 'second')
+    utimesSync(second, new Date(now), new Date(now))
+
+    const fixture = commandFixture()
+    fixture.sessionHeaders[0].cwd = root
+    fixture.sessionHeaders[0].createdAt = now - 1_000
+    fixture.bindings.set('dt-conversation-1', 'root-a')
+    const sends = []
+    fixture.deps.dws = {
+      async sendFile(request) {
+        sends.push(request)
+        return { ok: true }
+      },
+    }
+
+    await fixture.commands.handle(commandMessage('/artifacts'))
+    assert.match(fixture.replies.at(-1), /1\. `output\/second\.png`/)
+    assert.match(fixture.replies.at(-1), /`\/send 1`/)
+
+    // A new file inserted after the list is shown must not shift the old
+    // `/send 1` selection onto that new file.
+    const inserted = join(output, 'inserted-later.zip')
+    writeFileSync(inserted, 'inserted')
+    utimesSync(inserted, new Date(now + 1_000), new Date(now + 1_000))
+
+    await fixture.commands.handle(commandMessage('/send 1'))
+    assert.equal(sends.length, 1)
+    assert.equal(sends[0].conversationType, 'direct')
+    assert.equal(sends[0].senderStaffId, 'owner-staff')
+    assert.equal(sends[0].filePath, second)
+    assert.match(fixture.replies.at(-1), /已发送到当前钉钉对话/)
+
+    await fixture.commands.handle(commandMessage('/send /tmp/secret.pdf'))
+    assert.equal(sends.length, 1)
+    await fixture.commands.handle(commandMessage('/send 1', 'not-owner'))
+    assert.equal(sends.length, 1)
+    assert.match(fixture.replies.at(-1), /仅管理员可用/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('DwsTools sends direct and group files with account-local env credentials only', async () => {
+  const calls = []
+  const logs = []
+  const tool = new DwsTools({
+    workspace: '/workspace',
+    clientId: 'primary-client',
+    clientSecret: 'primary-secret',
+    runner: async (cmd, args, options) => {
+      calls.push({ cmd, args: [...args], options })
+      return { code: 0, stdout: '{"success":true}', stderr: '' }
+    },
+    log: (line) => logs.push(line),
+  })
+  const direct = await tool.sendFile({
+    conversationType: 'direct',
+    senderStaffId: 'direct-user',
+    filePath: '/workspace/output/direct.pdf',
+    clientId: 'direct-client',
+    clientSecret: 'direct-secret',
+  })
+  const group = await tool.sendFile({
+    conversationType: 'group',
+    conversationId: 'group-conversation',
+    filePath: '/workspace/output/group.png',
+    clientId: 'group-client',
+    clientSecret: 'group-secret',
+  })
+  assert.deepEqual(direct, { ok: true })
+  assert.deepEqual(group, { ok: true })
+  assert.deepEqual(calls.map((call) => call.args), [
+    [
+      'chat', 'message', 'send-by-bot', '--robot-code', 'direct-client',
+      '--msg-type', 'file', '--file-path', '/workspace/output/direct.pdf',
+      '--users', 'direct-user', '--format', 'json',
+    ],
+    [
+      'chat', 'message', 'send-by-bot', '--robot-code', 'group-client',
+      '--msg-type', 'file', '--file-path', '/workspace/output/group.png',
+      '--conversation-id', 'group-conversation', '--format', 'json',
+    ],
+  ])
+  assert.equal(calls[0].options.env.DWS_CLIENT_ID, 'direct-client')
+  assert.equal(calls[0].options.env.DWS_CLIENT_SECRET, 'direct-secret')
+  assert.equal(calls[1].options.env.DWS_CLIENT_ID, 'group-client')
+  assert.equal(calls[1].options.env.DWS_CLIENT_SECRET, 'group-secret')
+  assert.equal(calls.some((call) => call.args.includes('direct-secret') || call.args.includes('group-secret')), false)
+  assert.equal(logs.some((line) => line.includes('direct-secret') || line.includes('group-secret')), false)
+})
+
+test('DwsTools treats nonzero, timeout, and failed JSON as send failures', async () => {
+  const responses = [
+    { code: 1, stdout: '{"success":true}', stderr: 'rejected' },
+    { code: null, timedOut: true, stdout: '', stderr: '' },
+    { code: 0, stdout: '{"success":false,"error":"denied"}', stderr: '' },
+  ]
+  const tool = new DwsTools({
+    workspace: '/workspace',
+    clientId: 'client',
+    clientSecret: 'secret',
+    runner: async () => responses.shift(),
+    log: () => {},
+  })
+  const request = { conversationType: 'direct', senderStaffId: 'owner', filePath: '/workspace/output/file.pdf' }
+  const nonzero = await tool.sendFile(request)
+  const timeout = await tool.sendFile(request)
+  const failedJson = await tool.sendFile(request)
+  assert.equal(nonzero.ok, false)
+  assert.match(nonzero.reason, /发送失败/)
+  assert.equal(timeout.ok, false)
+  assert.match(timeout.reason, /超时/)
+  assert.equal(failedJson.ok, false)
+  assert.match(failedJson.reason, /未确认/)
+})
+
+test('dws auth status is advisory while bot attachment capability remains available', async () => {
+  const tool = new DwsTools({
+    workspace: '/workspace',
+    runner: async (_cmd, args) => args[0] === '--version'
+      ? { code: 0, stdout: 'dws version v1.0.60\n' }
+      : { code: 0, stdout: '{"success":true,"authenticated":false,"message":"未登录"}' },
+    log: () => {},
+  })
+  const status = await tool.enable()
+  assert.equal(status.dwsFound, true)
+  assert.equal(status.botFileAvailable, true)
+  assert.equal(status.authed, false)
+  assert.match(tool.statusLine(), /机器人附件可用/)
+  assert.match(tool.statusLine(), /个人身份：未登录/)
 })
 
 test('interactive console seeds the real dynamic form and updates one card idempotently', async () => {

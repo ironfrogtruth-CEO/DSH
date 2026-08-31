@@ -1,11 +1,11 @@
 ---
 name: three-provinces-six-ministries
-description: 三省六部治理层：把 goal-first-control 的七节点映射为内容、行动、渲染三省与澄清、搜寻、规划、执行、检查、产出六部，约束真源、动作、质量和交付；只作为复杂任务的治理叠加，不替代既有 SOP 状态机。
+description: 三省六部治理层：当模型选择三省六部轴的 light/full 深度时，把 goal-first-control 的七节点映射为内容、行动、渲染三省与六部；保护真源、动作、质量和交付，不把治理叠加误当成所有任务的强制流程。
 ---
 
 # 三省六部
 
-把“以终为始”落到每个复杂任务的责任边界和验收闸门上。三省负责守住三类底线，六部负责把七个既有节点做成可执行动作；不建第二套状态机。
+把“以终为始”按需落到任务的责任边界和验收闸门上。三省负责守住三类底线，六部负责把七个既有节点做成可执行动作；不建第二套状态机。`implicit` 只做静默的事实、动作和终态检查，`light` 给出最小责任分工，`full` 才在正式七节点上展开完整 Gate。
 
 ## 三省职责
 
@@ -29,7 +29,7 @@ description: 三省六部治理层：把 goal-first-control 的七节点映射�
 
 ## 使用方式
 
-1. 复杂任务先加载 `goal-first-control`，从最终可观察结果倒推 `goal_contract` 和 `output_contract`；当路由为 `sop_required` 时，把三省六部作为治理叠加，必要时再加载 `sop-orchestrator` 及领域技能。
+1. 先加载 `goal-first-control` 并独立判断深度；只有模型选择 `light/full`，或路由为 `sop_required` 时，才把三省六部作为可见治理叠加，必要时再加载 `sop-orchestrator` 及领域技能。
 2. 在每个 SOP 节点只声明当前省、当前部、Gate、证据和下一节点/回退点；不要用“体系化”“闭环”等空话替代具体责任。
 3. 内容省的事实 Gate、行动省的授权/输入 Gate、渲染省的 QA/交付 Gate 任一未通过，都只能停在当前节点或回退到最早责任节点；不得用重试、降阈值或换模型掩盖缺口。
 4. 失败时沿用 `reliable-development` 的证据优先恢复：冻结输入、版本、错误、运行态和产物，分类 failure fingerprint，只改变一个有效变量，保留已确认上游。
@@ -46,4 +46,4 @@ description: 三省六部治理层：把 goal-first-control 的七节点映射�
 
 完成前回读 `goal_contract`：每项标记 `met`、`partial` 或 `not met`。实现、聚焦测试、全回归、实时用户流和生产就绪必须分开报告。任何 Gate 没有对应证据，都不能写成“已完成”。
 
-可复用/虾缸任务叠加 `plan-before-action`，保持会话状态与 Workflow 运行态分离。
+当模型选择 `谋定后动=full`，或任务明确可复用/涉及虾缸运行时，再叠加 `plan-before-action`，保持会话状态与 Workflow 运行态分离。

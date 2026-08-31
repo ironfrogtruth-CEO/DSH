@@ -1,0 +1,27 @@
+{
+  "schema": "stenographer_baseline.v1",
+  "captured_at": "2026-08-31T06:49:52+08:00",
+  "repository": "/Users/marcus/.dsh",
+  "head": "5e8bdf6dccad614b18e27d86a6b0bdcc334c937e",
+  "dsh_version": "0.1.1-rc.2",
+  "runtime": {"port": 3080, "app": "/Applications/大神.app", "architecture": "arm64"},
+  "critical_hashes": {
+    "apps/大神.swift": "1275486333e14e585de4caab58758fea85117ec1fec20ac22d5459292c2ad2b1",
+    "apps/Info.plist": "a25e5197a852fd061e4d6c0b251b10403991b3d118a0c1dac990ad88289ab85f",
+    "extensions/shrimp-shell/client.js": "667e03b797349410d15609d8adac1a35dc56baf334e2e6eb3b00eb274b279e4b",
+    "profiles/web/cordis.patch.yml": "162656d99e003ebc27206e67e0192fd02e5bc872a196b9879dc7b4ae3fe55c58",
+    "settings.yaml": "f2c573302484fbd404fa702e34917370db31bbdb8324827d76f141c5aec33a0f"
+  },
+  "focused_test_baseline": {
+    "tests": 35,
+    "passed": 32,
+    "failed": 3,
+    "pre_existing_failures": [
+      "dingtalk-runtime-patch: retains only the parent DingTalk route and forwards a later subagent report once",
+      "dingtalk-runtime-patch: does not publish pure-tool follow-ups and clears the route on a manual App user message",
+      "dingtalk-runtime-patch: expires the in-memory route after two hours and falls back to Markdown when a replay card fails"
+    ],
+    "failure_fingerprint": "profiles/web/dingtalk-runtime-patch.test.mjs|Renderer.onInbound|TypeError:this.recoverPending is not a function|baseline-head:5e8bdf6d"
+  },
+  "scope_note": "The three DingTalk failures existed before stenographer source changes and are not owned by this feature. All stenographer and affected app/profile tests must pass independently."
+}

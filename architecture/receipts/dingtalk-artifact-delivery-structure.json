@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "structure",
+  "status": "completed",
+  "input_checksum": "77e900e3886bfa5e689ba6ef5e54c2c3cd8f944e913a52ae8cd6591404304603",
+  "version_refs": {"schema": "cybermarcus_work_contract.v1"},
+  "actual_bindings": {"skill": "plan-before-action"},
+  "artifacts": ["architecture/dingtalk-artifact-delivery.v1.json"],
+  "qa_result": {"status": "passed", "checks": ["工作合同 schema 校验通过", "owner-only 和回退边界已定义"]},
+  "evidence": ["validate_contract.py returned ok with seven nodes"],
+  "failure_fingerprint": null,
+  "rollback_to": "parse"
+}

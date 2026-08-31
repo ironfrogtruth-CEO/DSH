@@ -1,11 +1,11 @@
 ---
 name: plan-before-action
-description: 谋定后动：Use when a complex task needs an executable production blueprint, durable node receipts, repeatability assessment, catch-shrimp design, or an authorized run of an existing shrimp. Do not use for trivial one-step answers.
+description: 谋定后动：Use at the model's `full` planning depth when a task needs an executable production blueprint, durable node receipts, repeatability assessment, catch-shrimp design, or an authorized high-consequence run. Do not use for trivial one-step answers.
 ---
 
 # 谋定后动
 
-This is the third CyberMarcus axis. Compile intent into a validated production blueprint before mutation or external execution. It extends the existing seven-node SOP; it does not create another state machine.
+This is the third CyberMarcus axis. It is an optional reasoning depth, not a universal gate. At `implicit` or `light`, keep planning proportional and do not create a formal contract. At `full`, compile intent into a validated production blueprint before mutation or external execution. It extends the existing seven-node SOP; it does not create another state machine.
 
 ## Route
 
@@ -16,7 +16,7 @@ Classify the task as one of:
 - `existing_shrimp`: a published shrimp matches the work contract and complete run inputs are available.
 - `shrimp_mismatch`: an existing shrimp cannot satisfy the work contract; return to catch design or draft editing.
 
-Simple tasks stay direct. A suggestion to catch or match a shrimp never authorizes creation, trial, publication or execution.
+Simple tasks stay direct. A model decision to use `full` planning must activate the formal route with `goal_first_state_transition(action=activate_formal)`, a complete `goalContract`, and `axisDepths.planBeforeAction=full`. A suggestion to catch or match a shrimp never authorizes creation, trial, publication or execution.
 
 ## Build the Work Contract
 

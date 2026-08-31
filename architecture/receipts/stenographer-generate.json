@@ -1,0 +1,45 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "generate",
+  "status": "completed",
+  "input_checksum": "b41d4394692dab75bdaf6c818262d73b18962c2916c6fbb983316d7f370b2e81",
+  "version_refs": {
+    "api": "dsh_stenographer_api.v1",
+    "app_source_sha256": "0c841daf8b1202b1b9a9a34e626ab2f325da65d69be68936c515d04fcee14b45",
+    "host_service_sha256": "30686537e30a39de0e9e19f2e2e093eeb13ff81b8b8551da114b141a63cd8287",
+    "client_sha256": "b3c595e1492c328b90ace53e9818ddb31d860238fb5b9438ed495aab4aa35bfa",
+    "signing_script_sha256": "7b95a7fac5c5800480c0c7460ca1fa466b9704a8647b6b7b051c374eedd54b7d"
+  },
+  "actual_bindings": {
+    "native": "Swift AVAudioEngine + ScreenCaptureKit",
+    "stt": "local MLX Whisper large-v3-turbo",
+    "speaker": "local FunASR ERes2NetV2",
+    "artifact_writer": "zhipu-glm/glm-5.3-flash"
+  },
+  "artifacts": [
+    "apps/大神.swift",
+    "apps/Info.plist",
+    "apps/dashen-stenographer-native.test.mjs",
+    "apps/sign-dashen-local.sh",
+    "extensions/dsh-stenographer",
+    "profiles/web/stenographer-profile.test.mjs",
+    "/Applications/大神.app"
+  ],
+  "qa_result": {
+    "status": "passed",
+    "checks": [
+      "native capture bridge compiles for arm64 macOS 13",
+      "host persistence and recovery tests pass",
+      "client edit, image, lifecycle and handoff tests pass",
+      "paid API fallback is disabled"
+    ]
+  },
+  "evidence": [
+    "Focused native, client, Host and profile suite passed 34 of 34 tests.",
+    "Installed app passes strict ad-hoc code-sign verification.",
+    "Model health reports offlineOnly=true and paidApiFallback=false.",
+    "Pre-install app backup is /Users/marcus/.dsh/backups/stenographer-app-preinstall-20260831-0725."
+  ],
+  "failure_fingerprint": null,
+  "rollback_to": "structure"
+}

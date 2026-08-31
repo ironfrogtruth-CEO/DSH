@@ -1,7 +1,6 @@
-// dsh-dsbalance — Client half(浏览器 ModuleLoader 格式)
-// 侧边栏底部显示当前品牌(DS/GLM)的 API 余额 + 充值入口;每 60 秒刷新。
-// 感知: 订阅 modelDirectories 的会话目录, 模型选择器切换 provider 后卡片联动。
-// 数据源: 同源 fetch /api/dsbalance/balance?provider=deepseek|zhipu(Host 路由,服务端持有密钥)
+// dsh-dsbalance — Client half (浏览器 ModuleLoader 格式)
+// 侧边栏底部同时显示 DS / GLM 余额；金额各自直达官方账户页，每 60 秒刷新。
+// 数据源：同源 fetch /api/dsbalance/balance?provider=deepseek|zhipu（Host 路由，服务端持有密钥）
 window.__ModuleLoader__.load({
   id: '@local/dsh-dsbalance',
   factory: (require) => {
@@ -9,9 +8,7 @@ window.__ModuleLoader__.load({
     var exports = module.exports
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
 
-    let React = require('react')
-
-    // 品牌注册表: key → 展示信息。品牌缩写按用户要求用 DS / GLM。
+    const React = require('react')
     const BRANDS = {
       deepseek: {
         key: 'deepseek',
@@ -30,165 +27,158 @@ window.__ModuleLoader__.load({
         dot: '#2b9ef3',
       },
     }
-    // provider route(模型选择器里的 provider id)→ 品牌 key; 未知回退 DeepSeek。
-    function brandForProvider(provider) {
-      if (typeof provider !== 'string' || provider.length === 0) return 'deepseek'
-      const p = provider.toLowerCase()
-      if (p.includes('zhipu') || p.includes('zai') || p.includes('glm') || p === 'zhipu-glm') return 'zhipu'
-      if (p.includes('deepseek') || p.includes('ds')) return 'deepseek'
-      return 'deepseek'
-    }
+    const BRAND_LIST = [BRANDS.deepseek, BRANDS.zhipu]
+    const LOW_BALANCE_THRESHOLD = 10
 
-    // styles: 注入在模块顶层而非 apply 内 —— HMR 重载(entry.refresh 重跑 factory)后样式可恢复;
-    // 先删后建幂等注入;挂 data-plugin 让 client-hmr 的 removeOwnedStyles 一致管理。
+    // styles：顶层幂等注入，HMR 重载后样式可恢复；挂 data-plugin 让 client-hmr 一致管理。
     if (typeof document !== 'undefined') {
       const style = document.createElement('style')
       style.id = 'dsbalance-styles'
       style.dataset.plugin = '@local/dsh-dsbalance'
       style.textContent = [
-        '.dsbalance-card { box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; height: 38px; margin: 0 0 6px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.2)); border-radius: 10px; background: var(--dsw-alias-bg-layer-1, color-mix(in srgb, currentColor 3%, transparent)); color: var(--dsw-alias-label-primary, #1f2329); text-decoration: none; font: 12px/1.2 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: background .15s ease, border-color .15s ease; }',
+        '.dsbalance-card { box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; height: 38px; margin: 0 0 6px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.2)); border-radius: 10px; background: var(--dsw-alias-bg-layer-1, color-mix(in srgb, currentColor 3%, transparent)); color: var(--dsw-alias-label-primary, #1f2329); font: 12px/1.2 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: background .15s ease, border-color .15s ease; }',
         '.dsbalance-card:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.1)); border-color: color-mix(in srgb, var(--dsw-alias-label-secondary, #8a8f98) 42%, transparent); }',
-        '.dsbalance-card:focus-visible { outline: 2px solid #5b8ff9; outline-offset: 2px; }',
+        '.dsbalance-card:focus-within { outline: 2px solid #5b8ff9; outline-offset: 2px; }',
+        '.dsbalance-label { flex: 0 0 auto; color: var(--dsw-alias-label-secondary, #747982); white-space: nowrap; }',
+        '.dsbalance-providers { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; margin-left: auto; }',
+        '.dsbalance-provider { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; }',
         '.dsbalance-badge { box-sizing: border-box; flex: 0 0 auto; min-width: 26px; height: 18px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; color: #fff; font: 700 10px/1 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; letter-spacing: .02em; }',
-        '.dsbalance-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #35a56f; box-shadow: 0 0 0 3px color-mix(in srgb, #35a56f 14%, transparent); }',
-        '.dsbalance-label { min-width: 0; color: var(--dsw-alias-label-secondary, #747982); white-space: nowrap; }',
-        '.dsbalance-value { margin-left: auto; color: var(--dsw-alias-label-primary, #1f2329); font-weight: 650; white-space: nowrap; }',
-        '.dsbalance-topup { color: #e55f48; font-weight: 600; white-space: nowrap; }',
-        '.dsbalance-low .dsbalance-dot { background: #e5484d; box-shadow: 0 0 0 3px color-mix(in srgb, #e5484d 14%, transparent); }',
+        '.dsbalance-value { color: var(--dsw-alias-label-primary, #1f2329); font-weight: 650; text-decoration: none; text-underline-offset: 3px; }',
+        '.dsbalance-value:hover { color: #5b8ff9; text-decoration: underline; }',
+        '.dsbalance-value:focus-visible { color: #5b8ff9; text-decoration: underline; outline: 2px solid #5b8ff9; outline-offset: 2px; border-radius: 3px; }',
         '.dsbalance-low .dsbalance-value { color: #e5484d; }',
-        '.dsbalance-unavailable .dsbalance-dot { background: #9aa0a8; box-shadow: none; }',
-        '.dsbalance-rail { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-bottom: 6px; border-radius: 9px; color: var(--dsw-alias-label-primary, #1f2329); text-decoration: none; font: 650 13px/1 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }',
-        '.dsbalance-rail:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); }',
+        '.dsbalance-low .dsbalance-value:hover, .dsbalance-low .dsbalance-value:focus-visible { color: #f06a6e; }',
+        '.dsbalance-unavailable .dsbalance-value { color: var(--dsw-alias-label-secondary, #747982); }',
+        '.dsbalance-rail { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-bottom: 6px; border-radius: 9px; color: var(--dsw-alias-label-primary, #1f2329); font: 650 13px/1 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }',
         'body[data-ds-dark-theme] .dsbalance-card, body[data-ds-dark-theme] .dsbalance-rail { color: var(--dsw-alias-label-primary, #f5f6f7); }',
       ].join('\n')
       document.getElementById(style.id)?.remove()
       document.head.appendChild(style)
     }
 
-    const inject = ['slots', 'timer', 'modelDirectories']
+    const inject = ['slots', 'timer']
+
+    function errorText(cause) {
+      return String(cause && cause.message ? cause.message : cause || '余额读取失败')
+    }
+
+    function amountFrom(data) {
+      if (!data || data.ok !== true || data.balanceUnknown === true || !Array.isArray(data.infos)) return null
+      const main = data.infos.find((item) => item && item.currency === 'CNY') || data.infos[0]
+      const amount = main && main.total
+      const number = amount === null || amount === undefined || amount === '' ? NaN : Number(amount)
+      return Number.isFinite(number) ? number : null
+    }
+
+    function displayAmount(state) {
+      const amount = amountFrom(state && state.data)
+      return amount === null ? '—' : '¥' + amount.toFixed(2)
+    }
 
     function apply(ctx) {
       const slots = ctx.slots
       const timer = ctx.get('timer')
-      // 模型目录服务(可选): 提供 per-session 的模型选择快照, 用于感知当前 provider。
-      const directories = ctx.get('modelDirectories')
 
       ctx.effect(() => slots.inject('sidebar.footer.action', () => slots.register(
-        { name: 'sidebar.footer.action', id: 'dsbalance', order: 90, label: 'API 余额' },
+        { name: 'sidebar.footer.action', id: 'dsbalance', order: 90, label: '余额' },
         (props) => {
-          const [state, setState] = React.useState(null)
-          // 当前品牌: 由模型目录快照推导(provider → DS/GLM); 目录不可用时回退 DeepSeek。
-          const [snap, setSnap] = React.useState(null)
+          // 每个 provider 使用独立 key；一侧失败只更新自己的 state，另一侧继续保留结果。
+          const [balances, setBalances] = React.useState({ deepseek: null, zhipu: null })
+
           React.useEffect(() => {
-            // 订阅所有活跃会话的模型目录, 任一会话当前选中 provider 变化即联动。
-            let stops = []
-            const sync = () => {
-              const live = directories && directories.live ? directories.live.directories : null
-              if (!live) return
-              let provider = null
-              // Map 插入顺序≈会话活跃顺序: 取最后一个有非空选择的会话。
-              for (const directory of live.values()) {
-                if (!directory || !directory.store) continue
-                const s = directory.store.getSnapshot()
-                if (s && s.current && s.current.provider) {
-                  provider = s.current.provider
+            let disposed = false
+
+            const loadProvider = (brand) => fetch(
+              '/api/dsbalance/balance?provider=' + brand.apiProvider,
+              { cache: 'no-store', headers: { Accept: 'application/json' } },
+            )
+              .then((response) => response.json().then((data) => {
+                if (response.ok === false || data?.ok === false) {
+                  throw new Error(data?.error || `状态读取失败(${response.status || 0})`)
                 }
-              }
-              setSnap({ provider })
-            }
-            const subscribeAll = () => {
-              stops.forEach((stop) => { try { stop() } catch (e) {} })
-              stops = []
-              const live = directories && directories.live ? directories.live.directories : null
-              if (!live) return
-              for (const directory of live.values()) {
-                if (!directory || !directory.store) continue
-                try { stops.push(directory.store.subscribe(sync)) } catch (e) {}
-              }
-            }
-            sync()
-            subscribeAll()
-            // 目录服务懒创建会话目录, 轮询兜底补订阅。
-            const poll = timer ? timer.interval(() => { sync(); subscribeAll() }, 5000) : null
+                return data
+              }))
+              .then((data) => {
+                if (disposed) return
+                setBalances((previous) => ({
+                  ...previous,
+                  [brand.key]: { data, error: null },
+                }))
+              })
+              .catch((cause) => {
+                if (disposed) return
+                setBalances((previous) => ({
+                  ...previous,
+                  [brand.key]: { data: null, error: errorText(cause) },
+                }))
+              })
+
+            // 不等待任一请求，两个 provider 在同一轮并行启动且各自处理结果。
+            const loadAll = () => { void Promise.all(BRAND_LIST.map(loadProvider)) }
+            loadAll()
+            const cancel = timer && typeof timer.interval === 'function'
+              ? timer.interval(loadAll, 60000)
+              : setInterval(loadAll, 60000)
             return () => {
-              stops.forEach((stop) => { try { stop() } catch (e) {} })
-              if (poll !== null) poll()
+              disposed = true
+              if (typeof cancel === 'function') cancel()
+              else clearInterval(cancel)
             }
           }, [])
 
-          // 数据刷新: 按当前品牌查对应余额接口。
-          React.useEffect(() => {
-            let disposed = false
-            const brandKey = snap && snap.provider ? brandForProvider(snap.provider) : 'deepseek'
-            const brand = BRANDS[brandKey] || BRANDS.deepseek
-            const load = () => {
-              fetch('/api/dsbalance/balance?provider=' + brand.apiProvider, { cache: 'no-store' })
-                .then((r) => r.json())
-                .then((data) => { if (!disposed) setState(data) })
-                .catch((e) => { if (!disposed) setState({ ok: false, error: String(e) }) })
-            }
-            load()
-            const id = timer ? timer.interval(load, 60000) : null
-            return () => { disposed = true; if (id !== null) id() }
-          }, [snap && snap.provider ? brandForProvider(snap.provider) : 'deepseek'])
-
-          const brandKey = snap && snap.provider ? brandForProvider(snap.provider) : 'deepseek'
-          const brand = BRANDS[brandKey] || BRANDS.deepseek
-          const ok = Boolean(state && state.ok)
-          // 智谱侧无公开余额 API: host 返回 balanceUnknown, 简洁降级(不反复提醒"到控制台")。
-          const unknown = ok && state.balanceUnknown === true
-          const infos = ok && !unknown ? (state.infos || []) : []
-          const main = infos.find((b) => b.currency === 'CNY') || infos[0]
-          const total = main ? main.total : null
-          const low = total !== null && Number(total) < 10
-          const value = state === null
-            ? '查询中…'
-            : unknown
-              ? '—'
-              : total !== null
-                ? '¥' + total
-                : '—'
-          const title = state === null
-            ? brand.full + ' API 余额查询中'
-            : unknown
-              ? brand.full + ' 余额登录态未同步或已过期，点击前往控制台'
-              : ok
-                ? brand.full + ' API 余额 ' + value + '，点击前往官方充值'
-                : '余额暂不可用，点击前往' + brand.full + '官方平台'
-          const className = ok ? (low ? 'dsbalance-card dsbalance-low' : 'dsbalance-card') : 'dsbalance-card dsbalance-unavailable'
-          const badge = React.createElement('span', {
-            className: 'dsbalance-badge',
-            style: { background: brand.dot },
-            'aria-hidden': true,
-          }, brand.short)
           if (!(props && props.wide)) {
             return React.createElement(
-              'a',
+              'span',
               {
-                className: 'dsbalance-rail' + (low ? ' dsbalance-low' : ''),
-                href: brand.topUpUrl,
-                target: '_blank',
-                rel: 'noopener noreferrer',
-                title,
-                'aria-label': title,
+                className: 'dsbalance-rail',
+                title: '余额：展开侧栏查看 DS 与 GLM',
+                'aria-label': '余额：展开侧栏查看 DS 与 GLM',
               },
-              brand.short,
+              '¥',
             )
           }
+
           return React.createElement(
-            'a',
-            {
-              className,
-              href: brand.topUpUrl,
-              target: '_blank',
-              rel: 'noopener noreferrer',
-              title,
-              'aria-label': title,
-            },
-            badge,
-            React.createElement('span', { className: 'dsbalance-label' }, ok ? 'API 余额' : '余额暂不可用'),
-            React.createElement('span', { className: 'dsbalance-value' }, value),
-            React.createElement('span', { className: 'dsbalance-topup' }, unknown ? '控制台 ↗' : '充值 ↗'),
+            'div',
+            { className: 'dsbalance-card', role: 'group', 'aria-label': '余额' },
+            React.createElement('span', { className: 'dsbalance-label' }, '余额'),
+            React.createElement(
+              'div',
+              { className: 'dsbalance-providers' },
+              BRAND_LIST.map((brand) => {
+                const state = balances[brand.key]
+                const amount = amountFrom(state && state.data)
+                const value = displayAmount(state)
+                const low = amount !== null && amount < LOW_BALANCE_THRESHOLD
+                const unavailable = amount === null
+                const providerTitle = state === null
+                  ? brand.full + ' 余额查询中，点击金额打开官方账户页面'
+                  : unavailable
+                    ? brand.full + ' 余额暂不可用，点击金额打开官方账户页面'
+                    : brand.full + ' 余额 ' + value + '，点击金额打开官方账户页面'
+                return React.createElement(
+                  'span',
+                  { className: 'dsbalance-provider' + (low ? ' dsbalance-low' : '') + (unavailable ? ' dsbalance-unavailable' : ''), key: brand.key },
+                  React.createElement('span', {
+                    className: 'dsbalance-badge',
+                    style: { background: brand.dot },
+                    'aria-hidden': true,
+                  }, brand.short),
+                  React.createElement(
+                    'a',
+                    {
+                      className: 'dsbalance-value',
+                      href: brand.topUpUrl,
+                      target: '_blank',
+                      rel: 'noopener noreferrer',
+                      title: providerTitle,
+                      'aria-label': providerTitle,
+                    },
+                    value,
+                  ),
+                )
+              }),
+            ),
           )
         },
       )), 'dsbalance: sidebar footer')

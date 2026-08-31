@@ -71,22 +71,41 @@ test('fresh rc.2 baseline gets a single-file v2 patch and route behavior is corr
 
 		const { resolveChildAgentOptions } = await importFixtureIndex(fixture.packageRoot)
 		const parent = {
-			options: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 111 },
-			session: { requestHeader: () => ({ config: { provider: 'ollama-local', model: 'qwen3-coder', maxTokens: 222 } }) },
+			options: { provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'low', maxTokens: 111 },
+			session: { requestHeader: () => ({ config: { provider: 'ollama-local', model: 'qwen3-coder', reasoningEffort: 'high', maxTokens: 222 } }) },
 		}
 		assert.deepEqual(resolveChildAgentOptions(parent, undefined, 1), {
-			provider: 'ollama-local', model: 'qwen3-coder', maxTokens: 222, subagentDepth: 1,
+			provider: 'ollama-local', model: 'qwen3-coder', reasoningEffort: 'high', maxTokens: 222, subagentDepth: 1,
 		})
 		assert.deepEqual(resolveChildAgentOptions(parent, { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 333 }, 1), {
-			provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 333, subagentDepth: 1,
+			provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'high', maxTokens: 333, subagentDepth: 1,
 		})
-		const noHeader = { options: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 444 }, session: { requestHeader: () => undefined } }
+		assert.deepEqual(resolveChildAgentOptions(parent, { provider: 'child-provider', reasoningEffort: 'medium', maxTokens: 333 }, 1), {
+			provider: 'child-provider', model: 'qwen3-coder', reasoningEffort: 'medium', maxTokens: 333, subagentDepth: 1,
+		})
+		const partialHeader = {
+			options: { provider: 'option-provider', model: 'option-model', reasoningEffort: 'option-effort', maxTokens: 444 },
+			session: { requestHeader: () => ({ config: { model: 'header-model', reasoningEffort: 'header-effort' } }) },
+		}
+		assert.deepEqual(resolveChildAgentOptions(partialHeader, undefined, 2), {
+			provider: 'option-provider', model: 'header-model', reasoningEffort: 'header-effort', maxTokens: 444, subagentDepth: 2,
+		})
+		const noHeader = { options: { provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'low', maxTokens: 444 }, session: { requestHeader: () => undefined } }
 		assert.deepEqual(resolveChildAgentOptions(noHeader, undefined, 2), {
-			provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 444, subagentDepth: 2,
+			provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'low', maxTokens: 444, subagentDepth: 2,
+		})
+		assert.deepEqual(resolveChildAgentOptions(noHeader, { reasoningEffort: undefined }, 2), {
+			provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'low', maxTokens: 444, subagentDepth: 2,
 		})
 	} finally {
 		rmSync(fixture.root, { recursive: true, force: true })
 	}
+})
+
+test('the in-process driver consumes the shared selected-route helper', () => {
+	const driver = readFileSync(path.join(repoRoot, 'install/node_modules/@deepseek-ai/dsh-subagent-in-process-driver/lib/index.js'), 'utf8')
+	assert.match(driver, /import \{[^}]*resolveChildAgentOptions[^}]*\} from "@deepseek-ai\/dsh-subagent"/s)
+	assert.match(driver, /agentOptions: resolveChildAgentOptions\(parent, request\.agentOptions, childDepth\)/)
 })
 
 test('migrates complete v1 and semi-old v2 states, restoring invariant byte-for-byte', async () => {

@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "validate",
+  "status": "completed",
+  "input_checksum": "77e900e3886bfa5e689ba6ef5e54c2c3cd8f944e913a52ae8cd6591404304603",
+  "version_refs": {"patch_hash": "nqkjp2oucffdj6qpn5uxbpbgc4"},
+  "actual_bindings": {"tool": "node --test plus frozen profile restore"},
+  "artifacts": ["profiles/web/dingtalk-runtime-patch.test.mjs", "profiles/web/dingtalk-profile.test.mjs"],
+  "qa_result": {"status": "passed", "checks": ["focused 19/19", "broader 43/43", "clean patch apply", "frozen profile restore"]},
+  "evidence": ["node test TAP pass", "patch-apply-and-critical-file-compare ok", "frozen-profile-restore ok"],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

@@ -1,0 +1,46 @@
+平安好医生企业健康方案模板 - 素材来源记录
+
+1. assets/cover-pafc.jpeg
+   用途：封面平安金融中心（PAFC）建筑图
+   来源：用户提供的《企业健康管理方案-横版》PDF 第 1 页嵌入图
+   源引用：用户真源 / 第 1 页
+   限制：只用于平安体系内部与经授权的对外材料，不作为建筑版权授权声明
+
+2. assets/service-mdt.jpg
+   用途：重点服务页专业二诊场景
+   素材编号：paig.svc.mdt
+   来源：本机平安企康视觉组件外挂库
+   safe_for_external：True
+   license_status：ai_generated_original
+
+3. assets/case-checkup.jpg
+   用途：案例页个性化体检场景
+   素材编号：paig.svc.checkup
+   来源：本机平安企康视觉组件外挂库
+   safe_for_external：True
+   license_status：ai_generated_original
+
+4. assets/service-online-doctor.jpg
+   用途：在线家庭医生服务详情页
+   素材编号：PAIG-SVC-002
+   来源：本机平安企康视觉组件外挂库，原文件为 PNG，模板内转为 JPEG
+   safe_for_external：True
+   license_status：ai_generated_original
+
+5. assets/closing-professionals.jpg
+   用途：结束页专业团队与城市建筑图
+   来源：用户提供的《企业健康管理方案-横版》PDF 第 42 页嵌入图
+   源引用：用户真源 / 第 42 页
+   限制：只用于平安体系内部与经授权的对外材料
+
+模板不含客户 Logo、客户名称、二维码、联系方式、价格、服务次数或未经核验的案例结果。
+
+版式参考：
+- 用户提供的《企业健康管理方案-横版》PDF：主视觉、浅色 PAFC 封面、平安橙/健康绿、满版内容密度。
+- 用户提供的《新插旗规则》PDF：灰度建筑、橙色横带、多栏信息结构。仅参考视觉与信息分布，内部规则不进入模板正文。
+- 用户提供的《美团骑手专属健康管理综合解决方案》PPTX：服务详情页的图片、价值判断与流程组合。
+- 用户提供的《1124企业健康服务模型》PPTX：一个阵地、一支队伍、两精赋能、四专服务的总览结构。
+- 用户提供的《好医生后80服务体系总览》PPTX：服务前、服务中、服务后的运营履约结构。
+- 用户提供的《企业健康报告机构业务员调研设计》PPTX：左侧材料与右侧流程的详情页信息密度。
+- 用户提供的《平安渠道委托账户使用促进》PPTX：数据发现、建议方向、推荐依据与服务动作的表格结构。
+- 用户提供的《中移经纪会议问题汇报》PPTX：问题判断、直接影响与会上建议的决策页结构。

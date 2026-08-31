@@ -38,6 +38,13 @@ private/
 /.web-load-signature
 /heartbeats*.json
 /gzh-heartbeat-browser-session.json
+/screen-memory/shots/
+/runtimes/stenographer/models/
+/cleanup-reports/
+/notify-queue.jsonl
+/notify-watcher-state.json
+/notify-watcher-state.json.tmp
+/shrimp-run-standing-auth.json
 
 # 密钥、环境变量与 SSH 私密材料 — 永不入库
 /.env

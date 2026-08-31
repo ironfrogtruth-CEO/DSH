@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "generate",
+  "status": "completed",
+  "input_checksum": "6dd25a85e4d8f16920325e95cf6cd5e76cd261b118298b030a758a324d02ff48",
+  "version_refs": {"package": "2.1.1", "node": "22.23.1", "dsh": "0.1.1-rc.2"},
+  "actual_bindings": {"build": "bash+xcrun swiftc+lipo+hdiutil", "signing": "ad-hoc app with preserved Node.js Foundation Developer ID"},
+  "artifacts": ["大神.app", "大神-2.1.1-universal.dmg", "发行清单.json"],
+  "qa_result": {"status": "passed", "checks": ["macOS 11 minos", "arm64 native modules", "x86_64 native modules", "preserved Node Developer ID", "secret scan", "codesign deep verify"]},
+  "evidence": ["Universal binary contains arm64 and x86_64", "both Node binaries retain team HX7739G8FX", "Payload scan passed 45702 files"],
+  "failure_fingerprint": null,
+  "rollback_to": "structure"
+}

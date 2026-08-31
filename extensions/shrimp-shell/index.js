@@ -38,12 +38,10 @@ export const MAX_MESSAGE_IMAGE_BYTES = 200 * 1024 * 1024
 const MAX_VISION_BODY_BYTES = Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 256 * 1024
 const VISION_MEDIA_ROOT = join(homedir(), '.dsh', 'vision-media')
 const VISION_NOTES_ROOT = join(homedir(), '.dsh', 'vision-results')
-const OLLAMA_URL = process.env.SHRIMP_VISION_OLLAMA_URL || 'http://127.0.0.1:11434'
-const VISION_MODEL = process.env.SHRIMP_VISION_MODEL || 'gemma4:26b-a4b-it-qat'
 const DEEPSEEK_VISION_PROVIDER = 'deepseek-official'
 const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp'
-// Host 视觉桥固定走 DeepSeek Vision → 智谱免费 GLM → 本地 Gemma。
-// 保留旧环境变量读取仅为兼容已有启动参数，不能改写这条优先级。
+// Host 视觉桥固定走 DeepSeek Vision → 智谱免费视觉。
+// 保留旧 provider 环境变量仅为兼容已有启动参数，不能改写这条优先级。
 const VISION_PROVIDER = process.env.SHRIMP_VISION_PROVIDER || 'zhipu-mcp'
 const MODELSCOPE_TOKEN = process.env.SHRIMP_VISION_MODELSCOPE_TOKEN
   || process.env.MODELSCOPE_ACCESS_TOKEN
@@ -124,6 +122,12 @@ const HEARTBEAT_RUNNER_SPECS = Object.freeze({
     args: Object.freeze(['/Users/marcus/.dsh/scripts/daily-git-commit.mjs']),
     cwd: '/Users/marcus/.dsh',
     timeoutMs: 5 * 60 * 1000,
+  }),
+  'weekly-safe-cleanup': Object.freeze({
+    command: '/usr/local/bin/node',
+    args: Object.freeze(['/Users/marcus/.dsh/scripts/weekly-safe-cleanup.mjs', '--execute']),
+    cwd: '/Users/marcus/.dsh',
+    timeoutMs: 4 * 60 * 60 * 1000,
   }),
 })
 export const HEARTBEAT_RUNNERS = HEARTBEAT_RUNNER_SPECS
@@ -208,6 +212,51 @@ export function nextHeartbeatCronAt(nowMs = Date.now(), cron) {
     if (normalized.days.includes(candidateDate.getUTCDay()) && candidate > current) return candidate
   }
   return null
+}
+
+/**
+ * Normalize the durable heartbeat registration fields before they enter the
+ * read-modify-write transaction. Host-bound tasks must have a carrier, and a
+ * valid cron must never be persisted with an empty nextRunAt when the caller
+ * omitted it (the old UI did exactly that when changing a schedule).
+ *
+ * An explicitly supplied, usable nextRunAt remains authoritative. A null or
+ * malformed explicit value is treated as omitted for an enabled cron/carrier
+ * task so re-enabling and cron changes cannot recreate a zombie.
+ */
+export function normalizeHeartbeatRegistration({ body = {}, previous = null, nowMs = Date.now() } = {}) {
+  const input = body && typeof body === 'object' && !Array.isArray(body) ? body : {}
+  const prior = previous && typeof previous === 'object' ? previous : {}
+  const runner = input.runner === undefined ? String(prior.runner || '').trim() : String(input.runner || '').trim()
+  const pipelineSlug = input.pipelineSlug === undefined
+    ? String(prior.pipelineSlug || '').trim()
+    : String(input.pipelineSlug || '').trim()
+  const enabled = input.enabled === undefined ? (previous ? prior.enabled !== false : true) : input.enabled !== false
+  if (enabled && !runner && !pipelineSlug) {
+    return { ok: false, code: 'HEARTBEAT_CARRIER_REQUIRED', error: '启用的心跳必须绑定 runner 或 pipelineSlug，已拒绝无载体任务' }
+  }
+
+  const cronInput = input.cron === undefined ? (prior.cron || null) : input.cron
+  const cron = cronInput ? normalizeHeartbeatCron(cronInput) : null
+  if (cronInput && !cron) return { ok: false, code: 'HEARTBEAT_CRON_INVALID', error: 'cron 无效：需要合法 time、days 和 timezone' }
+
+  const hasExplicitNextRunAt = Object.prototype.hasOwnProperty.call(input, 'nextRunAt')
+  const explicitNextRunAt = heartbeatEpochMs(input.nextRunAt)
+  let nextRunAt
+  if (!enabled) nextRunAt = null
+  else if (hasExplicitNextRunAt && explicitNextRunAt > 0) nextRunAt = input.nextRunAt
+  else if (cron && (runner || pipelineSlug)) nextRunAt = nextHeartbeatCronAt(nowMs, cron)
+  else if (hasExplicitNextRunAt) nextRunAt = input.nextRunAt ?? null
+  else nextRunAt = prior.nextRunAt || null
+
+  return {
+    ok: true,
+    runner,
+    pipelineSlug,
+    enabled,
+    cron,
+    nextRunAt,
+  }
 }
 
 export function planHeartbeatTask(task, nowMs = Date.now(), { missedWindowMs = HEARTBEAT_CRON_MISSED_WINDOW_MS } = {}) {
@@ -427,9 +476,9 @@ const sendJson = (res, code, body) => {
   res.end(JSON.stringify(body))
 }
 
-// ── 统一视觉路由：所有会话模型（包括本地/native-capable 模型）都先走
-// ── Host 视觉桥。桥内顺序固定为 DeepSeek V4 Flash Vision、智谱免费 GLM、
-// ── 本地 Gemma。Host 只替换发给最终模型的临时请求视图，durable 用户消息
+// ── 统一视觉路由：所有会话模型都先走 Host 视觉桥。桥内顺序固定为
+// ── DeepSeek V4 Flash Vision、智谱免费视觉；不再依赖本地对话模型。
+// ── Host 只替换发给最终模型的临时请求视图，durable 用户消息
 // ── 仍保留原图和文字；模型能力元数据不得绕过这条固定链。
 // ── SHRIMP_VISION_MODE=native 已废弃并会被忽略；bridge 仅作兼容性标记。
 export async function visionPolicy(ctx) {
@@ -446,9 +495,9 @@ export async function visionPolicy(ctx) {
       primaryVisionProvider: DEEPSEEK_VISION_PROVIDER,
       primaryVisionModel: DEEPSEEK_VISION_MODEL,
       visionProvider: 'zhipu-mcp',
-      fallbackProvider: 'ollama',
-      fallbackModel: VISION_MODEL,
-      reason: `统一视觉桥：先调用 DeepSeek V4 Flash Vision，再调用智谱免费 GLM，最后回退本地 Gemma；原图保留在会话历史，主模型请求仅使用临时识图投影${forcedNote}`,
+      fallbackProvider: 'zhipu-mcp',
+      fallbackModel: 'glm-4.6v-flash',
+      reason: `统一视觉桥：先调用 DeepSeek V4 Flash Vision，再调用智谱免费视觉；云端视觉均不可用时明确阻断，不调用本地对话模型；原图保留在会话历史，主模型请求仅使用临时识图投影${forcedNote}`,
     }
   } catch (error) {
     return {
@@ -456,9 +505,9 @@ export async function visionPolicy(ctx) {
       primaryVisionProvider: DEEPSEEK_VISION_PROVIDER,
       primaryVisionModel: DEEPSEEK_VISION_MODEL,
       visionProvider: 'zhipu-mcp',
-      fallbackProvider: 'ollama',
-      fallbackModel: VISION_MODEL,
-      reason: `无法读取当前模型，仍使用统一视觉桥：DeepSeek V4 Flash Vision → 智谱免费 GLM → 本地 Gemma；${errorText(error)}`,
+      fallbackProvider: 'zhipu-mcp',
+      fallbackModel: 'glm-4.6v-flash',
+      reason: `无法读取当前模型，仍使用统一视觉桥：DeepSeek V4 Flash Vision → 智谱免费视觉；云端视觉均不可用时明确阻断，不调用本地对话模型；${errorText(error)}`,
     }
   }
 }
@@ -638,6 +687,7 @@ export const SHRIMP_RUN_TERMINAL_STATUSES = Object.freeze([
   'stopped', 'cancelled', 'canceled', 'aborted',
 ])
 const SHRIMP_RUN_TERMINAL_STATUS_SET = new Set(SHRIMP_RUN_TERMINAL_STATUSES)
+const SHRIMP_RUN_SUCCESS_STATUS_SET = new Set(['done', 'succeeded', 'completed', 'success'])
 export const SHRIMP_RUN_POLL_INTERVAL_MS = 2_000
 export const SHRIMP_RUN_WAIT_TIMEOUT_MS = 90_000
 const SHRIMP_RUN_READ_TIMEOUT_MS = 12_000
@@ -652,14 +702,81 @@ function apiData(value) {
 
 function apiErrorText(value) {
   if (value instanceof Error) return errorText(value)
-  const error = value && typeof value === 'object' ? value.error : value
+  const objectValue = value && typeof value === 'object' && !Array.isArray(value) ? value : null
+  const hasErrorEnvelope = objectValue && ['error', 'detail', 'message', 'error_summary'].some((key) => Object.prototype.hasOwnProperty.call(objectValue, key))
+  const candidates = objectValue ? [objectValue.error, objectValue.detail, objectValue.message, objectValue.error_summary] : []
+  const error = objectValue
+    ? (candidates.find((candidate) => candidate !== null && candidate !== undefined && (typeof candidate !== 'string' || candidate.trim())) ?? (hasErrorEnvelope ? null : objectValue))
+    : value
+  if (error === null || error === undefined) return ''
   if (typeof error === 'string' && error.trim()) return error.trim()
   if (error && typeof error === 'object') {
-    const message = String(error.message || error.code || '').trim()
-    if (message) return message
+    for (const key of ['message', 'detail', 'reason', 'error']) {
+      if (error[key] === undefined || error[key] === error) continue
+      const nested = apiErrorText(error[key])
+      if (nested) return nested
+    }
+    const code = String(error.code || '').trim()
+    if (code) return code
     try { return JSON.stringify(error) } catch { return '虾缸接口返回了不可解析的错误' }
   }
   return ''
+}
+
+function structuredApiError(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  for (const key of ['error', 'detail', 'details', 'error_detail', 'errorDetails']) {
+    if (value[key] && typeof value[key] === 'object' && !Array.isArray(value[key])) return value[key]
+  }
+  return undefined
+}
+
+function apiErrorCode(value) {
+  const detail = structuredApiError(value)
+  const candidates = [detail?.code, detail?.error_code, value?.code, value?.error_code]
+  return candidates.map((candidate) => String(candidate || '').trim().toUpperCase()).find(Boolean) || ''
+}
+
+function existingRunIdFromError(value) {
+  const detail = structuredApiError(value)
+  const candidates = [
+    detail?.existing_run_id,
+    detail?.existingRunId,
+    detail?.active_run_id,
+    detail?.activeRunId,
+    value?.existing_run_id,
+    value?.existingRunId,
+    value?.active_run_id,
+    value?.activeRunId,
+  ]
+  return candidates.map((candidate) => String(candidate || '').trim()).find(Boolean) || null
+}
+
+/**
+ * Convert one tank HTTP response into the tool's stable output envelope.
+ * Transport ok/status always win over same-named JSON fields; structured API
+ * errors are kept under error_detail while schema-facing error is a string.
+ */
+export function normalizeShrimpToolResponse(result) {
+  const value = tankJson(result)
+  const body = value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...value }
+    : { data: value }
+  delete body.ok
+  delete body.status
+  const normalized = { ok: result?.ok === true, status: result?.status, ...body }
+  if (result?.ok !== true) {
+    const detail = structuredApiError(value)
+    const error = apiErrorText(value) || `虾缸接口请求失败（HTTP ${result?.status ?? 'unknown'}）`
+    normalized.error = error
+    if (detail) normalized.error_detail = detail
+    if (result?.status === 409 && /(?:ACTIVE_RUN_CONFLICT|RUN_ALREADY_ACTIVE|ACTIVE.*RUN|RUN.*ACTIVE)/iu.test(`${apiErrorCode(value)} ${apiErrorText(value)}`)) {
+      normalized.code = 'RUN_ALREADY_ACTIVE'
+      const existingRunId = existingRunIdFromError(value)
+      if (existingRunId) normalized.existing_run_id = existingRunId
+    }
+  }
+  return normalized
 }
 
 // 创建接口目前返回 resource_refs[].id；兼容旧的直接 run_id/runId 响应，
@@ -911,18 +1028,56 @@ export const SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES = 2
 export const SHRIMP_AUTH_RECEIPT_MAX_USES = SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES
 export const SHRIMP_AUTH_RECEIPT_TTL_MS = 60 * 60 * 1000
 export const SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS = 10
+export const SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES = SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS * SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES
 const SHRIMP_RUN_ACTION_RE = /调用|运行|启动|执行|开跑|跑通|交给|驱动/u
 const SHRIMP_RUN_ACTION_TARGET_RE = /(?:调用|运行|启动|执行|开跑|跑通)\s*[^。！？!?；;，,、\n]{0,80}虾|虾[^。！？!?；;，,、\n]{0,80}(?:调用|运行|启动|执行|开跑|跑通)/u
 const SHRIMP_RUN_RECOVERY_RE = /(?:遇阻(?:断|碍)?|遇到阻断|遇到阻碍)(?:后)?[，,、\s]*(?:请)?(?:自行)?修复(?:并)?跑通/u
 const SHRIMP_RUN_PRODUCTION_RE = /(?:用|让|交给)\s*文章@?虾(?:六答)?[\s\S]{0,100}(?:写|生成|产出|发布|保存|编写|制作)/u
 const SHRIMP_RUN_TRY_RE = /(?:升级了?|更新了?)[\s\S]{0,40}文章@?虾(?:六答)?[\s\S]{0,40}(?:试一下|试试|试跑|跑一下|试用)/u
 const SHRIMP_RUN_COMPLEX_PREFIX_RE = /^(?:请\s*)?(?:修复|升级|部署|迁移|重构|开发|实现|调试|排查|审计|测试|验收)/u
+const SHRIMP_RUN_OUTCOME_RE = /(?:完成|产出|生成并发布|保存到[^。！？!?；;，,、\n]{0,20}草稿箱|发布到[^。！？!?；;，,、\n]{0,20}草稿箱)/u
 // Negation must be attached to a shrimp execution target. A separate
 // restriction such as “禁止直接调用 7843 API” must not cancel an otherwise
 // explicit “运行文章虾” request.
 const SHRIMP_RUN_NEGATED_RE = /(?:不要|别|禁止|不可|不能|无需|不需要|暂不|先别|先不要)[^。！？!?；;，,、\n]{0,24}(?:shrimp_run\s*(?:\(|\b)|(?:运行|调用|启动|执行|开跑|跑通|用|让|交给)\s*[^。！？!?；;，,、\n]{0,60}虾)/iu
 const SHRIMP_RUN_INQUIRY_RE = /^(?:请问|了解(?:一下)?|介绍(?:一下)?|推荐|匹配|看看|查看|检查(?:一下)?|分析(?:一下)?|帮我(?:看看|查看|检查|分析)|怎么|如何|能否|是否|可以|能不能|可不可以|为什么|什么是)/u
 const SHRIMP_RUN_PAST_ONLY_RE = /^(?:刚才|之前|上次|此前|曾经|已经)[^。！？!?]{0,40}(?:运行|调用|启动|执行)[^。！？!?]{0,24}(?:过|了|失败|完成)(?:[。！？!?]|$)/u
+
+// 常驻授权清单：~/.dsh/shrimp-run-standing-auth.json，每次检查热读（增删 slug 即时生效）。
+// 格式 { "<pipelineSlug>": { "grantedAt": "ISO", "note": "…", "maxUses?": 10,
+// "enabled?": true, "expiresAt?": "ISO" } }。删除条目、enabled:false 或 expiresAt
+// 过期即撤销；文件缺失/损坏一律视为空清单，不影响原有动词签发路径。
+const SHRIMP_RUN_STANDING_AUTH_PATH = join(homedir(), '.dsh', 'shrimp-run-standing-auth.json')
+const SHRIMP_RUN_STANDING_AUTH_MAX_USES = 10
+
+/** Hot-read standing authorizations on every check; missing or invalid file = no grants. */
+export function readShrimpRunStandingAuth(now = Date.now()) {
+  try {
+    const parsed = JSON.parse(readFileSync(SHRIMP_RUN_STANDING_AUTH_PATH, 'utf8'))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const grants = {}
+    for (const [slug, meta] of Object.entries(parsed)) {
+      const key = String(slug || '').trim()
+      if (!key || !meta || typeof meta !== 'object') continue
+      if (meta.enabled === false) continue
+      const expiresAt = meta.expiresAt ? Date.parse(meta.expiresAt) : NaN
+      if (Number.isFinite(expiresAt) && expiresAt <= now) continue
+      const maxUses = Math.max(1, Math.min(
+        SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES,
+        Math.floor(Number(meta.maxUses) || SHRIMP_RUN_STANDING_AUTH_MAX_USES),
+      ))
+      grants[key] = {
+        grantedAt: String(meta.grantedAt || '').trim() || null,
+        note: String(meta.note || '').trim() || null,
+        expiresAt: Number.isFinite(expiresAt) ? expiresAt : null,
+        maxUses,
+      }
+    }
+    return grants
+  } catch {
+    return {}
+  }
+}
 
 function messageText(value) {
   if (value === null || value === undefined) return ''
@@ -960,16 +1115,20 @@ export function explicitShrimpRunIntent(input) {
   const inquiry = SHRIMP_RUN_INQUIRY_RE.test(text) || /(?:吗|？|\?)\s*$/u.test(text)
   const pastOnly = SHRIMP_RUN_PAST_ONLY_RE.test(text)
   const complexPrefix = SHRIMP_RUN_COMPLEX_PREFIX_RE.test(text) && !SHRIMP_RUN_TRY_RE.test(text)
+  const outcome = SHRIMP_RUN_OUTCOME_RE.test(text)
+  const recoverable = recovery || outcome
   const batchCount = shrimpRunBatchCount(text)
   return {
     explicit: Boolean(text && !negated && !inquiry && !pastOnly && !complexPrefix && (action || recovery)),
     action,
     recovery,
+    outcome,
+    recoverable,
     text,
     batchCount,
     maxUses: Math.min(
-      SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS,
-      batchCount * (recovery ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES),
+      SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES,
+      batchCount * (recoverable ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES),
     ),
   }
 }
@@ -1212,7 +1371,7 @@ export class ShrimpAuthorizationReceipts {
     for (const [key, entry] of this.entries) if (entry.expiresAt <= now) this.entries.delete(key)
   }
 
-  issue({ agentId, sessionId, turn, pipelineSlug, requestText, targetDisplayName, maxUses = this.maxUses, batchCount = 1, itemMaxUses = 1, recovery = false, now = this.now() } = {}) {
+  issue({ agentId, sessionId, turn, pipelineSlug, requestText, targetDisplayName, maxUses = this.maxUses, batchCount = 1, itemMaxUses = 1, recovery = false, outcome = false, standing = false, now = this.now() } = {}) {
     const key = receiptKey(agentId, sessionId || agentId, pipelineSlug)
     if (!key) return null
     this.prune(now)
@@ -1223,7 +1382,7 @@ export class ShrimpAuthorizationReceipts {
     const requestedItemMaxUses = Number(itemMaxUses)
     const boundedItemMaxUses = Math.max(1, Math.min(2, Math.floor(Number.isFinite(requestedItemMaxUses) ? requestedItemMaxUses : (recovery ? 2 : 1))))
     const requestedMaxUses = Math.floor(Number(maxUses) || boundedBatchCount * boundedItemMaxUses)
-    const boundedMaxUses = Math.max(1, Math.min(SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS, requestedMaxUses))
+    const boundedMaxUses = Math.max(1, Math.min(SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES, requestedMaxUses))
     const identity = receiptSessionId({ id: agentId }, sessionId)
     const entry = {
       agentId: String(agentId),
@@ -1242,6 +1401,8 @@ export class ShrimpAuthorizationReceipts {
       batchCount: boundedBatchCount,
       itemMaxUses: boundedItemMaxUses,
       recovery: Boolean(recovery),
+      outcome: Boolean(outcome),
+      standing: Boolean(standing),
       itemUses: {},
     }
     this.entries.set(key, entry)
@@ -1269,6 +1430,7 @@ export class ShrimpAuthorizationReceipts {
     const normalizedItemKey = String(itemKey || '__default__')
     const itemUses = entry.itemUses || (entry.itemUses = {})
     const currentItemUses = Number(itemUses[normalizedItemKey] || 0)
+    if (currentItemUses === 0 && Object.keys(itemUses).length >= entry.batchCount) return null
     if (currentItemUses >= entry.itemMaxUses) return null
     entry.uses += 1
     itemUses[normalizedItemKey] = currentItemUses + 1
@@ -1311,9 +1473,7 @@ export class ShrimpRunRequestRegistry {
   }
 
   prune(now = this.now()) {
-    for (const [key, entry] of this.entries) {
-      if (entry.expiresAt <= now || SHRIMP_RUN_TERMINAL_STATUS_SET.has(String(entry.status || '').toLowerCase())) this.entries.delete(key)
-    }
+    for (const [key, entry] of this.entries) if (entry.expiresAt <= now) this.entries.delete(key)
   }
 
   key({ agentId, sessionId, pipelineSlug, payload } = {}) {
@@ -1323,15 +1483,39 @@ export class ShrimpRunRequestRegistry {
   active({ agentId, sessionId, pipelineSlug, payload, now = this.now() } = {}) {
     this.prune(now)
     const entry = this.entries.get(this.key({ agentId, sessionId, pipelineSlug, payload }))
-    if (!entry || SHRIMP_RUN_TERMINAL_STATUS_SET.has(String(entry.status || '').toLowerCase())) return null
+    const status = String(entry?.status || '').toLowerCase()
+    if (!entry || (SHRIMP_RUN_TERMINAL_STATUS_SET.has(status) && !SHRIMP_RUN_SUCCESS_STATUS_SET.has(status))) return null
     return { ...entry }
   }
 
-  remember({ agentId, sessionId, pipelineSlug, payload, runId, operationId = null, idempotencyKey = '', status = 'running', now = this.now() } = {}) {
+  /** A same-input run is safe to re-enter only while it is still running or
+   * after it completed successfully. Failed/stopped entries deliberately do
+   * not qualify so the authorization receipt can spend its one retry. */
+  isSafeRepeat(request = {}) {
+    return Boolean(this.active(request))
+  }
+
+  /** Give a terminal failed/stopped attempt a distinct HTTP idempotency key;
+   * successful and running requests keep the stable base key. */
+  launchIdempotencyKey(request = {}) {
+    const base = String(request.idempotencyKey || '').trim()
+    if (!base) return base
+    const key = this.key(request)
+    const previous = this.entries.get(key)
+    const status = String(previous?.status || '').toLowerCase()
+    if (!previous || !SHRIMP_RUN_TERMINAL_STATUS_SET.has(status) || SHRIMP_RUN_SUCCESS_STATUS_SET.has(status)) return base
+    return `${base}:retry-${Number(previous.attempts || 1) + 1}`
+  }
+
+  remember({ agentId, sessionId, pipelineSlug, payload, runId, operationId = null, idempotencyKey = '', status = 'running', result = null, now = this.now() } = {}) {
     const key = this.key({ agentId, sessionId, pipelineSlug, payload })
     const id = String(runId || '').trim()
     if (!key || !id) return null
     this.prune(now)
+    const previous = this.entries.get(key)
+    const attempts = previous && previous.runId === id
+      ? Math.max(1, Number(previous.attempts || 1))
+      : Math.max(1, Number(previous?.attempts || 0) + 1)
     const entry = {
       key,
       agentId: String(agentId || ''),
@@ -1341,6 +1525,8 @@ export class ShrimpRunRequestRegistry {
       operationId: operationId ? String(operationId) : null,
       idempotencyKey: String(idempotencyKey || ''),
       status: String(status || 'running').toLowerCase(),
+      attempts,
+      result: result && typeof result === 'object' ? structuredClone(result) : null,
       updatedAt: now,
       expiresAt: now + this.ttlMs,
     }
@@ -1356,6 +1542,7 @@ export class ShrimpRunRequestRegistry {
     for (const entry of this.entries.values()) {
       if (entry.runId !== id) continue
       entry.status = String(status || '').toLowerCase()
+      if (!SHRIMP_RUN_SUCCESS_STATUS_SET.has(entry.status)) entry.result = null
       entry.updatedAt = now
       updated = { ...entry }
     }
@@ -1369,6 +1556,14 @@ export async function runShrimpWithDedupe({ registry, requestKey, launch, readSu
   if (!registry || typeof registry.active !== 'function' || typeof launch !== 'function') throw new TypeError('registry 和 launch 必须是函数')
   const existing = registry.active({ ...(requestKey || {}), now: now ? now() : undefined })
   if (existing) {
+    if (SHRIMP_RUN_SUCCESS_STATUS_SET.has(String(existing.status || '').toLowerCase()) && existing.result) {
+      return {
+        ...existing.result,
+        operation_id: existing.operationId,
+        idempotency_key: existing.idempotencyKey || requestKey?.idempotencyKey || undefined,
+        deduplicated: true,
+      }
+    }
     const receipt = await waitForShrimpRunTerminal({
       runId: existing.runId,
       readSummary,
@@ -1378,7 +1573,16 @@ export async function runShrimpWithDedupe({ registry, requestKey, launch, readSu
       ...(sleep ? { sleep } : {}),
       ...(now ? { now } : {}),
     })
-    registry.updateByRunId(existing.runId, receipt.final_status, now ? now() : undefined)
+    const finalStatus = receipt.still_running ? (receipt.final_status || 'running') : (receipt.final_status || 'unknown')
+    registry.remember({
+      ...requestKey,
+      runId: existing.runId,
+      operationId: existing.operationId,
+      idempotencyKey: existing.idempotencyKey || requestKey?.idempotencyKey,
+      status: finalStatus,
+      result: receipt.still_running ? null : receipt,
+      now: now ? now() : undefined,
+    })
     return {
       ...receipt,
       operation_id: existing.operationId,
@@ -1391,8 +1595,11 @@ export async function runShrimpWithDedupe({ registry, requestKey, launch, readSu
       } : receipt.next_action,
     }
   }
+  const launchIdempotencyKey = typeof registry.launchIdempotencyKey === 'function'
+    ? registry.launchIdempotencyKey(requestKey || {})
+    : requestKey?.idempotencyKey
   const receipt = await runShrimpWithReceipt({
-    launch,
+    launch: () => launch({ idempotencyKey: launchIdempotencyKey }),
     readSummary,
     readArtifacts,
     timeoutMs,
@@ -1400,19 +1607,20 @@ export async function runShrimpWithDedupe({ registry, requestKey, launch, readSu
     ...(sleep ? { sleep } : {}),
     ...(now ? { now } : {}),
   })
-  if (receipt.run_id && receipt.still_running) {
+  if (receipt.run_id) {
     registry.remember({
       ...requestKey,
       runId: receipt.run_id,
       operationId: receipt.operation_id,
-      idempotencyKey: requestKey.idempotencyKey,
-      status: receipt.final_status || 'running',
+      idempotencyKey: launchIdempotencyKey,
+      status: receipt.still_running ? (receipt.final_status || 'running') : (receipt.final_status || 'unknown'),
+      result: receipt.still_running ? null : receipt,
       now: now ? now() : undefined,
     })
   }
   return {
     ...receipt,
-    idempotency_key: requestKey.idempotencyKey || undefined,
+    idempotency_key: launchIdempotencyKey || requestKey.idempotencyKey || undefined,
   }
 }
 
@@ -1439,7 +1647,7 @@ async function readShrimpCatalogForAuthorization({ recover = false } = {}) {
 }
 
 /** Build the two Host event listeners while keeping the state testable. */
-export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogForAuthorization, receipts = new ShrimpAuthorizationReceipts(), now = () => Date.now() } = {}) {
+export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogForAuthorization, receipts = new ShrimpAuthorizationReceipts(), now = () => Date.now(), isSafeRepeat = () => false } = {}) {
   const safeCatalog = async (recover = false) => {
     try {
       const value = await readCatalog({ recover })
@@ -1462,6 +1670,37 @@ export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogF
       // session.header records compatible.
       if (shrimpSessionMetadata(agent).origin === 'subagent') return decision
       const intent = explicitShrimpRunIntent(messages)
+      // 常驻授权（standing auth）：在动词匹配之前热读
+      // ~/.dsh/shrimp-run-standing-auth.json（每次进回合读盘，增删 slug 即时生效）。
+      // 清单内 slug 直接签发常驻回执（maxUses 默认 10、TTL 仍 1 小时、单回执
+      // 最多 10 个不同 item）；NEGATED_RE 否定语气仍然拦截；子代理已在上方
+      // return，无法自签；普通动词签发路径完全保留。
+      const standingAuth = intent.text && !SHRIMP_RUN_NEGATED_RE.test(intent.text)
+        ? readShrimpRunStandingAuth(now())
+        : {}
+      if (Object.keys(standingAuth).length > 0) {
+        const identity = shrimpAgentIdentity(agent)
+        if (identity.agentId && identity.sessionId && turn !== null && turn !== undefined) {
+          const catalog = await safeCatalog(true)
+          for (const slug of Object.keys(standingAuth)) {
+            const target = findShrimpPipeline(catalog, slug)
+            if (!target) continue
+            receipts.issue({
+              agentId: identity.agentId,
+              sessionId: identity.sessionId,
+              turn,
+              pipelineSlug: slug,
+              requestText: intent.text,
+              targetDisplayName: target.display_name || target.name || target.title,
+              batchCount: SHRIMP_AUTH_RECEIPT_MAX_BATCH_ITEMS,
+              itemMaxUses: 1,
+              maxUses: standingAuth[slug].maxUses || SHRIMP_RUN_STANDING_AUTH_MAX_USES,
+              standing: true,
+              now: now(),
+            })
+          }
+        }
+      }
       if (!intent.explicit) return decision
       const target = findShrimpTarget(await safeCatalog(true), intent.text)
       const pipelineSlug = pipelineSlugForItem(target)
@@ -1476,9 +1715,10 @@ export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogF
         requestText: intent.text,
         targetDisplayName: target.display_name || target.name || target.title,
         batchCount: intent.batchCount,
-        itemMaxUses: intent.recovery ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES,
+        itemMaxUses: intent.recoverable ? SHRIMP_AUTH_RECEIPT_RECOVERY_MAX_USES : SHRIMP_AUTH_RECEIPT_NORMAL_MAX_USES,
         maxUses: intent.maxUses,
         recovery: intent.recovery,
+        outcome: intent.outcome,
         now: now(),
       })
       return decision
@@ -1496,6 +1736,18 @@ export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogF
         const identity = shrimpAgentIdentity(exec.agent)
         if (!identity.agentId || !identity.sessionId) return { ...ask }
         const itemKey = shrimpRunItemKey(args.payload)
+        try {
+          // A running or successful same-input request is idempotent: retain
+          // the normal downstream policy chain, but do not spend another
+          // outcome receipt allowance or create a second run.
+          if (await isSafeRepeat({
+            agentId: identity.agentId,
+            sessionId: identity.sessionId,
+            pipelineSlug,
+            payload: args.payload,
+            now: now(),
+          })) return next()
+        } catch { /* registry is advisory; authorization remains the fallback */ }
         let receipt = receipts.peek({ agentId: identity.agentId, sessionId: identity.sessionId, turn, pipelineSlug, now: now() })
         if (!receipt) {
           // 子代理收到的用户消息是父代理的委派词，签不出自己的回执；
@@ -1510,7 +1762,10 @@ export function createShrimpAuthorizationGate({ readCatalog = readShrimpCatalogF
             receipt = receipts.peekConsumable({ sessionId: parentSession, pipelineSlug, now: now() })
           }
         }
-        if (!target || !receipt || !shrimpTargetMentioned(target, receipt.requestText)) return { ...ask }
+        if (!target || !receipt) return { ...ask }
+        // 常驻回执以 slug 白名单为授权凭证，不要求用户消息点名目标；
+        // 普通回执仍必须点名该虾。
+        if (!receipt.standing && !shrimpTargetMentioned(target, receipt.requestText)) return { ...ask }
         const downstream = await next()
         if (!downstream || downstream.kind !== 'allow') return downstream
         if (!receipts.consume({
@@ -1600,32 +1855,6 @@ async function recognizeWithModelScope({
   const content = modelScopeText(data)
   if (!content) throw new Error('魔搭免费视觉 API 没有返回内容')
   return { provider: 'modelscope', model, content }
-}
-
-async function recognizeWithOllama({ imageBase64, fetchImpl, ollamaUrl, model }) {
-  const response = await fetchImpl(`${ollamaUrl.replace(/\/$/, '')}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(180_000),
-    body: JSON.stringify({
-      model,
-      stream: false,
-      think: false,
-      keep_alive: '10m',
-      options: { temperature: 0.1, num_predict: 700 },
-      messages: [{ role: 'user', content: VISION_PROMPT, images: [imageBase64] }],
-    }),
-  })
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500)
-    throw new Error(`本地识图服务返回 ${response.status}: ${detail}`)
-  }
-  const data = await response.json()
-  const content = data && data.message && typeof data.message.content === 'string'
-    ? data.message.content.trim()
-    : ''
-  if (!content) throw new Error('本地识图模型没有返回内容')
-  return { provider: 'ollama', model, content }
 }
 
 async function recognizeWithZhipuMcp({ imageBase64, mimeType, prompt = VISION_PROMPT }) {
@@ -1731,8 +1960,6 @@ export async function recognizeImage({
   modelScopeToken = MODELSCOPE_TOKEN,
   modelScopeModel = MODELSCOPE_MODEL,
   modelScopeApiBase = MODELSCOPE_API_BASE,
-  ollamaUrl = OLLAMA_URL,
-  ollamaModel = VISION_MODEL,
   ctx,
   attachment,
   signal,
@@ -1759,22 +1986,11 @@ export async function recognizeImage({
   } catch (error) {
     zhipuFailure = errorText(error)
   }
-
-  const local = await recognizeWithOllama({
-    imageBase64,
-    fetchImpl,
-    ollamaUrl,
-    model: ollamaModel,
-  })
-  return {
-    ...local,
-    fallbackFrom: 'zhipu-mcp',
-    fallbackReason: zhipuFailure,
-    fallbackChain: [
-      ...(deepseekFailure ? [{ provider: DEEPSEEK_VISION_PROVIDER, model: DEEPSEEK_VISION_MODEL, error: deepseekFailure }] : []),
-      { provider: 'zhipu-mcp', error: zhipuFailure },
-    ],
-  }
+  throw new Error([
+    '云端视觉桥不可用，已停止识图；未调用本地对话模型。',
+    deepseekFailure ? `DeepSeek Vision：${deepseekFailure}` : '',
+    zhipuFailure ? `智谱视觉：${zhipuFailure}` : '',
+  ].filter(Boolean).join('；'))
 }
 
 export function containsImageBlocks(blocks) {
@@ -1848,8 +2064,7 @@ function selectedModel(options, ctx) {
 
 async function routeNeedsVisionBridge(options, ctx) {
   // 统一固定桥：不要根据 provider/model 或 inputModalities 放行 native。
-  // 这样本地 CyberMarcus、Qwen 以及未来声明 image 能力的模型仍先由
-  // 智谱 GLM 识图，失败后才回退 Gemma；ctx 仅保留在签名中兼容旧调用。
+  // 视觉请求只走云端 DeepSeek Vision → 智谱视觉；ctx 仅保留在签名中兼容旧调用。
   void options
   void ctx
   return true
@@ -2044,8 +2259,7 @@ export function apply(ctx, config = {}) {
   const toolCall = async ({ path, method = 'GET', body, headers = {}, timeoutMs = SHRIMP_TANK_TIMEOUT_MS }) => {
     try {
       const result = await tankFetchWithRecovery({ path, method, body, headers, timeoutMs })
-      const value = tankJson(result)
-      return { ok: result.ok, status: result.status, ...((value && typeof value === 'object') ? value : { data: value }) }
+      return normalizeShrimpToolResponse(result)
     } catch (error) {
       return { ok: false, offline: true, error: '虾缸当前不可用，请确认本机服务已启动' }
     }
@@ -2059,8 +2273,11 @@ export function apply(ctx, config = {}) {
     render: (_args, value) => toolResult(value),
   }
   if (ctx.tools && typeof ctx.tools.register === 'function') {
-    const shrimpAuthorization = createShrimpAuthorizationGate({ readCatalog: config.readShrimpCatalog })
     const shrimpRunRegistry = new ShrimpRunRequestRegistry()
+    const shrimpAuthorization = createShrimpAuthorizationGate({
+      readCatalog: config.readShrimpCatalog,
+      isSafeRepeat: (request) => shrimpRunRegistry.isSafeRepeat(request),
+    })
     ctx.tools.register(defineTool({
       name: 'shrimp_list',
       description: '读取虾缸中的虾、草稿、试跑与已发布工作流列表。只读，不会启动运行。',
@@ -2193,7 +2410,7 @@ export function apply(ctx, config = {}) {
 
     ctx.tools.register(defineTool({
       name: 'shrimp_run',
-      description: '运行一只已明确点名的已发布虾。必须显式 confirm=true、提供 pipelineSlug 和完整输入；匹配推荐不会自动触发此工具。用户点名单篇或批次后，同一 agent/session 可在 1 小时内消费有界授权，批次最多 10 项且每项严格限次；不同 agent/session/slug、否定/取消语义仍需重新确认。创建后自动只读轮询 /api/v1/runs/{run_id}/summary，并在终态读取 /artifacts，最终回传 run_id、终态、进度、当前节点、错误和产物摘要；超时会返回 still_running=true，重复请求只引导 shrimp_run_status，不会创建第二条运行。不要用裸 curl 绕过此工具，否则不会生成可回传的任务回执；此工具不会读取或修改心跳任务。',
+      description: '运行一只已明确点名的已发布虾。必须显式 confirm=true、提供 pipelineSlug 和完整输入；匹配推荐不会自动触发此工具。用户点名单篇或批次后，同一 agent/session 可在 1 小时内消费有界授权，批次最多 10 项且每项严格限次；完成、产出、生成并发布、保存到草稿箱等结果型生产指令会为每项自动保留一次有界恢复额度，成功的同输入重复请求直接返回幂等回执，不创建第二条运行；失败或停止最多重试一次。不同 agent/session/slug、否定/取消语义仍需重新确认。创建后自动只读轮询 /api/v1/runs/{run_id}/summary，并在终态读取 /artifacts，最终回传 run_id、终态、进度、当前节点、错误和产物摘要；超时会返回 still_running=true，重复请求只引导 shrimp_run_status，不会创建第二条运行。不要用裸 curl 绕过此工具，否则不会生成可回传的任务回执；此工具不会读取或修改心跳任务。',
       parameters: {
         pipelineSlug: { type: 'string', required: true, description: '已发布虾的 pipeline slug' },
         payload: {
@@ -2244,11 +2461,11 @@ export function apply(ctx, config = {}) {
         return runShrimpWithDedupe({
           registry: shrimpRunRegistry,
           requestKey,
-          launch: () => toolCall({
+          launch: ({ idempotencyKey: launchKey } = {}) => toolCall({
             path: `/api/v1/pipelines/${encodeURIComponent(slug)}/runs`,
             method: 'POST',
             body: buildRunBody(args.payload, { workContractChecksum: args.work_contract_checksum, pipelineVersionId: args.pipeline_version_id }),
-            headers: { 'idempotency-key': idempotencyKey },
+            headers: { 'idempotency-key': launchKey || idempotencyKey },
           }),
           readSummary,
           readArtifacts,
@@ -2490,7 +2707,7 @@ export function apply(ctx, config = {}) {
     },
   }), 'shrimp-shell: vision media')
 
-  // ---- 识图：DeepSeek V4 Flash Vision → 智谱免费视觉 → 本地 Gemma；最终分析仍交给当前主模型 ----
+  // ---- 识图：DeepSeek V4 Flash Vision → 智谱免费视觉；最终分析仍交给当前主模型 ----
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/api/shrimp/vision',
@@ -3205,9 +3422,13 @@ export function apply(ctx, config = {}) {
         await withHeartbeatMutation(async (data) => {
         const prev = data.tasks.find((t) => t.id === id)
         const name = typeof body.name === 'string' && body.name ? body.name : (prev && prev.name) || id
-        const runner = body.runner === undefined
-          ? String((prev && prev.runner) || '').trim()
-          : String(body.runner || '').trim()
+        const registration = normalizeHeartbeatRegistration({ body, previous: prev, nowMs: Date.now() })
+        if (!registration.ok) {
+          const error = new Error(registration.error)
+          error.code = registration.code
+          throw error
+        }
+        const { runner, pipelineSlug, cron, enabled, nextRunAt } = registration
         if (runner && !heartbeatRunnerSpec(runner)) throw new Error(`不允许的心跳 runner：${runner}`)
         // [local-mod] 若与扫描到的会话周期任务同 id,继承其 sessionId/workspaceId,
         // 使 list 合并时原地更新该行,而不是另建一条重复任务(需服务重启后生效)
@@ -3222,17 +3443,9 @@ export function apply(ctx, config = {}) {
             workspaceId = scanned.workspaceId || ''
           }
         }
-        const cronInput = body.cron === undefined ? ((prev && prev.cron) || null) : body.cron
-        const cron = cronInput ? normalizeHeartbeatCron(cronInput) : null
-        if (cronInput && !cron) throw new Error('cron 无效：需要合法 time、days 和 timezone')
         const catchUpInput = body.catchUp === undefined ? ((prev && prev.catchUp) || null) : body.catchUp
         const catchUp = catchUpInput ? normalizeHeartbeatCatchUp(catchUpInput) : null
         if (catchUpInput && !catchUp) throw new Error('catch-up 配置无效：需要 enabled=true')
-        const nextRunAt = body.nextRunAt !== undefined
-          ? body.nextRunAt
-          : body.cron !== undefined
-            ? null
-            : (prev && prev.nextRunAt) || null
         data.tasks = data.tasks.filter((t) => t.id !== id)
         data.tasks.push({
           id,
@@ -3241,18 +3454,18 @@ export function apply(ctx, config = {}) {
           sessionId,
           workspaceId,
           // [shrimp-native] 绑定虾后由 DSH host 自己触发，不依赖浏览器页面。
-          pipelineSlug: typeof body.pipelineSlug === 'string' && body.pipelineSlug
-            ? body.pipelineSlug.trim()
-            : (prev && prev.pipelineSlug) || '',
+          pipelineSlug,
           runner,
           payload: body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
             ? body.payload
             : (prev && prev.payload) || {},
-          enabled: body.enabled === undefined ? (prev && prev.enabled !== false) : body.enabled !== false,
+          enabled,
           nextRunAt,
           lastRunId: (prev && prev.lastRunId) || null,
           lastRunMode: (prev && prev.lastRunMode) || null,
-          status: (prev && prev.status) || 'scheduled',
+          status: enabled && (body.enabled === true || body.runner !== undefined || body.cron !== undefined)
+            ? 'scheduled'
+            : (prev && prev.status) || 'scheduled',
           lastError: null,
           // [local-mod] cron 定时计划(周几+时刻)持久化
           cron,

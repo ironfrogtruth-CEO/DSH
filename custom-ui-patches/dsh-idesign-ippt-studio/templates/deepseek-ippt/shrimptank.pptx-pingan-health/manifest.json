@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "shrimptank.pptx-pingan-health",
+  "version": "1.2.1",
+  "kind": "design",
+  "category": "slides",
+  "subcategory": "enterprise-health",
+  "style": "custom",
+  "tags": [
+    "pptx-compatible",
+    "平安好医生",
+    "企业健康",
+    "售前方案",
+    "述标"
+  ],
+  "pptxCompatibility": "native-editable",
+  "surface": "design",
+  "title": "平安好医生企业健康方案",
+  "description": "参考平安好医生既有方案重构的 12 页满版企业健康模板，采用 PAFC 建筑、平安橙、健康绿、华文楷体标题与真实服务场景图片，覆盖总览、详情、配置、履约和结束页。",
+  "cover": "cover.png",
+  "entry": "entry.html",
+  "source": {
+    "name": "平安好医生企康本地知识库",
+    "license": "Internal",
+    "attribution": "基于本机已内化的平安系 PPT 母版、售前视觉规范和代表性方案抽象设计；不携带客户专属事实、价格或案例数据。"
+  },
+  "designSystem": {
+    "tokenVersion": 1,
+    "editableGroups": ["theme", "background", "typography", "components"],
+    "tokens": "design-tokens.css",
+    "variables": [
+      {"id": "--ipw-color-primary", "label": "平安橙", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-secondary", "label": "平安绿", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-accent", "label": "深橙", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-success", "label": "正向结果", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-warning", "label": "待复核", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-danger", "label": "风险提示", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-bg", "label": "页面背景", "type": "color", "group": "background"},
+      {"id": "--ipw-color-surface", "label": "卡片背景", "type": "color", "group": "background"},
+      {"id": "--ipw-color-text", "label": "正文", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-muted", "label": "辅助文字", "type": "color", "group": "theme"},
+      {"id": "--ipw-color-border", "label": "线框", "type": "color", "group": "components"},
+      {"id": "--ipw-color-on-primary", "label": "橙底文字", "type": "color", "group": "theme"},
+      {"id": "--ipw-font-display", "label": "标题字体", "type": "font", "group": "typography"},
+      {"id": "--ipw-font-body", "label": "正文字体", "type": "font", "group": "typography"},
+      {"id": "--ipw-type-scale", "label": "字号比例", "type": "number", "group": "typography"},
+      {"id": "--ipw-body-line-height", "label": "正文行高", "type": "number", "group": "typography"},
+      {"id": "--ipw-content-width", "label": "内容宽度", "type": "number", "group": "components"},
+      {"id": "--ipw-page-padding", "label": "页面边距", "type": "number", "group": "components"},
+      {"id": "--ipw-section-space", "label": "区块间距", "type": "number", "group": "components"},
+      {"id": "--ipw-button-radius", "label": "按钮圆角", "type": "number", "group": "components"},
+      {"id": "--ipw-card-bg", "label": "卡片背景", "type": "color", "group": "components"},
+      {"id": "--ipw-card-border", "label": "卡片边框", "type": "color", "group": "components"},
+      {"id": "--ipw-card-radius", "label": "卡片圆角", "type": "number", "group": "components"},
+      {"id": "--ipw-card-shadow", "label": "卡片阴影", "type": "text", "group": "components"}
+    ]
+  },
+  "applyChecklist": [
+    "替换所有示例文字，不保留客户名称、价格、服务次数或未经核验的数据。",
+    "页面默认使用白底、浅橙、平安橙和少量健康绿，不改成大面积深色科技风。",
+    "每页保留一个明确判断和一个主组件，内容区应从标题下方延伸到页脚上方，不保留无意义的大面积空白。",
+    "服务详情页按场景、动作、结果或员工进入、医生判断、服务衔接组织，不把制作说明当成正式正文。",
+    "正式对外内容需核对服务名称、来源、适用范围、等待期和免责声明。",
+    "导出前检查标题换行、文字边界、表格可读性、页脚和所有 PPTX 可编辑标记。"
+  ],
+  "minimumAppVersion": "0.17.28"
+}

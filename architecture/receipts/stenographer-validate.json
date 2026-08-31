@@ -1,0 +1,52 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "validate",
+  "status": "completed",
+  "input_checksum": "b41d4394692dab75bdaf6c818262d73b18962c2916c6fbb983316d7f370b2e81",
+  "version_refs": {
+    "app_binary_sha256": "3781a179e1a94f140b947a2c63a4a4e5a1804a619bb9f2ff0e5bc807e7b02ffc",
+    "model_manifest_sha256": "0bdae95eacf1a7aa7f37684f70ba89b1197431c53b79a5cf86e4f3619b35206b",
+    "model_smoke_session": "st-mtghx57e-02ae36b775924903",
+    "real_dual_capture_session": "st-mtgig9qd-a3067fdc64114976",
+    "final_calibrated_session": "st-mtgindf8-df5ebea9f34f468c"
+  },
+  "actual_bindings": {
+    "real_app": "/Applications/大神.app",
+    "host": "http://127.0.0.1:3080",
+    "ui": "real app plus Playwright",
+    "models": "local MLX Whisper and FunASR ERes2NetV2"
+  },
+  "artifacts": [
+    "output/playwright/stenographer-expanded-panel-fixed.png",
+    "output/playwright/stenographer-heartbeat-style-button.png",
+    "/tmp/dsh-stenographer-full-regression.log"
+  ],
+  "qa_result": {
+    "status": "passed",
+    "passed_checks": [
+      "all repository tests pass: 402 of 402",
+      "focused feature tests pass: 34 of 34",
+      "two-hour accelerated soak passes",
+      "real microphone capture and lifecycle pass",
+      "local STT exact Chinese fixture passes",
+      "same/different speaker discrimination passes",
+      "real ScreenCaptureKit system audio and AVAudioEngine microphone tracks both persist",
+      "controlled system-track PCM end-to-end passes",
+      "real app layout, controls, panel size, console and overflow pass",
+      "local-model handoff creates and submits exactly one new session",
+      "stable designated requirement preserves permission identity across rebuilds",
+      "automatic stop-to-finalize transition completes without a second click",
+      "final calibrated Chinese transcript returns three actual speakers in Simplified Chinese"
+    ]
+  },
+  "evidence": [
+    "Controlled system-track session st-mtghx57e-02ae36b775924903 produced the exact Chinese sentence with speaker-1 and confidence 0.9656211406953873.",
+    "Speaker smoke measured same-person cosine 0.7194087760527546 and different-person cosine 0.09039669004253782.",
+    "Real dual capture session st-mtgig9qd-a3067fdc64114976 persisted 844160 system PCM bytes and 847824 microphone PCM bytes.",
+    "Final calibrated session st-mtgindf8-df5ebea9f34f468c returned exactly three stable speakers and three final Simplified-Chinese transcript blocks.",
+    "ScreenCapture permission is allowed for local.dsh.dashen and its csreq is the stable bundle identifier requirement.",
+    "Finalization started at 00:44:43.513Z and completed at 00:45:20.981Z without manual continuation."
+  ],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

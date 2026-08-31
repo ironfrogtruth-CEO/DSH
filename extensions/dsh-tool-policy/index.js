@@ -6,9 +6,10 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { ToolPolicy, classifyToolCall, normalizePolicyConfig } from './policy.js'
+import { GoalFirstStateStore } from '../dsh-goal-first-state-machine/state-store.js'
 
 export const name = 'dsh-tool-policy'
-export const inject = ['tools']
+export const inject = ['tools', 'llm']
 
 const HOME = process.env.DSH_HOME || join(homedir(), '.dsh')
 let defineToolPromise
@@ -56,11 +57,7 @@ const COMMAND_TOOL_NAMES = new Set(['command', 'exec', 'terminal'])
 const COMMAND_KEYS = new Set(['command', 'cmd', 'shell', 'script', 'argv', 'args'])
 
 const AVENGERS_PRESET_ID = 'avengers'
-const AVENGERS_CHILD_ROUTE = Object.freeze({
-  provider: 'zhipu-glm',
-  model: 'glm-5.3-flash',
-  reasoningEffort: 'medium',
-})
+const REASONING_EFFORT_ORDER = Object.freeze(['off', 'low', 'medium', 'high', 'max'])
 const AVENGERS_PARENT_TOOLS = new Set([
   'avenger',
   'ask_user_question',
@@ -167,12 +164,84 @@ export function avengersParentToolDecision(exec) {
   }
 }
 
-export function createAvengersRequestListener() {
+function contextService(ctx, name) {
+  try {
+    const value = ctx?.[name]
+    if (value !== null && value !== undefined) return value
+  } catch { /* fall through to the scoped service lookup */ }
+  try {
+    return typeof ctx?.get === 'function' ? ctx.get(name) : undefined
+  } catch { return undefined }
+}
+
+function reasoningEffortId(value) {
+  if (typeof value === 'string') return value.trim().toLowerCase()
+  if (value && typeof value === 'object' && typeof value.id === 'string') return value.id.trim().toLowerCase()
+  return ''
+}
+
+/**
+ * Return the next effort advertised by the exact target model. The model's
+ * advertised order is intentionally ignored: effort levels have one stable
+ * semantic order, while the returned spelling remains the adapter's id.
+ * Unsupported, unknown, or already-highest efforts return undefined.
+ */
+export function nextAvengersReasoningEffort(current, efforts) {
+  const currentId = reasoningEffortId(current)
+  const currentRank = REASONING_EFFORT_ORDER.indexOf(currentId)
+  if (currentRank < 0 || !Array.isArray(efforts)) return undefined
+  const candidates = efforts
+    .map((effort) => ({ id: typeof effort === 'string' ? effort : effort?.id, rank: reasoningEffortId(effort) }))
+    .filter((effort) => typeof effort.id === 'string' && effort.rank && REASONING_EFFORT_ORDER.indexOf(effort.rank) > currentRank)
+    .sort((left, right) => REASONING_EFFORT_ORDER.indexOf(left.rank) - REASONING_EFFORT_ORDER.indexOf(right.rank))
+  return candidates[0]?.id
+}
+
+function defaultStateStore(ctx) {
+  const provided = contextService(ctx, 'dshGoalFirstStateMachine')
+  if (provided?.store && typeof provided.store.load === 'function') return provided.store
+  return new GoalFirstStateStore(process.env.DSH_GOAL_FIRST_ROOT || join(HOME, 'goal-first-state'))
+}
+
+function childParentSession(agent) {
+  const parentSession = sessionField(agent, 'parentSession')
+  return parentSession === null || parentSession === undefined || String(parentSession).trim() === ''
+    ? ''
+    : String(parentSession).trim()
+}
+
+async function loadParentState(stateStore, agent) {
+  const parentSession = childParentSession(agent)
+  if (!parentSession || !stateStore || typeof stateStore.load !== 'function') return null
+  try { return await stateStore.load(parentSession) } catch { return null }
+}
+
+async function resolveChildEffort({ resolved, payload, llm, stateStore }) {
+  if (!resolved || typeof resolved !== 'object') return undefined
+  const parentState = await loadParentState(stateStore, payload?.agent)
+  if (parentState?.classification !== 'sop_required') return undefined
+  const resolveModelInfo = llm?.resolveModelInfo
+  if (typeof resolveModelInfo !== 'function') return undefined
+  try {
+    const info = await resolveModelInfo.call(llm, resolved.provider, resolved.model, payload?.signal)
+    // A request may omit the effort when the selected model's advertised
+    // default is being used. Treat that default as the current level only
+    // after resolving the exact model; a model with no reasoning metadata
+    // remains byte-for-byte unchanged.
+    const current = resolved.reasoningEffort ?? info?.reasoning?.defaultEffort
+    return nextAvengersReasoningEffort(current, info?.reasoning?.efforts)
+  } catch { return undefined }
+}
+
+export function createAvengersRequestListener({ llm, stateStore } = {}) {
   return async function avengersRequestListener(payload, next) {
     const resolved = await next()
     if (avengersAgentRole(payload?.agent) !== 'child') return resolved
-    const { reasoningEffort: _inheritedEffort, ...withoutInheritedEffort } = resolved
-    return { ...withoutInheritedEffort, ...AVENGERS_CHILD_ROUTE }
+    const effort = await resolveChildEffort({ resolved, payload, llm, stateStore })
+    // The child inherits the fully resolved parent request verbatim. The only
+    // permitted child delta is one evidence-backed reasoning-effort increase
+    // for a parent session classified as sop_required.
+    return effort ? { ...resolved, reasoningEffort: effort } : resolved
   }
 }
 
@@ -555,6 +624,10 @@ export async function apply(ctx, config) {
       render: (_args, value) => [{ type: 'text', text: boundedPolicyJson(renderKind, value) }],
     },
   }))
+  const requestListener = createAvengersRequestListener({
+    llm: contextService(ctx, 'llm'),
+    stateStore: defaultStateStore(ctx),
+  })
 
   register({
     name: 'policy_evaluate',
@@ -620,10 +693,10 @@ export async function apply(ctx, config) {
   }
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => typeof ctx.on === 'function' ? ctx.on('tools/pre-execute', listener) : undefined, 'dsh-tool-policy: pre-execute policy')
-    ctx.effect(() => typeof ctx.on === 'function' ? ctx.on('agent/request', createAvengersRequestListener()) : undefined, 'dsh-tool-policy: Avengers child route')
+    ctx.effect(() => typeof ctx.on === 'function' ? ctx.on('agent/request', requestListener) : undefined, 'dsh-tool-policy: Avengers child route')
   } else if (typeof ctx.on === 'function') {
     ctx.on('tools/pre-execute', listener)
-    ctx.on('agent/request', createAvengersRequestListener())
+    ctx.on('agent/request', requestListener)
   }
   if (typeof ctx.provide === 'function') ctx.provide('dshToolPolicy', {
     policy,
@@ -632,7 +705,6 @@ export async function apply(ctx, config) {
     shrimpRunApiBypassReason,
     avengersAgentRole,
     avengersParentToolDecision,
-    avengersChildRoute: { ...AVENGERS_CHILD_ROUTE },
     config: { ...normalizePolicyConfig(policy.config), blockDetachedBackground },
   })
   return undefined

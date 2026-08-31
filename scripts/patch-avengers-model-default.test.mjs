@@ -10,7 +10,6 @@ import {
   PACKAGE_NAME,
   PATCH_TEXT,
   patchAvengersModelDefault,
-  resolveAvengersDefaultSelection,
   SUPPORTED_VERSION,
 } from './patch-avengers-model-default.mjs'
 
@@ -23,112 +22,119 @@ function installedIndex() {
 
 function baselineIndex() {
   const source = installedIndex()
-  if (!source.includes(MARKER)) return source
-  assert.equal(source.split(MARKER).length - 1, 1, 'installed patch marker must be unique')
-  return source.replace(PATCH_TEXT.defaultBranchPatched, PATCH_TEXT.defaultBranchBaseline)
+  assert.equal(source.includes(MARKER), false, 'installed Host bundle must be on the canonical baseline')
+  return source
 }
 
-function makeFixture() {
+function legacyBranch() {
+  // A fixture-only historical v1 shape. The migration recognizes it by the
+  // reviewed marker and structural anchors, not by knowing any model ids.
+  return `${PATCH_TEXT.legacyBranchPrefix}
+				const header = agent.session.header;
+				if (header?.agentPreset === "avengers") {
+					const child = header.origin === "subagent" || header.delegationDepth > 0;
+					return child ? { provider: "fixture-child", model: "fixture-child-model", reasoningEffort: "fixture-child-effort" } : { provider: "fixture-parent", model: "fixture-parent-model", reasoningEffort: "fixture-parent-effort" };
+				}
+				return defaults.defaultModelSelection();
+			}`
+}
+
+function makeFixture(state = 'baseline') {
   const root = mkdtempSync(path.join(tmpdir(), 'dsh-avengers-model-default-'))
   const packageRoot = path.join(root, 'node_modules/@deepseek-ai/dsh-host-apiproxy')
   mkdirSync(path.join(packageRoot, 'lib'), { recursive: true })
+  const baseline = baselineIndex()
   copyFileSync(path.join(sourcePackage, 'package.json'), path.join(packageRoot, 'package.json'))
-  writeFileSync(path.join(packageRoot, 'lib/index.js'), baselineIndex(), 'utf8')
-  return { root, packageRoot, indexPath: path.join(packageRoot, 'lib/index.js'), baseline: baselineIndex() }
+  const source = state === 'baseline'
+    ? baseline
+    : state === 'v1'
+      ? baseline.replace(PATCH_TEXT.defaultBranchBaseline, legacyBranch())
+      : state === 'partial'
+        ? baseline.replace(PATCH_TEXT.defaultBranchBaseline, `			// ${MARKER}`)
+        : (() => { throw new Error(`unknown fixture state ${state}`) })()
+  writeFileSync(path.join(packageRoot, 'lib/index.js'), source, 'utf8')
+  return { root, packageRoot, indexPath: path.join(packageRoot, 'lib/index.js'), baseline, source }
 }
 
 function readFixture(fixture) {
   return readFileSync(fixture.indexPath, 'utf8')
 }
 
-test('Avengers default selection maps top-level and child headers, leaving other presets to global defaults', () => {
-  assert.deepEqual(resolveAvengersDefaultSelection({ agentPreset: 'avengers' }), {
-    provider: 'deepseek-official',
-    model: 'deepseek-v4-pro',
-    reasoningEffort: 'high',
-  })
-  assert.deepEqual(resolveAvengersDefaultSelection({ agentPreset: 'avengers', origin: 'subagent' }), {
-    provider: 'zhipu-glm',
-    model: 'glm-5.3-flash',
-    reasoningEffort: 'medium',
-  })
-  assert.deepEqual(resolveAvengersDefaultSelection({ agentPreset: 'avengers', delegationDepth: 1 }), {
-    provider: 'zhipu-glm',
-    model: 'glm-5.3-flash',
-    reasoningEffort: 'medium',
-  })
-  assert.equal(resolveAvengersDefaultSelection({ agentPreset: 'reliable-development' }), undefined)
-  assert.equal(resolveAvengersDefaultSelection(undefined), undefined)
-})
-
-test('applies exactly one selectionFor fallback replacement and is idempotent', async () => {
+test('clean baseline is the only default state and is idempotently verified', async () => {
   const fixture = makeFixture()
   try {
-    const first = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true })
-    assert.deepEqual(first, {
+    const before = readFixture(fixture)
+    assert.equal(before.includes(MARKER), false)
+    assert.equal(before.match(/if \(logged === void 0\) return defaults\.defaultModelSelection\(\);/g)?.length, 1)
+    const check = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: false })
+    assert.deepEqual(check, {
+      ok: true,
+      changed: false,
+      status: 'clean',
+      packageName: PACKAGE_NAME,
+      version: SUPPORTED_VERSION,
+      packageRoot: path.resolve(fixture.packageRoot),
+      target: fixture.indexPath,
+      apply: false,
+    })
+    const apply = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true })
+    assert.equal(apply.ok, true)
+    assert.equal(apply.changed, false)
+    assert.equal(apply.status, 'clean')
+    assert.equal(readFixture(fixture), before)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('recognizes and atomically restores the historical v1 hard-coded branch', async () => {
+  const fixture = makeFixture('v1')
+  try {
+    const before = readFixture(fixture)
+    assert.equal(before.split(MARKER).length - 1, 1)
+    const pending = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: false })
+    assert.equal(pending.ok, false)
+    assert.equal(pending.changed, false)
+    assert.equal(pending.status, 'pending')
+    assert.equal(readFixture(fixture), before, 'check must not write')
+
+    const restored = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true })
+    assert.deepEqual(restored, {
       ok: true,
       changed: true,
-      status: 'applied',
+      status: 'restored',
       packageName: PACKAGE_NAME,
       version: SUPPORTED_VERSION,
       packageRoot: path.resolve(fixture.packageRoot),
       target: fixture.indexPath,
       apply: true,
     })
-    const patched = readFixture(fixture)
-    assert.equal(patched, fixture.baseline.replace(PATCH_TEXT.defaultBranchBaseline, PATCH_TEXT.defaultBranchPatched))
-    assert.equal(patched.split(MARKER).length - 1, 1)
+    assert.equal(readFixture(fixture), fixture.baseline)
 
     const second = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true })
     assert.equal(second.ok, true)
     assert.equal(second.changed, false)
     assert.equal(second.status, 'clean')
-    assert.equal(readFixture(fixture), patched)
-
-    const check = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: false })
-    assert.equal(check.ok, true)
-    assert.equal(check.changed, false)
-    assert.equal(check.status, 'clean')
-    assert.equal(readFixture(fixture), patched)
+    assert.equal(readFixture(fixture), fixture.baseline)
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
   }
 })
 
-test('keeps picked and logged selection precedence ahead of the Avengers fallback', async () => {
-  const fixture = makeFixture()
-  try {
-    await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true })
-    const source = readFixture(fixture)
-    const start = source.indexOf(PATCH_TEXT.selectionFunction)
-    const end = source.indexOf(PATCH_TEXT.selectionEnd, start)
-    assert.ok(start >= 0 && end > start)
-    const selection = source.slice(start, end)
-    const picked = selection.indexOf('if (picked !== void 0) return picked;')
-    const logged = selection.indexOf('const logged = agent.session.requestHeader()?.config;')
-    const fallback = selection.indexOf(PATCH_TEXT.defaultBranchPatched)
-    assert.ok(picked >= 0)
-    assert.ok(logged > picked)
-    assert.ok(fallback > logged)
-    assert.match(selection, /if \(logged === void 0\) \{[\s\S]*return defaults\.defaultModelSelection\(\);/)
-    assert.match(selection, /return \{\s+provider: logged\.provider,\s+model: logged\.model,/)
-  } finally {
-    rmSync(fixture.root, { recursive: true, force: true })
-  }
-})
-
-test('check is read-only and reports a valid baseline as pending', async () => {
-  const fixture = makeFixture()
-  try {
-    const before = readFixture(fixture)
-    const result = await patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: false })
-    assert.equal(result.ok, false)
-    assert.equal(result.changed, false)
-    assert.equal(result.status, 'pending')
-    assert.equal(readFixture(fixture), before)
-  } finally {
-    rmSync(fixture.root, { recursive: true, force: true })
-  }
+test('preserves picked/logged/default precedence and never reintroduces an Avengers override', () => {
+  const source = baselineIndex()
+  const start = source.indexOf(PATCH_TEXT.selectionFunction)
+  const end = source.indexOf(PATCH_TEXT.selectionEnd, start)
+  assert.ok(start >= 0 && end > start)
+  const selection = source.slice(start, end)
+  const picked = selection.indexOf('if (picked !== void 0) return picked;')
+  const logged = selection.indexOf('const logged = agent.session.requestHeader()?.config;')
+  const fallback = selection.indexOf(PATCH_TEXT.defaultBranchBaseline)
+  assert.ok(picked >= 0)
+  assert.ok(logged > picked)
+  assert.ok(fallback > logged)
+  assert.doesNotMatch(selection, /agentPreset.*avengers/)
+  assert.doesNotMatch(selection, /reasoningEffort:.*(?:high|medium)/)
 })
 
 test('fails closed for unsupported version, unknown anchor, and partial marker without writing', async () => {
@@ -149,18 +155,17 @@ test('fails closed for unsupported version, unknown anchor, and partial marker w
   try {
     const before = readFixture(anchorFixture)
     writeFileSync(anchorFixture.indexPath, before.replace(PATCH_TEXT.defaultBranchBaseline, '/* changed upstream */'), 'utf8')
-    await assert.rejects(() => patchAvengersModelDefault({ packageRoot: anchorFixture.packageRoot, apply: true }), /expected exactly one selectionFor default branch/)
+    await assert.rejects(() => patchAvengersModelDefault({ packageRoot: anchorFixture.packageRoot, apply: true }), /expected exactly one canonical default branch/)
     assert.equal(readFixture(anchorFixture), before.replace(PATCH_TEXT.defaultBranchBaseline, '/* changed upstream */'))
   } finally {
     rmSync(anchorFixture.root, { recursive: true, force: true })
   }
 
-  const partialFixture = makeFixture()
+  const partialFixture = makeFixture('partial')
   try {
-    const partial = readFixture(partialFixture).replace(PATCH_TEXT.defaultBranchBaseline, `\t\t\t// ${MARKER}`)
-    writeFileSync(partialFixture.indexPath, partial, 'utf8')
-    await assert.rejects(() => patchAvengersModelDefault({ packageRoot: partialFixture.packageRoot, apply: true }), /ambiguous patched state|patched Avengers default branch/)
-    assert.equal(readFixture(partialFixture), partial)
+    const before = readFixture(partialFixture)
+    await assert.rejects(() => patchAvengersModelDefault({ packageRoot: partialFixture.packageRoot, apply: true }), /malformed v1 branch|could not close the v1 branch/)
+    assert.equal(readFixture(partialFixture), before)
   } finally {
     rmSync(partialFixture.root, { recursive: true, force: true })
   }
@@ -171,10 +176,7 @@ test('atomic replacement leaves the original target and no temporary file on ren
   const target = path.join(root, 'runtime.js')
   writeFileSync(target, 'old', 'utf8')
   try {
-    const fsApi = {
-      ...fs,
-      rename: async () => { throw new Error('injected rename failure') },
-    }
+    const fsApi = { ...fs, rename: async () => { throw new Error('injected rename failure') } }
     await assert.rejects(() => atomicReplaceFile(target, 'new', { fsApi }), /injected rename failure/)
     assert.equal(readFileSync(target, 'utf8'), 'old')
     assert.deepEqual(readdirSync(root), ['runtime.js'])
@@ -183,15 +185,12 @@ test('atomic replacement leaves the original target and no temporary file on ren
   }
 })
 
-test('patch apply propagates atomic failure without leaving a temp or changing the bundle', async () => {
-  const fixture = makeFixture()
+test('restore propagates atomic failure without leaving a temp or changing the bundle', async () => {
+  const fixture = makeFixture('v1')
   try {
     const before = readFixture(fixture)
-    const fsApi = {
-      ...fs,
-      rename: async () => { throw new Error('injected patch rename failure') },
-    }
-    await assert.rejects(() => patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true, fsApi }), /injected patch rename failure/)
+    const fsApi = { ...fs, rename: async () => { throw new Error('injected restore rename failure') } }
+    await assert.rejects(() => patchAvengersModelDefault({ packageRoot: fixture.packageRoot, apply: true, fsApi }), /injected restore rename failure/)
     assert.equal(readFixture(fixture), before)
     assert.deepEqual(readdirSync(path.dirname(fixture.indexPath)), ['index.js'])
   } finally {

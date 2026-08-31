@@ -9,6 +9,9 @@ import {
   findShrimpPipeline,
   findShrimpTarget,
   normalizeShrimpRunInputs,
+  normalizeShrimpToolResponse,
+  readShrimpRunStandingAuth,
+  SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES,
   runShrimpWithReceipt,
   runShrimpWithDedupe,
   ShrimpRunRequestRegistry,
@@ -46,6 +49,62 @@ function assertNoHeartbeatWrites(calls) {
   assert.equal(calls.some((call) => /heartbeat/i.test(call.path)), false)
   assert.equal(calls.some((call) => call.method !== 'GET' && /\/api\/v1\/runs\//.test(call.path)), false)
 }
+
+test('tank tool normalizes structured API errors without losing details or transport status', async () => {
+  const envelope = normalizeShrimpToolResponse({
+    ok: false,
+    status: 409,
+    json: {
+      ok: false,
+      status: 499,
+      error: { code: 'ACTIVE_RUN_CONFLICT', message: '已有运行', existing_run_id: 'run-existing' },
+      data: { preserved: true },
+    },
+  })
+  assert.equal(envelope.ok, false)
+  assert.equal(envelope.status, 409)
+  assert.equal(typeof envelope.error, 'string')
+  assert.equal(envelope.error, '已有运行')
+  assert.deepEqual(envelope.error_detail, { code: 'ACTIVE_RUN_CONFLICT', message: '已有运行', existing_run_id: 'run-existing' })
+  assert.equal(envelope.code, 'RUN_ALREADY_ACTIVE')
+  assert.equal(envelope.existing_run_id, 'run-existing')
+  assert.deepEqual(envelope.data, { preserved: true })
+
+  const fastApi = normalizeShrimpToolResponse({
+    ok: false,
+    status: 409,
+    json: { detail: { code: 'ACTIVE_RUN_CONFLICT', detail: '已有文章运行', existing_run_id: 'run-fastapi' } },
+  })
+  assert.equal(fastApi.error, '已有文章运行')
+  assert.equal(fastApi.code, 'RUN_ALREADY_ACTIVE')
+  assert.equal(fastApi.existing_run_id, 'run-fastapi')
+  assert.deepEqual(fastApi.error_detail, { code: 'ACTIVE_RUN_CONFLICT', detail: '已有文章运行', existing_run_id: 'run-fastapi' })
+
+  const plain = normalizeShrimpToolResponse({ ok: false, status: 400, json: '请求格式错误' })
+  assert.equal(plain.error, '请求格式错误')
+  assert.equal(typeof plain.error, 'string')
+
+  const success = normalizeShrimpToolResponse({
+    ok: true,
+    status: 200,
+    json: { ok: false, status: 503, data: { preserved: true } },
+  })
+  assert.equal(success.ok, true)
+  assert.equal(success.status, 200)
+  assert.deepEqual(success.data, { preserved: true })
+
+  let summaryReads = 0
+  const conflictRun = await runShrimpWithReceipt({
+    launch: async () => envelope,
+    readSummary: async () => { summaryReads += 1; return { ok: true, data: { status: 'done' } } },
+  })
+  assert.equal(conflictRun.ok, false)
+  assert.equal(conflictRun.started, false)
+  assert.equal(conflictRun.code, 'RUN_ALREADY_ACTIVE')
+  assert.equal(conflictRun.existing_run_id, 'run-existing')
+  assert.equal(typeof conflictRun.error_summary, 'string')
+  assert.equal(summaryReads, 0, '409 active conflict should not enter terminal polling')
+})
 
 test('单独运行成功后返回终态、节点、进度和产物摘要，只读 summary/artifacts', async () => {
   const calls = [{ method: 'POST', path: '/api/v1/pipelines/article/runs' }]
@@ -209,7 +268,9 @@ test('shrimp_run 工具合同要求回执且不提供裸 curl 或心跳写入口
 
 const ARTICLE_PIPELINE = {
   identity: 'pipeline',
-  ref: 'shrimp-c433b57dac59419d',
+  // 旧策略用例统一使用非白名单 slug；真实白名单 slug 的常驻授权行为
+  // 由文末 standing-auth 专项用例覆盖（读真实 ~/.dsh/shrimp-run-standing-auth.json）。
+  ref: 'shrimp-test-article',
   display_name: '文章@虾六答',
   lifecycle_status: 'published',
 }
@@ -359,26 +420,28 @@ test('三篇批次授权在同一 agent/session 内可跨回合消费，每篇�
   assert.equal(repeatedItem.kind, 'ask', '同一篇不能被普通批次重复消费')
 })
 
-test('真实两篇授权原句识别两项批次并签发两次额度', () => {
+test('真实两篇生产授权原句识别两项批次并给出每项一次恢复额度', () => {
   const intent = explicitShrimpRunIntent([human('运行文章虾，连续产出资讯和总结两篇并保存到公众号草稿箱')])
   assert.equal(intent.explicit, true)
   assert.equal(intent.batchCount, 2)
-  assert.equal(intent.maxUses, 2)
+  assert.equal(intent.outcome, true)
+  assert.equal(intent.recoverable, true)
+  assert.equal(intent.maxUses, 4)
 })
 
 test('文章生产自然指令建立正确批次授权，历史描述、询问和维护指令不触发', () => {
   const direct = [
     ['升级了文章虾，试一下。一篇资讯，一篇关于过去12小时我们对大神升级的总结。', 2],
     ['用文章虾写一篇关于本周发布的文章。', 1],
-    ['让文章@虾六答产出两篇文章并保存到草稿箱。', 2],
-    ['交给文章虾生成并发布一篇文章。', 1],
+    ['让文章@虾六答产出两篇文章并保存到草稿箱。', 2, 4],
+    ['交给文章虾生成并发布一篇文章。', 1, 2],
     ['运行文章虾...；禁止直接调用 7843 API。', 1],
   ]
-  for (const [text, batchCount] of direct) {
+  for (const [text, batchCount, expectedMaxUses = batchCount] of direct) {
     const intent = explicitShrimpRunIntent([human(text)])
     assert.equal(intent.explicit, true, text)
     assert.equal(intent.batchCount, batchCount, text)
-    assert.equal(intent.maxUses, batchCount, text)
+    assert.equal(intent.maxUses, expectedMaxUses, text)
   }
   for (const text of [
     '不要运行文章虾。',
@@ -391,6 +454,41 @@ test('文章生产自然指令建立正确批次授权，历史描述、询问�
   assert.equal(shrimpRunBatchCount('一篇资讯，一篇总结'), 2)
   assert.equal(shrimpRunBatchCount('让文章@虾六答产出三篇'), 3)
   assert.equal(shrimpRunBatchCount('第3篇'), 1)
+})
+
+test('十项结果型批次保留每项一次恢复额度，总授权上限为二十次', async () => {
+  assert.equal(SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES, 20)
+  let now = 1_000
+  const receiptStore = new ShrimpAuthorizationReceipts({ now: () => now })
+  const gate = createShrimpAuthorizationGate({ receipts: receiptStore, readCatalog: async () => CATALOG, now: () => now })
+  const agent = liveAgent('ten-item-batch', 7)
+  const text = '用文章虾完成十篇资讯并保存到公众号草稿箱'
+  const intent = explicitShrimpRunIntent([human(text)])
+  assert.equal(shrimpRunBatchCount(text), 10)
+  assert.equal(intent.batchCount, 10)
+  assert.equal(intent.maxUses, 20)
+  await gate.preStep({ agent, messages: [human(text)], turn: 7 }, async () => ({ kind: 'enter', messages: [] }))
+  let receipt = receiptStore.peek({ agentId: agent.id, pipelineSlug: ARTICLE_PIPELINE.ref })
+  assert.equal(receipt.batchCount, 10)
+  assert.equal(receipt.itemMaxUses, 2)
+  assert.equal(receipt.maxUses, 20)
+  for (let index = 0; index < 10; index += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      agent.session.events = [{ type: 'turn/start', data: { turn: 7 + index * 2 + attempt } }]
+      const decision = await gate.preExecute({
+        name: 'shrimp_run', agent,
+        arguments: { pipelineSlug: ARTICLE_PIPELINE.ref, confirm: true, payload: { topic: `第${index + 1}篇` } },
+      }, async () => ({ kind: 'allow' }))
+      assert.equal(decision.kind, 'allow')
+    }
+  }
+  receipt = receiptStore.peek({ agentId: agent.id, pipelineSlug: ARTICLE_PIPELINE.ref })
+  assert.equal(receipt.uses, 20)
+  const overflow = await gate.preExecute({
+    name: 'shrimp_run', agent,
+    arguments: { pipelineSlug: ARTICLE_PIPELINE.ref, confirm: true, payload: { topic: '第11篇' } },
+  }, async () => ({ kind: 'allow' }))
+  assert.equal(overflow.kind, 'ask')
 })
 
 test('授权 receipt 默认 TTL 为 1 小时，过期后跨回合也不能继续运行', async () => {
@@ -535,7 +633,7 @@ test('Avengers child consumes parent article authorization receipt without its o
   child.session.header = { origin: 'subagent', parentSession: parent.id }
   await gate.preStep({
     agent: parent,
-    messages: [human('调用文章虾完成一次文章发布')],
+    messages: [human('调用文章虾')],
     turn: 7,
   }, async () => ({ kind: 'enter', messages: [] }))
   assert.equal(receiptStore.peek({ agentId: child.id, turn: 8, pipelineSlug: ARTICLE_PIPELINE.ref }), null)
@@ -561,7 +659,7 @@ test('Avengers child consumes parent article authorization receipt without its o
   expiredChild.session.header = { origin: 'subagent', parentSession: expiredParent.id }
   await gate.preStep({
     agent: expiredParent,
-    messages: [human('调用文章虾完成一次文章发布')],
+    messages: [human('调用文章虾')],
     turn: 9,
   }, async () => ({ kind: 'enter', messages: [] }))
   now = 1_101
@@ -607,7 +705,7 @@ test('Avengers child reads lineage from the live session root and matches parent
 
   await gate.preStep({
     agent: child,
-    messages: [human('调用文章虾完成一次文章发布')],
+    messages: [human('调用文章虾')],
     turn: 8,
   }, async () => ({ kind: 'enter', messages: [] }))
   assert.equal(receiptStore.peek({ agentId: 'child-agent', sessionId: 'session-child', pipelineSlug: ARTICLE_PIPELINE.ref }), null, '子代理派单词不能自行签发 receipt')
@@ -620,7 +718,7 @@ test('Avengers child reads lineage from the live session root and matches parent
 
   await gate.preStep({
     agent: parent,
-    messages: [human('调用文章虾完成一次文章发布')],
+    messages: [human('调用文章虾')],
     turn: 7,
   }, async () => ({ kind: 'enter', messages: [] }))
   assert.equal(receiptStore.peek({ agentId: 'parent-agent', sessionId: 'session-parent', pipelineSlug: ARTICLE_PIPELINE.ref }).uses, 0)
@@ -668,4 +766,170 @@ test('真实两篇文章授权可由子代理连续消费两次，第三次被�
   assert.equal((await run('总结篇')).kind, 'allow')
   assert.equal((await run('第三篇')).kind, 'ask')
   assert.equal(receiptStore.peek({ agentId: 'parent-agent-e2e', sessionId: 'session-parent', pipelineSlug: ARTICLE_PIPELINE.ref }).uses, 2)
+})
+
+test('结果型父授权支持子代理失败重试和成功幂等，两个文章项互相隔离', async () => {
+  const clock = fakeClock()
+  const receiptStore = new ShrimpAuthorizationReceipts({ ttlMs: 3_600_000, now: clock.now })
+  const registry = new ShrimpRunRequestRegistry({ ttlMs: 3_600_000, now: clock.now })
+  const gate = createShrimpAuthorizationGate({
+    receipts: receiptStore,
+    readCatalog: async () => CATALOG,
+    now: clock.now,
+    isSafeRepeat: (request) => registry.isSafeRepeat(request),
+  })
+  const userText = '用文章虾完成资讯和总结两篇并保存到公众号草稿箱'
+  const parent = liveAgent('outcome-parent', 7)
+  parent.session = { id: 'outcome-parent-session', events: [{ type: 'turn/start', data: { turn: 7 } }] }
+  const child = liveAgent('outcome-child', 8)
+  child.session = {
+    id: 'outcome-child-session',
+    origin: 'subagent',
+    parentSession: 'outcome-parent-session',
+    delegationDepth: 1,
+    events: [{ type: 'turn/start', data: { turn: 8 } }],
+  }
+
+  await gate.preStep({ agent: child, messages: [human(userText)], turn: 8 }, async () => ({ kind: 'enter', messages: [] }))
+  assert.equal(receiptStore.peek({ agentId: child.id, sessionId: child.session.id, pipelineSlug: ARTICLE_PIPELINE.ref }), null)
+  await gate.preStep({ agent: parent, messages: [human(userText)], turn: 7 }, async () => ({ kind: 'enter', messages: [] }))
+  const authorization = receiptStore.peek({ agentId: parent.id, sessionId: parent.session.id, pipelineSlug: ARTICLE_PIPELINE.ref })
+  assert.equal(authorization.batchCount, 2)
+  assert.equal(authorization.itemMaxUses, 2)
+  assert.equal(authorization.maxUses, 4)
+
+  const attempts = new Map()
+  const statuses = new Map()
+  const launchKeys = []
+  let launches = 0
+  let turn = 8
+  const invoke = async (topic) => {
+    child.session.events = [{ type: 'turn/start', data: { turn: turn++ } }]
+    const payload = { topic }
+    const decision = await gate.preExecute({
+      name: 'shrimp_run', agent: child,
+      arguments: { pipelineSlug: ARTICLE_PIPELINE.ref, confirm: true, payload },
+    }, async () => ({ kind: 'allow' }))
+    if (decision.kind !== 'allow') return { decision }
+    let runId = ''
+    const requestKey = {
+      agentId: child.id,
+      sessionId: child.session.id,
+      pipelineSlug: ARTICLE_PIPELINE.ref,
+      payload,
+      idempotencyKey: stableShrimpRunIdempotencyKey({ agentId: child.id, sessionId: child.session.id, turn, pipelineSlug: ARTICLE_PIPELINE.ref, payload }),
+    }
+    const result = await runShrimpWithDedupe({
+      registry,
+      requestKey,
+      launch: async ({ idempotencyKey }) => {
+        launches += 1
+        launchKeys.push(idempotencyKey)
+        const attempt = Number(attempts.get(topic) || 0) + 1
+        attempts.set(topic, attempt)
+        runId = `outcome-${topic}-${attempt}`
+        const status = topic === '资讯' && attempt === 1 ? 'failed' : topic === '资讯' ? 'done' : 'failed'
+        statuses.set(runId, status)
+        return { ok: true, operation_id: `op-${runId}`, run_id: runId }
+      },
+      readSummary: async (id) => ({ ok: true, data: { id, status: statuses.get(id) } }),
+      readArtifacts: async () => ({ ok: true, data: { total: 0, items: [] } }),
+      timeoutMs: 0,
+      pollIntervalMs: 0,
+      sleep: clock.sleep,
+      now: clock.now,
+    })
+    return { decision, result }
+  }
+
+  const firstArticle = await invoke('资讯')
+  assert.equal(firstArticle.decision.kind, 'allow')
+  assert.equal(firstArticle.result.final_status, 'failed')
+  const retriedArticle = await invoke('资讯')
+  assert.equal(retriedArticle.decision.kind, 'allow')
+  assert.equal(retriedArticle.result.final_status, 'done')
+  const repeatedSuccess = await invoke('资讯')
+  assert.equal(repeatedSuccess.decision.kind, 'allow')
+  assert.equal(repeatedSuccess.result.deduplicated, true)
+  assert.equal(repeatedSuccess.result.final_status, 'done')
+  assert.equal(attempts.get('资讯'), 2)
+  assert.equal(launches, 2)
+  assert.notEqual(launchKeys[0], launchKeys[1], '同一回合的失败重试必须使用新 idempotency key')
+
+  const firstSummary = await invoke('总结')
+  assert.equal(firstSummary.decision.kind, 'allow')
+  assert.equal(firstSummary.result.final_status, 'failed')
+  const secondSummary = await invoke('总结')
+  assert.equal(secondSummary.decision.kind, 'allow')
+  assert.equal(secondSummary.result.final_status, 'failed')
+  assert.equal(attempts.get('总结'), 2)
+  assert.equal(launches, 4, '两个文章项各自最多启动两次，成功项重复调用不新建')
+
+  const thirdSummary = await invoke('总结')
+  assert.equal(thirdSummary.decision.kind, 'ask')
+  const extraItem = await invoke('多余')
+  assert.equal(extraItem.decision.kind, 'ask', '超过授权批次项数也不能借额度运行')
+  assert.equal(launches, 4)
+  assert.equal(receiptStore.peek({ agentId: parent.id, sessionId: parent.session.id, pipelineSlug: ARTICLE_PIPELINE.ref }).uses, 4)
+})
+
+test('成功运行 receipt 按 payload、session 和 slug 隔离，并在 TTL 到期后释放', async () => {
+  const clock = fakeClock()
+  const registry = new ShrimpRunRequestRegistry({ ttlMs: 100, now: clock.now })
+  const request = { agentId: 'agent-a', sessionId: 'session-a', pipelineSlug: ARTICLE_PIPELINE.ref, payload: { topic: '唯一主题' } }
+  registry.remember({ ...request, runId: 'run-success', status: 'done', result: { ok: true, final_status: 'done', run_id: 'run-success' } })
+  assert.equal(registry.isSafeRepeat(request), true)
+  assert.equal(registry.isSafeRepeat({ ...request, payload: { topic: '另一个主题' } }), false)
+  assert.equal(registry.isSafeRepeat({ ...request, sessionId: 'session-b' }), false)
+  assert.equal(registry.isSafeRepeat({ ...request, pipelineSlug: 'shrimp-other' }), false)
+  await clock.sleep(100)
+  assert.equal(registry.isSafeRepeat(request), false)
+})
+
+test('常驻授权（standing auth）清单内 slug 免动词签发回执，否定语气与 confirm 门槛保留', async (t) => {
+  const grants = readShrimpRunStandingAuth()
+  const standingSlug = 'shrimp-c433b57dac59419d'
+  if (!grants[standingSlug]) return t.skip('真实 ~/.dsh/shrimp-run-standing-auth.json 未包含白名单 slug，跳过')
+  const clock = fakeClock()
+  const receiptStore = new ShrimpAuthorizationReceipts({ ttlMs: 3_600_000, now: clock.now })
+  const gate = createShrimpAuthorizationGate({
+    receipts: receiptStore,
+    readCatalog: async () => [{
+      identity: 'pipeline',
+      ref: standingSlug,
+      display_name: '常驻@测试虾',
+      lifecycle_status: 'published',
+    }],
+    now: clock.now,
+  })
+  const parent = liveAgent('standing-parent', 7)
+  parent.session = { id: 'standing-parent-session', events: [{ type: 'turn/start', data: { turn: 7 } }] }
+
+  // 无运行动词的普通消息也能为白名单 slug 签发常驻回执
+  await gate.preStep({ agent: parent, messages: [human('帮我把常驻测试虾的产出整理一下')], turn: 7 }, async () => ({ kind: 'enter', messages: [] }))
+  const receipt = receiptStore.peek({ agentId: parent.id, sessionId: parent.session.id, pipelineSlug: standingSlug })
+  assert.ok(receipt, '白名单 slug 应免动词签发常驻回执')
+  assert.equal(receipt.standing, true)
+  assert.equal(receipt.maxUses, grants[standingSlug].maxUses || 10)
+
+  // confirm=true 即可运行，无需消息点名目标（slug 白名单即授权凭证）
+  const decision = await gate.preExecute({
+    name: 'shrimp_run', agent: parent,
+    arguments: { pipelineSlug: standingSlug, confirm: true, payload: { topic: '常驻授权一' } },
+  }, async () => ({ kind: 'allow' }))
+  assert.equal(decision.kind, 'allow')
+  assert.equal(receiptStore.peek({ agentId: parent.id, sessionId: parent.session.id, pipelineSlug: standingSlug }).uses, 1)
+
+  // 否定语气不签发新回执
+  const negatedAgent = liveAgent('standing-negated', 8)
+  negatedAgent.session = { id: 'standing-negated-session', events: [{ type: 'turn/start', data: { turn: 8 } }] }
+  await gate.preStep({ agent: negatedAgent, messages: [human('先不要运行常驻测试虾')], turn: 8 }, async () => ({ kind: 'enter', messages: [] }))
+  assert.equal(receiptStore.peek({ agentId: negatedAgent.id, sessionId: negatedAgent.session.id, pipelineSlug: standingSlug }), null)
+
+  // confirm 缺失仍被拦截
+  const noConfirm = await gate.preExecute({
+    name: 'shrimp_run', agent: parent,
+    arguments: { pipelineSlug: standingSlug, payload: { topic: '常驻授权二' } },
+  }, async () => ({ kind: 'allow' }))
+  assert.equal(noConfirm.kind, 'ask')
 })

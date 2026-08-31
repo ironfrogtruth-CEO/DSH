@@ -10,6 +10,8 @@ DSH_BIN="$INSTALL_NODE_MODULES/@deepseek-ai/dsh/lib/bin.js"
 LOG="$HOME/.dsh/web.log"
 STATE="$HOME/.dsh/.web-load-signature"
 GOAL_FIRST_PREFLIGHT="$HOME/.dsh/extensions/dsh-goal-first-state-machine/goal-first-state-machine.test.mjs"
+STENOGRAPHER_PREFLIGHT="$HOME/.dsh/extensions/dsh-stenographer/index.test.mjs"
+STENOGRAPHER_CLIENT_PREFLIGHT="$HOME/.dsh/extensions/dsh-stenographer/client.test.mjs"
 PRIVATE="$HOME/.dsh/private"
 LOCK_DIR="$PRIVATE/ensure-web.lock"
 PROFILE_DIR="$HOME/.dsh/profiles/web"
@@ -244,11 +246,16 @@ if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-subagent-selected-route.mjs" 
   echo "$(date '+%F %T') ensure-web: subagent route patch failed; refusing to start Host" >>"$LOG"
   exit 1
 fi
-# Avengers uses a session-local default-model tier so its V4 Pro parent does
-# not overwrite CyberMarcus or the process-wide default. Version/anchor drift
-# is a startup failure rather than permission to guess at an installed bundle.
-if ! /usr/local/bin/node "$HOME/.dsh/scripts/patch-avengers-model-default.mjs" --apply >>"$LOG" 2>&1; then
-  echo "$(date '+%F %T') ensure-web: Avengers model-default patch failed; refusing to start Host" >>"$LOG"
+# Avengers must use the same current model/reasoning selection as every other
+# fresh session. Migrate the historical hard-coded v1 fallback out of the
+# installed Host bundle, then verify the canonical baseline before startup.
+AVENGERS_BASELINE="$HOME/.dsh/scripts/patch-avengers-model-default.mjs"
+if ! /usr/local/bin/node "$AVENGERS_BASELINE" --apply >>"$LOG" 2>&1; then
+  echo "$(date '+%F %T') ensure-web: Avengers baseline restore failed; refusing to start Host" >>"$LOG"
+  exit 1
+fi
+if ! /usr/local/bin/node "$AVENGERS_BASELINE" --check >>"$LOG" 2>&1; then
+  echo "$(date '+%F %T') ensure-web: Avengers baseline check failed; refusing to start Host" >>"$LOG"
   exit 1
 fi
 # client-only command action补丁(严格 rc.2 Gate,幂等)
@@ -340,6 +347,20 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/model.mjs" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-stenographer/package.json" \
+  "$HOME/.dsh/extensions/dsh-stenographer/index.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/client.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-stenographer/runtime/constants.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/runtime/atomic-store.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/runtime/document.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/runtime/model-supervisor.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/runtime/service.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/runtime/speaker-cluster.js" \
+  "$HOME/.dsh/extensions/dsh-stenographer/scripts/stt_worker.py" \
+  "$HOME/.dsh/extensions/dsh-stenographer/scripts/paraformer_worker.py" \
+  "$HOME/.dsh/extensions/dsh-stenographer/scripts/speaker_worker.py" \
+  "$HOME/.dsh/runtimes/stenographer/models/manifest.json" \
   "$HOME/.dsh/extensions/dsh-webbridge/package.json" \
   "$HOME/.dsh/extensions/dsh-webbridge/index.js" \
   "$HOME/.dsh/extensions/dsh-webbridge/cordis.patch.yml" \
@@ -351,6 +372,24 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/custom-ui-patches/dsh-client-ui-workspace/client.js.modified" \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/index.js.modified" \
   "$HOME/.dsh/custom-ui-patches/shrimp-shell/client.js.modified" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/replay-brand.sh" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/original/ipollowork-logo.svg" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/manifest.json" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/design-tokens.css" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/entry.html" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/cover.png" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/SOURCES.txt" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/assets/cover-pafc.jpeg" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/assets/service-mdt.jpg" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/assets/case-checkup.jpg" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/assets/service-online-doctor.jpg" \
+  "$HOME/.dsh/custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health/assets/closing-professionals.jpg" \
+  "$HOME/.dsh/profiles/web/node_modules/deepseek-idesign/package.json" \
+  "$HOME/.dsh/profiles/web/node_modules/deepseek-idesign/lib/index.js" \
+  "$HOME/.dsh/profiles/web/node_modules/deepseek-idesign/studio/dist/index.html" \
+  "$HOME/.dsh/profiles/web/node_modules/deepseek-ippt/package.json" \
+  "$HOME/.dsh/profiles/web/node_modules/deepseek-ippt/lib/index.js" \
+  "$HOME/.dsh/profiles/web/node_modules/deepseek-ippt/studio/dist/index.html" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-subagent/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-jobs/lib/client.js" \
   "$HOME/.dsh/install/node_modules/@deepseek-ai/dsh-client-ui-commands/lib/client.js" \
@@ -393,6 +432,12 @@ if /usr/sbin/lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   if [ -f "$GOAL_FIRST_PREFLIGHT" ]; then
     if ! /usr/local/bin/node --test "$GOAL_FIRST_PREFLIGHT" >>"$LOG" 2>&1; then
       echo "$(date '+%F %T') ensure-web: goal-first preflight failed; keeping current Host" >>"$LOG"
+      exit 1
+    fi
+  fi
+  if [ -f "$STENOGRAPHER_PREFLIGHT" ] && [ -f "$STENOGRAPHER_CLIENT_PREFLIGHT" ]; then
+    if ! /usr/local/bin/node --test "$STENOGRAPHER_PREFLIGHT" "$STENOGRAPHER_CLIENT_PREFLIGHT" >>"$LOG" 2>&1; then
+      echo "$(date '+%F %T') ensure-web: stenographer preflight failed; keeping current Host" >>"$LOG"
       exit 1
     fi
   fi

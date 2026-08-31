@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+  <key>CFBundleDisplayName</key><string>大神</string>
+  <key>CFBundleExecutable</key><string>大神</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleIdentifier</key><string>local.dsh.dashen.portable</string>
+  <key>CFBundleName</key><string>大神</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>2.1.1</string>
+  <key>CFBundleVersion</key><string>2.1.1</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>NSAppTransportSecurity</key>
+  <dict><key>NSAllowsLocalNetworking</key><true/></dict>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSMicrophoneUsageDescription</key><string>用于语音输入：按住麦克风按钮说话，识别为文字填入输入框。</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>用于语音输入：将您的语音转写为文字。</string>
+</dict>
+</plist>

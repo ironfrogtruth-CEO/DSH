@@ -1,11 +1,13 @@
 ---
 name: goal-first-control
-description: 以终为始 / goal-first-control：Use as the default entrypoint for complex work. Start from the required outcome and success criteria, work backward through validation, artifacts, structure, and truth sources, then route to the right skills, tools, models, QA gates, and rollback points. Do not force the full pipeline onto simple one-step requests.
+description: 以终为始 / goal-first-control：Use when the model selects the goal-first axis at implicit, light, or full depth. Start from the required outcome and success criteria, then expand only the planning detail the task needs; do not force the full pipeline onto simple one-step requests.
 ---
 
 # 以终为始
 
-Use this controller before specialized skills when a request has multiple meaningful steps, durable artifacts, source-truth risk, rendering/export, external side effects, or a need for rollback.
+Use this controller as a thinking axis, not a mandatory ceremony. Apply it silently at `implicit` depth for a clear, low-risk request; use `light` depth when the target or acceptance could drift; use `full` depth when the model judges that a durable goal contract and formal workflow are needed.
+
+The three CyberMarcus axes are independent. `以终为始` may be light while `三省六部` stays implicit, or vice versa. Do not activate the formal seven-node workflow merely because a request contains words such as repair, PPT, report, page, test, or acceptance.
 
 ## First-principles goal contract
 
@@ -22,12 +24,14 @@ Before choosing a workflow, answer these questions from the user's request and d
 
 Record the answers as a compact `goal_contract`: `problem`, `audience_action`, `deliverables`, `truth_sources`, `constraints`, `success_criteria`, `minimum_deliverable`, `validation`, and `rollback_points`. Separately record an `output_contract` containing only explicit user constraints for quantity, format, length, language, result-only/answer-only output, and forbidden content. Resolve discoverable facts directly. Ask the user only when a missing choice would materially change the outcome or authorization.
 
-## Route by complexity
+## Route by complexity and consequence
 
-- `simple_direct`: one quick step, no durable artifact, low truth/render/side-effect risk. Answer or act directly without displaying a ceremonial pipeline.
-- `sop_required`: multiple steps or artifacts, source-truth risk, rendering/export, external side effects, user confirmation, long execution, or rollback needs. Load `sop-orchestrator` and use its node contracts.
+- `simple_direct`: the normal adaptive starting route. Answer or act directly without displaying a ceremonial pipeline; choose the three axis depths internally.
+- `sop_required`: an explicit formal SOP/production-blueprint request, an explicit continuous-until-terminal request, or a model decision that `谋定后动=full` and an adaptive task is actively upgraded with `goal_first_state_transition(action=activate_formal)`.
 
-For `sop_required`, load `three-provinces-six-ministries` as the governance overlay after this route is fixed. It does not create a second pipeline: it assigns each existing node to the responsible province, ministry, and Gate, while this controller remains the source of the goal contract, route, and rollback map. For `simple_direct`, keep the route invisible and perform only the overlay's implicit truth, action, and terminal checks.
+The Host may create a formal state for explicit user instructions, but it must not infer that every multi-step-looking request requires SOP. When the model chooses `谋定后动=full`, call `goal_first_state_transition` with `action=activate_formal`, a complete `goalContract`, and `axisDepths.planBeforeAction=full`; this records the route receipt and enters `parse`.
+
+For formal `sop_required`, load `three-provinces-six-ministries` as the governance overlay after this route is fixed. It does not create a second pipeline: it assigns each existing node to the responsible province, ministry, and Gate, while this controller remains the source of the goal contract, route, and rollback map. For `simple_direct`, keep the route invisible and perform only the overlay's implicit truth, action, and terminal checks.
 
 For `sop_required`, work backward from acceptance to execution:
 
@@ -72,4 +76,4 @@ Before declaring completion, read the goal contract back line by line and mark e
 
 For the detailed seven-node contract, source classes, registries, status semantics, and rollback behavior, read `sop-orchestrator/SKILL.md` and only the references needed for the current task.
 
-当任务为 `sop_required` 且涉及可复用工作流、抓虾或虾运行时，在结构化完成后加载 `plan-before-action`，并通过 `goal_first_state_transition` 的受校验参数持久化 `workContract`/`structureContract`。
+当模型选择 `谋定后动=full`，或任务明确涉及生产蓝图、可复用工作流、抓虾或虾运行时，在结构化完成后加载 `plan-before-action`，并通过 `goal_first_state_transition` 的受校验参数持久化 `workContract`/`structureContract`；否则不强制展开正式流程。

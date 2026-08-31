@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "review",
+  "status": "completed",
+  "input_checksum": "77e900e3886bfa5e689ba6ef5e54c2c3cd8f944e913a52ae8cd6591404304603",
+  "version_refs": {"contract": "dingtalk-artifact-delivery-20260831"},
+  "actual_bindings": {"skill": "native-chinese-expression"},
+  "artifacts": ["final delivery summary"],
+  "qa_result": {"status": "passed", "checks": ["实现、测试、运行时和移动端验收分开报告"]},
+  "evidence": ["代码与 Host 已就绪；真实移动端附件打开仍等待管理员主动 /send 验收"],
+  "failure_fingerprint": null,
+  "rollback_to": "validate"
+}

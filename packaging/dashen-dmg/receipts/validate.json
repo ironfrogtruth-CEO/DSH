@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "validate",
+  "status": "completed",
+  "input_checksum": "42af72ddef83a1068bc3b39039c6b85be9a32b515931a699d85470c5d299286a",
+  "version_refs": {"package": "2.1.1", "minimumMacOS": "11.0"},
+  "actual_bindings": {"browser": "Playwright CLI", "arm64": "native", "x86_64": "Rosetta execution"},
+  "artifacts": ["QA报告.md", "dashen-portable-home.png", "dashen-portable-settings.png", "final-validation.log"],
+  "qa_result": {"status": "passed", "checks": ["DMG CRC", "x86_64 Host", "x86_64 model settings", "console 0/0", "credentials 0600", "quarantine repair"]},
+  "evidence": ["x86_64 Host served HTML on port 3182", "DeepSeek API key shown configured on x86_64 model page", "quarantine removal preserved Node Developer ID"],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

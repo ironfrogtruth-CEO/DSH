@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "route",
+  "status": "completed",
+  "input_checksum": "b41d4394692dab75bdaf6c818262d73b18962c2916c6fbb983316d7f370b2e81",
+  "version_refs": {"contract": "cybermarcus_work_contract.v1", "dsh": "0.1.1-rc.2", "baseline_commit": "5e8bdf6dccad614b18e27d86a6b0bdcc334c937e"},
+  "actual_bindings": {"skills": ["goal-first-control", "three-provinces-six-ministries", "plan-before-action", "sop-orchestrator"]},
+  "artifacts": ["architecture/stenographer-work-contract.v1.json"],
+  "qa_result": {"status": "passed", "checks": ["all-or-nothing release", "no MVP", "free local models only", "real app acceptance required"]},
+  "evidence": ["User explicitly authorized execution after rejecting MVP delivery.", "Work contract schema validation returned ok with seven nodes."],
+  "failure_fingerprint": null,
+  "rollback_to": null
+}

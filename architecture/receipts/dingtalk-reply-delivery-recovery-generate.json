@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "generate",
+  "status": "completed",
+  "input_checksum": "d4938fcb681ea4ba58a469d1e698a6b7f69cac2e91590702e5a30338f27298fc",
+  "version_refs": {"connector": "0.6.2", "patch_hash": "je33xw7b4spyxquobh6vvplihi"},
+  "actual_bindings": {"executor": "luna_worker", "timeout_ms": 15000},
+  "artifacts": ["profiles/web/patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch", "profiles/web/pnpm-lock.yaml"],
+  "qa_result": {"status": "passed", "checks": ["HTTP 超时", "单卡串行", "私有 pending store", "重启恢复", "历史补发", "长回复分块"]},
+  "evidence": ["新增 delivery-store.js", "新增 /replies 与 /resend turn:n"],
+  "failure_fingerprint": null,
+  "rollback_to": "structure"
+}

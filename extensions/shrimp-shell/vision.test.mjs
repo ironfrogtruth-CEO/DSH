@@ -7,15 +7,6 @@ import { bridgeImageBlocks, bridgeLlmOptions, compactVisionSummary, containsImag
 const imageBase64 = 'aW1hZ2UtYnl0ZXM='
 const mimeType = 'image/png'
 
-function jsonResponse(body, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    async json() { return body },
-    async text() { return JSON.stringify(body) },
-  }
-}
-
 test('durable 图片优先调用 DeepSeek V4 Flash Vision', async () => {
   let zhipuCalls = 0
   const attachment = { attachmentId: 'vision-primary-1' }
@@ -55,9 +46,9 @@ test('DeepSeek Vision 不可用时回退智谱免费视觉', async () => {
   assert.match(result.fallbackReason, /vision unavailable/)
 })
 
-test('DeepSeek 与智谱都不可用时才回退本地 Gemma', async () => {
+test('DeepSeek 与智谱都不可用时明确阻断且不调用本地对话模型', async () => {
   const calls = []
-  const result = await recognizeImage({
+  await assert.rejects(() => recognizeImage({
     imageBase64,
     mimeType,
     ctx: { llm: {} },
@@ -66,16 +57,10 @@ test('DeepSeek 与智谱都不可用时才回退本地 Gemma', async () => {
     zhipuRecognizer: async () => { throw new Error('zhipu unavailable') },
     fetchImpl: async (url) => {
       calls.push(url)
-      return jsonResponse({ message: { content: '本地 Gemma 识图结果' } })
+      throw new Error(`不应调用本地模型：${url}`)
     },
-  })
-
-  assert.equal(result.provider, 'ollama')
-  assert.equal(result.model, 'gemma4:26b-a4b-it-qat')
-  assert.equal(result.fallbackChain.length, 2)
-  assert.equal(result.fallbackChain[0].model, 'deepseek-v4-flash-vision-exp')
-  assert.equal(result.fallbackChain[1].provider, 'zhipu-mcp')
-  assert.equal(calls.length, 1)
+  }), /云端视觉桥不可用.*未调用本地对话模型/)
+  assert.equal(calls.length, 0)
 })
 
 test('DeepSeek Vision adapter 使用视觉模型和原始 durable 附件', async () => {
@@ -145,9 +130,9 @@ test('旧的魔搭配置也不能绕过智谱免费 GLM 视觉链', async () => 
   assert.equal(localCalls, 0)
 })
 
-test('智谱限流时自动回退本地 Gemma', async () => {
+test('智谱限流时明确阻断且不回退本地模型', async () => {
   const calls = []
-  const result = await recognizeImage({
+  await assert.rejects(() => recognizeImage({
     imageBase64,
     mimeType,
     provider: 'modelscope',
@@ -155,20 +140,15 @@ test('智谱限流时自动回退本地 Gemma', async () => {
     zhipuRecognizer: async () => { throw new Error('429 rate limited') },
     fetchImpl: async (url) => {
       calls.push(url)
-      return jsonResponse({ message: { content: '本地识图结果' } })
+      throw new Error(`不应调用本地模型：${url}`)
     },
-  })
-
-  assert.equal(result.provider, 'ollama')
-  assert.equal(result.content, '本地识图结果')
-  assert.equal(result.fallbackFrom, 'zhipu-mcp')
-  assert.match(result.fallbackReason, /429/)
-  assert.equal(calls.length, 1)
+  }), /云端视觉桥不可用.*未调用本地对话模型/)
+  assert.equal(calls.length, 0)
 })
 
-test('智谱 MCP 网络不可用时自动回退本地 Gemma', async () => {
+test('智谱 MCP 网络不可用时明确阻断且不回退本地模型', async () => {
   const calls = []
-  const result = await recognizeImage({
+  await assert.rejects(() => recognizeImage({
     imageBase64,
     mimeType,
     provider: 'auto',
@@ -176,16 +156,10 @@ test('智谱 MCP 网络不可用时自动回退本地 Gemma', async () => {
     zhipuRecognizer: async () => { throw new Error('fetch failed') },
     fetchImpl: async (url) => {
       calls.push(url)
-      return jsonResponse({ message: { content: '离线识图结果' } })
+      throw new Error(`不应调用本地模型：${url}`)
     },
-  })
-
-  assert.equal(result.provider, 'ollama')
-  assert.equal(result.content, '离线识图结果')
-  assert.equal(result.fallbackFrom, 'zhipu-mcp')
-  assert.match(result.fallbackReason, /fetch failed/)
-  assert.equal(calls.length, 1)
-  assert.match(calls[0], /127\.0\.0\.1:11434\/api\/chat$/)
+  }), /云端视觉桥不可用.*未调用本地对话模型/)
+  assert.equal(calls.length, 0)
 })
 
 test('会话只保留短摘要，完整识别结果不直接进入模型上下文', () => {
@@ -275,11 +249,11 @@ test('视觉桥作为 profile 最后一个 LLM middleware，不绕过 goal-first
   assert.deepEqual(llmMiddlewares, ['@local/dsh-goal-first-state-machine', '@local/dsh-shrimp-shell'])
 })
 
-test('本地模型即使声明原生图片能力也固定走统一视觉桥', async () => {
+test('当前模型即使声明原生图片能力也固定走统一视觉桥', async () => {
   let resolved = false
   const result = await visionPolicy({
     agentDefaultModel: {
-      currentSelection() { return { provider: 'ollama-local', model: 'qwen3.6:27b' } },
+      currentSelection() { return { provider: 'zhipu-glm', model: 'glm-5.3-flash' } },
     },
     llm: {
       async resolveModelInfo() {
@@ -292,9 +266,9 @@ test('本地模型即使声明原生图片能力也固定走统一视觉桥', as
   assert.equal(result.mode, 'bridge')
   assert.equal(result.primaryVisionModel, 'deepseek-v4-flash-vision-exp')
   assert.equal(result.visionProvider, 'zhipu-mcp')
-  assert.equal(result.fallbackProvider, 'ollama')
+  assert.equal(result.fallbackProvider, 'zhipu-mcp')
   assert.equal(resolved, false)
-  assert.match(result.reason, /智谱免费 GLM/)
+  assert.match(result.reason, /云端视觉均不可用时明确阻断/)
 })
 
 test('Host bridge converts user and nested tool-result images once, preserving surrounding text', async () => {

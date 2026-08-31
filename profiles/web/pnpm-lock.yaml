@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@dingtalk-real-ai/dsh-dingtalk@0.6.2':
-    hash: ili3tw3nfb4kvxwetz5x2jppta
+    hash: je33xw7b4spyxquobh6vvplihi
     path: patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch
 
 importers:
@@ -15,7 +15,7 @@ importers:
     dependencies:
       '@dingtalk-real-ai/dsh-dingtalk':
         specifier: 0.6.2
-        version: 0.6.2(patch_hash=ili3tw3nfb4kvxwetz5x2jppta)(@deepseek-ai/cordis@4.0.1)
+        version: 0.6.2(patch_hash=je33xw7b4spyxquobh6vvplihi)(@deepseek-ai/cordis@4.0.1)
       '@dsh-market/plugin':
         specifier: ^0.2.1
         version: 0.2.1
@@ -70,6 +70,9 @@ importers:
       '@local/dsh-shrimp-shell':
         specifier: link:/Users/marcus/.dsh/extensions/shrimp-shell
         version: link:../../extensions/shrimp-shell
+      '@local/dsh-stenographer':
+        specifier: link:/Users/marcus/.dsh/extensions/dsh-stenographer
+        version: link:../../extensions/dsh-stenographer
       '@local/dsh-tool-policy':
         specifier: link:/Users/marcus/.dsh/extensions/dsh-tool-policy
         version: link:../../extensions/dsh-tool-policy
@@ -118,7 +121,7 @@ packages:
       '@standard-schema/spec': 1.1.0
     dev: false
 
-  /@dingtalk-real-ai/dsh-dingtalk@0.6.2(patch_hash=ili3tw3nfb4kvxwetz5x2jppta)(@deepseek-ai/cordis@4.0.1):
+  /@dingtalk-real-ai/dsh-dingtalk@0.6.2(patch_hash=je33xw7b4spyxquobh6vvplihi)(@deepseek-ai/cordis@4.0.1):
     resolution: {integrity: sha512-0zxCX5iah8ZP2idEWODqm0nb3KS+oCrdFh+O1Bj/hcag80iWqfe9h/c+EyDCwGPm75qpI6o0jZK5PVFqXGAXmQ==}
     engines: {node: ^22.19.0 || >=24.0.0}
     hasBin: true

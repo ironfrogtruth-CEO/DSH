@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "structure",
+  "status": "completed",
+  "input_checksum": "b41d4394692dab75bdaf6c818262d73b18962c2916c6fbb983316d7f370b2e81",
+  "version_refs": {"api": "dsh_stenographer_api.v1", "document": "stenographer_document.v1", "handoff": "stenographer_handoff.v1"},
+  "actual_bindings": {"native": "Swift AVAudioEngine + ScreenCaptureKit", "stt": "MLX Whisper large-v3-turbo", "speaker": "FunASR ERes2NetV2 + protected hybrid clustering", "ui": "independent DSH client bundle", "handoff_model": "ollama-local/cybermarcus:latest"},
+  "artifacts": ["architecture/stenographer-api.v1.json", "architecture/stenographer-work-contract.v1.json"],
+  "qa_result": {"status": "passed", "checks": ["native, host, model, data and UI boundaries explicit", "user edits and image order protected", "paid fallback forbidden", "recovery states defined"]},
+  "evidence": ["API and work-contract JSON parse successfully.", "cybermarcus work contract validates against the v1 schema.", "Exclusive implementation ownership assigned to three luna workers."],
+  "failure_fingerprint": null,
+  "rollback_to": "parse"
+}

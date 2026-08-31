@@ -1,0 +1,35 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "review",
+  "status": "completed",
+  "input_checksum": "b41d4394692dab75bdaf6c818262d73b18962c2916c6fbb983316d7f370b2e81",
+  "version_refs": {
+    "contract": "cybermarcus_work_contract.v1",
+    "delivery_manifest": "stenographer_delivery_manifest.v1"
+  },
+  "actual_bindings": {
+    "expression": "native-chinese-expression",
+    "truth": "real app, Host API, persisted PCM, final transcript and full regression"
+  },
+  "artifacts": [
+    "architecture/stenographer-work-contract.v1.json",
+    "architecture/stenographer-delivery-manifest.v1.json",
+    "architecture/receipts/stenographer-validate.json"
+  ],
+  "qa_result": {
+    "status": "passed",
+    "checks": [
+      "all user requirements read back",
+      "implementation and real acceptance distinguished",
+      "no MVP or paid fallback",
+      "no remaining release blocker"
+    ]
+  },
+  "evidence": [
+    "The feature is installed and the real app completed microphone plus system-audio recording.",
+    "The current calibrated pipeline returned three speakers and Simplified-Chinese final text.",
+    "All 402 repository tests pass and the two-hour accelerated soak remains passed."
+  ],
+  "failure_fingerprint": null,
+  "rollback_to": "validate"
+}

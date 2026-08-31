@@ -1,0 +1,49 @@
+{
+  "schema": "stenographer_delivery_manifest.v1",
+  "status": "ready",
+  "installed_app": "/Applications/大神.app",
+  "bundle_id": "local.dsh.dashen",
+  "designated_requirement": "identifier local.dsh.dashen",
+  "app_binary_sha256": "3781a179e1a94f140b947a2c63a4a4e5a1804a619bb9f2ff0e5bc807e7b02ffc",
+  "host_extension": "/Users/marcus/.dsh/extensions/dsh-stenographer",
+  "model_root": "/Users/marcus/.dsh/runtimes/stenographer/models",
+  "model_manifest_sha256": "7fdbd48e561ce82543ec690c88bcf5298545450c5263fc46d4224f2b0e11c8fa",
+  "models": {
+    "stt": "funasr/paraformer-large-vad-punc primary; mlx-whisper/whisper-large-v3-turbo failure fallback",
+    "speaker": "funasr/iic/speech_eres2netv2_sv_zh-cn_16k-common",
+    "artifact_writer": "zhipu-glm/glm-5.3-flash",
+    "paid_api_fallback": false
+  },
+  "acceptance": {
+    "full_regression": "403/403",
+    "focused_regression": "38 Node tests plus 10 Python accuracy tests",
+    "real_dual_capture_session": "st-mtgig9qd-a3067fdc64114976",
+    "final_calibrated_session": "st-mtgindf8-df5ebea9f34f468c",
+    "speakers": 3,
+    "system_pcm_bytes": 844160,
+    "microphone_pcm_bytes": 847824,
+    "automatic_finalize": true,
+    "simplified_chinese": true,
+    "user_audio_replay": "Paraformer recovered the 18-second pet-service passage that Whisper hallucinated as subtitle credits",
+    "artifact_writer": "GLM-5.3-Flash returned and persisted a complete meeting-minutes artifact",
+    "one_click_copy": true,
+    "recoverable_history_delete": true,
+    "visible_user_sessions": 2,
+    "test_sessions_in_recoverable_trash": 16
+  },
+  "evidence": [
+    "/Users/marcus/.dsh/output/playwright/stenographer-expanded-panel-fixed.png",
+    "/Users/marcus/.dsh/output/playwright/stenographer-heartbeat-style-button.png",
+    "/Users/marcus/.dsh/private/stenographer/.trash/qa-20260831-st-mtgindf8-df5ebea9f34f468c/transcript.md",
+    "/Users/marcus/.dsh/private/stenographer/.trash/qa-20260831-st-mtgindf8-df5ebea9f34f468c/manifest.json",
+    "/tmp/dsh-stenographer-feedback-regression.log"
+  ],
+  "rollback": {
+    "app_backup": "/Users/marcus/.dsh/backups/stenographer-app-preinstall-20260831-0725",
+    "scope": [
+      "restore only /Applications/大神.app/Contents/MacOS/大神 and Info.plist from the backup",
+      "remove only the @local/dsh-stenographer profile link and bundle registration",
+      "preserve /Users/marcus/.dsh/private/stenographer unless the user explicitly requests deletion"
+    ]
+  }
+}

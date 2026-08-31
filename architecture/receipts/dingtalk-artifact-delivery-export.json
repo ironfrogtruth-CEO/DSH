@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "export",
+  "status": "completed",
+  "input_checksum": "77e900e3886bfa5e689ba6ef5e54c2c3cd8f944e913a52ae8cd6591404304603",
+  "version_refs": {"runtime": "大神.app", "dws": "1.0.60"},
+  "actual_bindings": {"tool": "scripts/restart"},
+  "artifacts": ["live web profile on 127.0.0.1:3080"],
+  "qa_result": {"status": "passed", "checks": ["single listener", "Stream connected", "credentials configured", "owner bound", "dws ready"]},
+  "evidence": ["PID 90908 is the single 3080 listener", "runtime log shows authed=false does not block bot attachment and channel up"],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

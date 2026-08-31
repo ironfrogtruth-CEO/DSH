@@ -1,0 +1,113 @@
+{
+  "schema": "dsh_stenographer_api.v1",
+  "base_path": "/api/stenographer",
+  "storage_root": "/Users/marcus/.dsh/private/stenographer",
+  "native_bridge": {
+    "handler": "stenographer",
+    "request": {
+      "start": ["action", "sessionId", "source", "uploadUrl", "uploadToken", "sampleRate"],
+      "pause": ["action", "sessionId"],
+      "resume": ["action", "sessionId"],
+      "stop": ["action", "sessionId"]
+    },
+    "callback": "window.__dshStenographerNativeEvent(payload)",
+    "sources": ["microphone", "system", "both"]
+  },
+  "endpoints": [
+    {"method": "GET", "path": "/health", "purpose": "runtime and model health"},
+    {"method": "GET", "path": "/sessions", "purpose": "list local recording sessions"},
+    {"method": "POST", "path": "/sessions", "purpose": "create a recording session and one-time upload token"},
+    {"method": "GET", "path": "/sessions/:id", "purpose": "read one session snapshot"},
+    {"method": "DELETE", "path": "/sessions/:id", "purpose": "move one inactive session to the recoverable local trash"},
+    {"method": "PATCH", "path": "/sessions/:id/document", "purpose": "persist user-edited blocks and speaker names"},
+    {"method": "POST", "path": "/sessions/:id/media", "purpose": "store an inline image with bounded base64 admission"},
+    {"method": "POST", "path": "/sessions/:id/audio", "purpose": "append ordered 16 kHz mono PCM frames from the native bridge"},
+    {"method": "POST", "path": "/sessions/:id/state", "purpose": "record native recording state transitions"},
+    {"method": "POST", "path": "/sessions/:id/finalize", "purpose": "flush audio, run full transcription and speaker reconciliation"},
+    {"method": "POST", "path": "/sessions/:id/handoff", "purpose": "freeze a handoff snapshot, send the transcript text to GLM-5.3-Flash, persist the complete artifact and return it"}
+  ],
+  "response_envelope": {
+    "success": {"ok": true},
+    "failure": {"ok": false, "error": {"code": "STABLE_ERROR_CODE", "message": "Chinese user-facing message"}}
+  },
+  "operations": {
+    "create_session": {
+      "request": {"source": "microphone|system|both", "expectedSpeakers": "auto|integer", "language": "zh-CN", "title": "optional"},
+      "response": {"session": "session_snapshot", "upload": {"url": "absolute loopback URL", "token": "one-session secret", "sampleRate": 16000}}
+    },
+    "read_session": {"response": {"session": "session_snapshot"}},
+    "list_sessions": {"response": {"sessions": "session_summary[]"}},
+    "patch_document": {
+      "request": {"baseRevision": "integer", "blocks": "optional block[]", "speakerNames": "optional object"},
+      "response": {"session": "session_snapshot"},
+      "conflict": "REVISION_CONFLICT"
+    },
+    "upload_media": {
+      "request": {"name": "filename", "mimeType": "image/png|image/jpeg|image/webp|image/gif", "dataBase64": "bounded payload"},
+      "response": {"media": {"id": "stable id", "url": "same-origin preview URL", "name": "filename", "mimeType": "mime", "size": "bytes"}}
+    },
+    "append_audio": {
+      "response": {"accepted": true, "source": "microphone|system", "seq": "integer", "revision": "integer"}
+    },
+    "update_state": {
+      "request": {"state": "recording|paused|stopped|interrupted|error", "error": "optional structured native error"},
+      "response": {"session": "session_snapshot"}
+    },
+    "finalize": {
+      "request": {"baseRevision": "optional integer"},
+      "response": {"session": "session_snapshot with state=finalizing|ready"},
+      "idempotency": "a concurrent or repeated request returns the same finalization operation"
+    },
+    "handoff": {
+      "request": {"baseRevision": "integer", "purpose": "meeting_minutes|report_email|requirements_document|custom", "customPurpose": "required for custom", "extraInstructions": "optional"},
+      "response": {"handoff": "stenographer_handoff.v1", "artifact": "stenographer_artifact.v1", "session": "session_snapshot"}
+    },
+    "delete_session": {
+      "response": {"deleted": true, "recoverable": true, "trashRef": "local trash reference"},
+      "conflict": "SESSION_DELETE_ACTIVE"
+    }
+  },
+  "session_snapshot": {
+    "fields": ["id", "title", "state", "revision", "source", "expectedSpeakers", "language", "startedAt", "updatedAt", "endedAt", "durationMs", "progress", "error", "nativeState", "models", "speakers", "document", "artifacts"],
+    "states": ["created", "loading", "recording", "paused", "stopped", "interrupted", "finalizing", "ready", "error"]
+  },
+  "audio_contract": {
+    "content_type": "application/octet-stream",
+    "format": "signed little-endian PCM16",
+    "sample_rate": 16000,
+    "channels": 1,
+    "query": ["source", "seq", "capturedAtMs"],
+    "max_chunk_bytes": 1048576,
+    "ordering": "strictly increasing seq per source",
+    "sources": ["microphone", "system"]
+  },
+  "document_contract": {
+    "schema": "stenographer_document.v1",
+    "block_types": ["transcript", "text", "image"],
+    "transcript_block_fields": [
+      "id", "speakerId", "startMs", "endMs", "rawText", "text",
+      "isFinal", "userEdited", "confidence", "source", "lineage"
+    ],
+    "text_block_fields": ["id", "text", "createdAt", "updatedAt"],
+    "image_block_fields": ["id", "mediaId", "caption", "createdAt"],
+    "protected_rules": [
+      "final reconciliation must not overwrite userEdited transcript text",
+      "final reconciliation must preserve text and image block order",
+      "speaker rename must survive reclustering through stable speaker lineage"
+    ]
+  },
+  "handoff_contract": {
+    "schema": "stenographer_handoff.v1",
+    "purposes": ["meeting_minutes", "report_email", "requirements_document", "custom"],
+    "required": ["sessionId", "snapshotRevision", "purpose", "prompt", "transcriptPath", "manifestPath", "sha256"],
+    "default_provider": "zhipu-glm",
+    "default_model": "glm-5.3-flash",
+    "paid_api_fallback": false
+  },
+  "artifact_contract": {
+    "schema": "stenographer_artifact.v1",
+    "required": ["id", "sessionId", "purpose", "title", "status", "content", "provider", "model", "createdAt"],
+    "render": "complete text in the stenographer panel with one-click copy",
+    "continuation": "optional official DSH session using zhipu-glm/glm-5.3-flash"
+  }
+}

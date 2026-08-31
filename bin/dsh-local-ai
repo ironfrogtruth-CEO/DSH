@@ -7,7 +7,7 @@
   tts  --text ...          本地 TTS：qwen (Qwen3-TTS VoiceDesign) 或 voxcpm (VoxCPM2)
   stt  --audio 文件.wav    本地语音识别 (whisper-large-v3-turbo via mlx_audio)
   video --image ...        用本地 ffmpeg 合成图片与音频成片
-  chat "问题"              本地 LLM 对话 (cybermarcus / gemma4)
+  chat "问题"              本地对话已停用；请使用云端 DeepSeek 或智谱入口
   embed "文本"             本地 embedding (embeddinggemma)
 
 仅依赖 Python 标准库；TTS/STT 复用虾缸 `MODEL/tts` 内已装好的 MLX 运行环境。
@@ -26,10 +26,9 @@ import urllib.request
 from pathlib import Path
 
 # ---------------- 常量 ----------------
-OLLAMA_MAIN = "http://127.0.0.1:11434"   # 系统 Ollama（LLM / embedding / 亦有 FLUX）
+OLLAMA_MAIN = "http://127.0.0.1:11434"   # 系统 Ollama（仅保留 embedding 等后台能力）
 FLUX_SIDECAR = "http://127.0.0.1:11435"  # 隔离 FLUX 图像侧车（0.20.3, OLLAMA_NO_CLOUD）
 DEFAULT_IMAGE_MODEL = "x/flux2-klein:4b"
-DEFAULT_LLM = "cybermarcus:latest"
 DEFAULT_EMBED = "embeddinggemma:latest"
 MODEL_ROOT = Path("/Users/marcus/Desktop/虾缸/MODEL")
 SHRIMP_ROOT = MODEL_ROOT.parent
@@ -40,6 +39,12 @@ QWEN_SCRIPT = TTS_ROOT / "scripts" / "qwen_voice_design.py"
 VOXCPM_SCRIPT = TTS_ROOT / "scripts" / "voxcpm2_voice_design.py"
 WHISPER_DIR = TTS_ROOT / "语音识别模型" / "whisper-large-v3-turbo"
 VIDEO_COMPOSER = SHRIMP_ROOT / "tools" / "installed" / "video_composer_tool" / "adapter.py"
+RETIRED_CHAT_MODEL_MARKERS = ("cybermarcus", "glm-marcus", "gemma4")
+
+
+def _is_retired_chat_model(name: str) -> bool:
+    lowered = str(name or "").strip().lower()
+    return any(marker in lowered for marker in RETIRED_CHAT_MODEL_MARKERS)
 
 # ---------------- Ollama API 基础 ----------------
 def _post(url: str, payload: dict, timeout: int = 900) -> dict:
@@ -98,6 +103,8 @@ def cmd_list(_args) -> int:
             continue
         try:
             for m in _get(f"{base}/api/tags").get("models", []):
+                if _is_retired_chat_model(m.get("name") or m.get("model")):
+                    continue
                 size = m.get("size", 0) / 1024 / 1024 / 1024
                 print(f"  {m.get('name')}  {size:.1f} GB")
         except Exception as exc:
@@ -115,7 +122,7 @@ def cmd_image(args) -> int:
         return 1
     last_error = None
     # 魔改 FLUX 侧车对单次请求有 10 分钟硬上限（约 8 步 @1024px）；超限步数自动降级
-    # 保证离线路由（cybermarcus router）生图永远能完成
+    # 保证离线路由的生图请求永远能完成
     steps = max(1, min(args.steps, 8))
     if steps != args.steps:
         print(f"警告：侧车 10 分钟上限，步数 {args.steps} 自动降级为 {steps}", file=sys.stderr)
@@ -231,7 +238,7 @@ def cmd_video(args) -> int:
 
 
 def cmd_route(args) -> int:
-    """智能指令路由：规则优先，未命中用本地 LLM 分类。
+    """智能指令路由：规则优先，未命中保持 chat，不调用本地对话模型。
     输出 JSON：{"type": "image|tts|stt|video|chat", "audio_path": "...", "reason": "..."}
     """
     import base64 as _b64  # noqa: F401 (保持与 image 一致的导入习惯)
@@ -257,44 +264,17 @@ def cmd_route(args) -> int:
         # 给了音频文件但无明确动词：默认视为语音识别
         result = {"type": "stt", "audio_path": audio.group(1), "reason": "规则：音频路径默认识别"}
 
-    if result["type"] == "chat" and _alive(OLLAMA_MAIN):
-        prompt = (
-            "你是离线指令路由器。根据用户输入判断意图，只输出一个英文单词：\n"
-            "image（想生成/绘制图片）| tts（想让机器朗读/配音）| stt（想识别/转写语音文件）| video（想把图片和音频合成视频）| chat（普通对话/推理/写作）。\n"
-            f"用户输入：{text[:500]}\n只输出单词："
-        )
-        try:
-            resp = _post(
-                f"{OLLAMA_MAIN}/api/chat",
-                {"model": args.model, "messages": [{"role": "user", "content": prompt}], "stream": False, "options": {"num_predict": 8, "temperature": 0}},
-                timeout=120,
-            )
-            word = (resp.get("message", {}).get("content", "") or "").strip().lower()
-            word = re.sub(r"[^a-z]", "", word)[:12]
-            if word in ("image", "tts", "stt", "video"):
-                result = {"type": word, "audio_path": audio.group(1) if audio else None, "reason": f"本地LLM分类: {word}"}
-        except Exception as exc:
-            result["reason"] = f"LLM分类失败，回退chat: {exc}"
+    if result["type"] == "chat":
+        result["reason"] = "未匹配媒体意图；本地对话模型已停用，请使用云端 DeepSeek 或智谱入口"
 
     print(json.dumps(result, ensure_ascii=False))
     return 0
 
 
 def cmd_chat(args) -> int:
-    if not _alive(OLLAMA_MAIN):
-        print("错误：系统 Ollama 未运行。", file=sys.stderr)
-        return 1
-    messages = []
-    if args.system:
-        messages.append({"role": "system", "content": args.system})
-    messages.append({"role": "user", "content": args.prompt})
-    resp = _post(
-        f"{OLLAMA_MAIN}/api/chat",
-        {"model": args.model, "messages": messages, "stream": False},
-        timeout=args.timeout,
-    )
-    print(resp.get("message", {}).get("content", ""))
-    return 0
+    del args
+    print("本地对话模型已停用，请使用云端 DeepSeek 或智谱入口。", file=sys.stderr)
+    return 2
 
 
 def cmd_embed(args) -> int:
@@ -345,11 +325,11 @@ def main() -> int:
 
     p = sub.add_parser("route", help="智能指令路由（生图/语音合成/语音识别/视频成片/对话）")
     p.add_argument("text")
-    p.add_argument("--model", default="cybermarcus:latest")
+    p.add_argument("--model", default=None, help=argparse.SUPPRESS)
 
-    p = sub.add_parser("chat", help="本地 LLM 对话")
+    p = sub.add_parser("chat", help="本地对话（已停用）")
     p.add_argument("prompt")
-    p.add_argument("--model", default=DEFAULT_LLM)
+    p.add_argument("--model", default=None)
     p.add_argument("--system", default=None)
     p.add_argument("--timeout", type=int, default=900)
 

@@ -1,5 +1,282 @@
+diff --git a/lib/aicard.d.ts b/lib/aicard.d.ts
+index d3a6243fc6847a6438788e46c9a90db37d71d861..60978fd5bb3af07e0fdd8471cf8b3c503d4712bb 100644
+--- a/lib/aicard.d.ts
++++ b/lib/aicard.d.ts
+@@ -10,6 +10,12 @@
+ export declare class CardCapabilityError extends Error {
+     constructor(message: string);
+ }
++/** A card content frame exceeded the connector's single-frame limit. */
++export declare class CardContentTooLargeError extends Error {
++    readonly code: 'DINGTALK_CARD_CONTENT_TOO_LARGE';
++    readonly uncertain: false;
++    constructor(message: string);
++}
+ /** Process-lifetime circuit breaker for AI Card permission/configuration failures. */
+ export declare class CardCapability {
+     private readonly onBlocked?;
+@@ -34,6 +40,8 @@ export declare class AICard {
+     private readonly token;
+     private readonly capability;
+     private readonly log;
++    private readonly timeoutMs;
++    private readonly maxCardChars;
+     private constructor();
+     private call;
+     private instancesBody;
+@@ -58,9 +66,13 @@ export declare class AICard {
+     static create(opts: {
+         token: () => Promise<string>;
+         robotCode: string;
+-        target: CardTarget;
++        target?: CardTarget;
+         capability?: CardCapability;
+         log: (line: string) => void;
++        timeoutMs?: number;
++        maxCardChars?: number;
++        outTrackId?: string;
++        existing?: boolean;
+     }): Promise<AICard | null>;
+ }
+-//# sourceMappingURL=aicard.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=aicard.d.ts.map
+diff --git a/lib/aicard.js b/lib/aicard.js
+index c118c6118158e9632add06844092d3da9018b4bb..e59d1ba77a85afdab22cd763d36fbaf19403c81f 100644
+--- a/lib/aicard.js
++++ b/lib/aicard.js
+@@ -6,6 +6,12 @@
+  * frames). Simplified: renderer-level throttling replaces the global token
+  * bucket.
+  */
++import {
++    DEFAULT_DINGTALK_HTTP_TIMEOUT_MS,
++    boundedResponseText,
++    fetchWithTimeout,
++    promiseWithTimeout,
++} from './delivery-store.js';
+ const DINGTALK_API = 'https://api.dingtalk.com';
+ /** DingTalk's official built-in AI Card template (same id the connector uses). */
+ const AI_CARD_TEMPLATE_ID = '02fcf2f4-5e02-4a85-b672-46d1f715543e.schema';
+@@ -19,6 +25,15 @@ export class CardCapabilityError extends Error {
+         this.name = 'CardCapabilityError';
+     }
+ }
++/** A card content frame exceeded the connector's single-frame limit. */
++export class CardContentTooLargeError extends Error {
++    constructor(message) {
++        super(message);
++        this.name = 'CardContentTooLargeError';
++        this.code = 'DINGTALK_CARD_CONTENT_TOO_LARGE';
++        this.uncertain = false;
++    }
++}
+ /** Process-lifetime circuit breaker for AI Card permission/configuration failures. */
+ export class CardCapability {
+     onBlocked;
+@@ -81,23 +96,54 @@ export class AICard {
+     token;
+     capability;
+     log;
++    timeoutMs;
++    maxCardChars;
+     #inputingStarted = false;
+-    constructor(outTrackId, token, capability, log) {
++    #operationTail = Promise.resolve();
++    #terminalRequested = false;
++    constructor(outTrackId, token, capability, log, options = {}) {
+         this.outTrackId = outTrackId;
+         this.token = token;
+         this.capability = capability;
+         this.log = log;
++        this.timeoutMs = Number.isFinite(Number(options.timeoutMs)) && Number(options.timeoutMs) > 0
++            ? Math.max(1, Math.floor(Number(options.timeoutMs)))
++            : DEFAULT_DINGTALK_HTTP_TIMEOUT_MS;
++        this.maxCardChars = Number.isFinite(Number(options.maxCardChars)) && Number(options.maxCardChars) > 0
++            ? Math.max(1, Math.floor(Number(options.maxCardChars)))
++            : 15_000;
++    }
++    /** Serialize every operation for one outTrackId; late frames are ignored. */
++    enqueue(operation) {
++        const next = this.#operationTail
++            .catch(() => undefined)
++            .then(operation);
++        this.#operationTail = next.catch(() => undefined);
++        return next;
++    }
++    assertContentSize(content) {
++        const normalized = normalize(String(content ?? ''));
++        if (normalized.length > this.maxCardChars)
++            throw new CardContentTooLargeError(`card content exceeds ${this.maxCardChars} characters`);
++        return normalized;
+     }
+     async call(method, path, body) {
+         this.capability.assertAvailable();
+         const exec = async () => {
+-            const resp = await fetch(`${DINGTALK_API}${path}`, {
++            const token = await promiseWithTimeout(this.token(), {
++                stage: 'DingTalk access token',
++                timeoutMs: this.timeoutMs,
++            });
++            const resp = await fetchWithTimeout(`${DINGTALK_API}${path}`, {
+                 method,
+-                headers: { 'Content-Type': 'application/json', 'x-acs-dingtalk-access-token': await this.token() },
++                headers: { 'Content-Type': 'application/json', 'x-acs-dingtalk-access-token': token },
+                 body: JSON.stringify(body),
+-            });
++            }, { stage: `DingTalk card ${method} ${path}`, timeoutMs: this.timeoutMs });
+             if (!resp.ok) {
+-                const text = await resp.text();
++                const text = await promiseWithTimeout(boundedResponseText(resp), {
++                    stage: `DingTalk card ${method} ${path} response`,
++                    timeoutMs: this.timeoutMs,
++                });
+                 return { ok: false, status: resp.status, text };
+             }
+             return { ok: true };
+@@ -110,7 +156,12 @@ export class AICard {
+             result = await exec();
+         }
+         if (!result.ok) {
+-            const error = new Error(`card ${method} ${path} failed ${result.status}: ${result.text.slice(0, 300)}`);
++            // Keep remote response bodies out of logs and thrown messages.  The
++            // status/path are enough to decide explicit fallback vs uncertainty.
++            const error = new Error(`card ${method} ${path} failed with HTTP ${result.status}`);
++            error.code = `DINGTALK_HTTP_${result.status}`;
++            error.stage = `card ${method} ${path}`;
++            error.uncertain = false;
+             if (this.capability.recordFailure(error))
+                 throw new CardCapabilityError(this.capability.reason ?? error.message);
+             throw error;
+@@ -132,12 +183,12 @@ export class AICard {
+         };
+     }
+     /** Stream one full-content frame; `finished` marks the last frame. */
+-    async stream(content, finished = false) {
++    async streamNow(content, finished = false) {
++        const fixed = this.assertContentSize(content);
+         if (!this.#inputingStarted) {
+-            await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.INPUTING, content, false));
++            await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.INPUTING, fixed, false));
+             this.#inputingStarted = true;
+         }
+-        const fixed = normalize(content);
+         await this.call('PUT', '/v1.0/card/streaming', {
+             outTrackId: this.outTrackId,
+             guid: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+@@ -150,10 +201,20 @@ export class AICard {
+             isError: false,
+         });
+     }
++    async stream(content, finished = false) {
++        if (this.#terminalRequested && !finished)
++            return;
++        if (finished)
++            this.#terminalRequested = true;
++        return this.enqueue(() => this.streamNow(content, finished));
++    }
+     /** Final content + FINISHED state. */
+     async finish(content) {
+-        await this.stream(content, true);
+-        await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.FINISHED, content, true));
++        this.#terminalRequested = true;
++        return this.enqueue(async () => {
++            await this.streamNow(content, true);
++            await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.FINISHED, content, true));
++        });
+     }
+     /**
+      * Overwrite a settled card's content in place (notice cards: the busy
+@@ -163,27 +224,34 @@ export class AICard {
+      * frame first, then the FINISHED instances update.
+      */
+     async updateStatic(content) {
+-        await this.call('PUT', '/v1.0/card/streaming', {
+-            outTrackId: this.outTrackId,
+-            guid: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+-            key: 'msgContent',
+-            content: normalize(content),
+-            isFull: true,
+-            isFinalize: true,
+-            isError: false,
++        this.#terminalRequested = true;
++        return this.enqueue(async () => {
++            const fixed = this.assertContentSize(content);
++            await this.call('PUT', '/v1.0/card/streaming', {
++                outTrackId: this.outTrackId,
++                guid: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
++                key: 'msgContent',
++                content: fixed,
++                isFull: true,
++                isFinalize: true,
++                isError: false,
++            });
++            await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.FINISHED, fixed, true));
+         });
+-        await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.FINISHED, content, true));
+     }
+     /** Freeze the card in FAILED state with a human-readable error text. */
+     async fail(content) {
+-        try {
+-            if (this.#inputingStarted)
+-                await this.stream(content, true);
+-        }
+-        catch {
+-            // The failure text still lands via the instances update below.
+-        }
+-        await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.FAILED, content, true));
++        this.#terminalRequested = true;
++        return this.enqueue(async () => {
++            try {
++                if (this.#inputingStarted)
++                    await this.streamNow(content, true);
++            }
++            catch {
++                // The failure text still lands via the instances update below.
++            }
++            await this.call('PUT', '/v1.0/card/instances', this.instancesBody(FLOW.FAILED, content, true));
++        });
+     }
+     /**
+      * Create a card instance and deliver it into the conversation.
+@@ -193,8 +261,16 @@ export class AICard {
+         const capability = opts.capability ?? new CardCapability();
+         if (!capability.available)
+             return null;
+-        const outTrackId = `dshdt_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+-        const card = new AICard(outTrackId, opts.token, capability, opts.log);
++        const outTrackId = opts.outTrackId || `dshdt_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
++        const card = new AICard(outTrackId, opts.token, capability, opts.log, opts);
++        // Recovery resumes the existing remote card by its original id; it
++        // must not create a second bubble or deliver a duplicate card.
++        if (opts.existing === true)
++            return card;
++        if (!opts.target) {
++            opts.log('card create/deliver failed: target missing');
++            return null;
++        }
+         const deliverBody = opts.target.type === 'group'
+             ? {
+                 outTrackId,
+@@ -223,9 +299,13 @@ export class AICard {
+             return card;
+         }
+         catch (err) {
+-            opts.log(`card create/deliver failed: ${err instanceof Error ? err.message : err}`);
++            opts.log(`card create/deliver failed: ${err instanceof Error ? err.message : 'unknown error'}`);
++            if (err?.uncertain === true) {
++                err.outTrackId = outTrackId;
++                throw err;
++            }
+             return null;
+         }
+     }
+ }
+-//# sourceMappingURL=aicard.js.map
+\ No newline at end of file
++//# sourceMappingURL=aicard.js.map
 diff --git a/lib/bridge.d.ts b/lib/bridge.d.ts
-index b20642a481a870c455d95f447ef656cbdd38fd1d..cf13b2a40dfe748a552c651776ee997edc9e08f8 100644
+index b20642a481a870c455d95f447ef656cbdd38fd1d..5732234bf2f7880ff8ffcc4ca656a54f8c373779 100644
 --- a/lib/bridge.d.ts
 +++ b/lib/bridge.d.ts
 @@ -12,13 +12,22 @@ export interface BridgeOptions {
@@ -27,7 +304,7 @@ index b20642a481a870c455d95f447ef656cbdd38fd1d..cf13b2a40dfe748a552c651776ee997e
          setup?: (agentCtx: HostAgentContext) => Promise<void>;
      }>;
 diff --git a/lib/bridge.js b/lib/bridge.js
-index c177704034ef311410587bf7b1012bebdc59c47b..08e03413644812796d6660321fc9942c6e428e2f 100644
+index c177704034ef311410587bf7b1012bebdc59c47b..154bce59910f1cb05861934ad7b74969aade0217 100644
 --- a/lib/bridge.js
 +++ b/lib/bridge.js
 @@ -55,14 +55,31 @@ export class Bridge {
@@ -74,10 +351,14 @@ index c177704034ef311410587bf7b1012bebdc59c47b..08e03413644812796d6660321fc9942c
          const handle = await this.agents.create({
              sessionId: id,
 diff --git a/lib/commands.d.ts b/lib/commands.d.ts
-index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..2266cd324ddce764f6ff492efaefe208f6a08f01 100644
+index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..aa92851635719d9459dae11b7c82ac90ac289a3f 100644
 --- a/lib/commands.d.ts
 +++ b/lib/commands.d.ts
-@@ -7,16 +7,52 @@ import type { Queue } from './queue.js';
+@@ -4,19 +4,69 @@ import type { Outbound } from './outbound.js';
+ import type { Bindings } from './bridge.js';
+ import type { JsonStore } from './jsonstore.js';
+ import type { Queue } from './queue.js';
++import type { SendFileRequest, SendFileResult } from './tools.js';
  export interface ModelOverride {
      provider: string;
      model: string;
@@ -91,7 +372,9 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..2266cd324ddce764f6ff492efaefe208
 +    relativeName: string;
 +    type: string;
 +    size: string;
++    sizeBytes?: number;
 +    time: string;
++    mtimeMs?: number;
 +}>;
  export interface CommandDeps {
      agents: HostAgentRegistry;
@@ -105,10 +388,21 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..2266cd324ddce764f6ff492efaefe208
 +        resolve(id?: string): Promise<any>;
 +    };
      queue: Queue;
++    /** Explicit bot attachment sender; the account wrapper supplies credentials. */
++    dws?: {
++        sendFile(request: SendFileRequest): Promise<SendFileResult>;
++    };
 +    /** Canonical host session roster and title observations; no local index. */
 +    sessionQuery?: {
 +        listSessions(): Promise<readonly unknown[]>;
 +        readTitleSnapshots(sessionIds: readonly string[]): Promise<readonly unknown[]>;
++        readSession(sessionId: string): Promise<{
++            session?: {
++                id?: string;
++                origin?: string;
++            };
++            events?: readonly unknown[];
++        }>;
 +    };
 +    /** Canonical host model catalog and exact capability validation. */
 +    llm?: {
@@ -130,7 +424,7 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..2266cd324ddce764f6ff492efaefe208
      } | undefined;
      /** Human-readable connector security/capability lines appended to /status. */
      connectorStatus(): string[];
-@@ -58,6 +94,24 @@ export declare class Commands {
+@@ -58,6 +108,29 @@ export declare class Commands {
      /** Interactive busy cards: outTrackId → conversationId (buttons and text answers share one pending state). */
      private busyCards;
      constructor(deps: CommandDeps);
@@ -152,19 +446,31 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..2266cd324ddce764f6ff492efaefe208
 +    resetSession(scopeKey: string): { ok: true };
 +    prepareNewSession(scopeKey: string, presetId: string): Promise<{ ok: boolean; error?: string; row?: any }>;
 +    artifactRowsFor(scopeKey: string): Promise<readonly unknown[] | undefined>;
++    completedRepliesFor(scopeKey: string): Promise<readonly {
++        turn: number;
++        text: string;
++        textChecksum: string;
++    }[] | undefined>;
      markBusyNotice(conversationId: string, ctx: BusyContext): void;
      registerBusyCard(outTrackId: string, conversationId: string): void;
      /**
+@@ -76,4 +149,4 @@ export declare class Commands {
+     private steerQueued;
+     private stop;
+ }
+-//# sourceMappingURL=commands.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=commands.d.ts.map
 diff --git a/lib/commands.js b/lib/commands.js
-index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65ba9e74f1 100644
+index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0ce5b70d7 100644
 --- a/lib/commands.js
 +++ b/lib/commands.js
-@@ -1,22 +1,325 @@
+@@ -1,22 +1,464 @@
  /**
   * Slash commands — handled locally, never sent to the model:
 - * /status /new /stop /model /help, plus the queue-busy numeric choice
 - * ("2" = interrupt) captured while a busy notice is pending.
-+ * /status /new /stop /model /help /menu /sessions /models /effort,
++ * /status /new /stop /model /help /menu /sessions /models /effort /artifacts /send,
 + * plus the queue-busy numeric choice ("2" = interrupt) captured while a busy
 + * notice is pending.
   */
@@ -172,6 +478,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +import { existsSync, lstatSync, readdirSync, statSync } from 'node:fs';
 +import { extname, relative, resolve } from 'node:path';
  import { sessionId } from './host.js';
++import { textChecksum } from './delivery-store.js';
  const HELP = [
      '**可用命令**',
      '- `/status` 连接与会话状态',
@@ -186,7 +493,10 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +    '- `/effort <level>` 设置当前模型推理等级；`/effort reset` 恢复模型默认',
 +    '- `/sessions` 查看可切换的主会话',
 +    '- `/session use <序号或ID前缀>` 切换当前钉钉对话绑定的主会话',
-+    '- `/artifacts` 查看当前会话近期产物（仅返回相对文件名）',
++    '- `/artifacts` 查看当前会话近期产物（带序号；例如用 `/send 1` 发送第 1 项）',
++    '- `/send <序号>` 重新扫描并发送 `/artifacts` 清单中的一项到当前钉钉对话',
++    '- `/replies` 查看当前主会话最近已完成回复（带 turn 号）',
++    '- `/resend <序号|turn:编号>` 补发一条已完成回复到当前钉钉对话',
 +    '- `/menu` 查看移动端常用入口（使用命令，不伪造按钮）',
      '- `/ws` 列出可用工作区',
      '- `/cd <路径或序号>` 切换本会话工作目录（会重开会话生效）；`/cd reset` 恢复默认',
@@ -196,7 +506,9 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +    '**钉钉入口**',
 +    '`/status` 查看连接、会话和模型',
 +    '`/sessions` / `/session use <序号或ID前缀>` 切换主会话',
-+    '`/artifacts` 查看当前会话近期产物',
++    '`/artifacts` 查看当前会话近期产物；再用 `/send 1` 发送第 1 项',
++    '`/send <序号>` 发送当前清单中的文件到本对话',
++    '`/replies` 查看已完成回复；`/resend 1` 或 `/resend turn:10` 补发',
 +    '`/models` / `/model use <provider>/<model> [effort]` 选择模型',
 +    '`/effort <level>` 选择推理等级',
 +    '`/new` 新会话　`/stop` 停止任务　`/help` 完整帮助',
@@ -210,11 +522,13 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +const MAX_ARTIFACT_CANDIDATES = 5000;
 +const MAX_ARTIFACT_DEPTH = 8;
 +const ARTIFACT_CUTOFF_MS = 60_000;
++const ARTIFACT_SNAPSHOT_TTL_MS = 2 * 60_000;
++const REPLY_SNAPSHOT_TTL_MS = 2 * 60_000;
 +const HIDDEN_SEGMENT = /^\./;
 +// Sensitive names are rejected by segment, not merely by extension: output
 +// must never become a side channel for credentials, sessions, logs or tokens.
 +const SENSITIVE_SEGMENT = /^(?:credentials?|secrets?|sessions?|logs?|db|keys?|tokens?|env|passwords?|passwds?|api[-_]?keys?|access[-_]?tokens?)(?:[._-].*)?$/i;
-+const OWNER_COMMANDS = new Set(['/model', '/models', '/effort', '/sessions', '/session', '/artifacts']);
++const OWNER_COMMANDS = new Set(['/model', '/models', '/effort', '/sessions', '/session', '/artifacts', '/send', '/replies', '/resend']);
 +
 +function cleanInline(value, max = 160) {
 +    return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
@@ -291,6 +605,68 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +    const record = (Array.isArray(records) ? records : []).find((item) => String(item?.header?.id ?? '') === String(bound));
 +    if (!record?.header || record.header.origin === 'subagent') return undefined;
 +    return record.header;
++}
++
++function completedTurnReason(reason) {
++    return reason?.kind === 'completed' || reason === 'completed';
++}
++
++function assistantText(event) {
++    const blocks = event?.data?.message?.content;
++    if (!Array.isArray(blocks))
++        return '';
++    return blocks
++        .filter((block) => block?.type === 'text' && typeof block.text === 'string')
++        .map((block) => block.text)
++        .join('')
++        .trim();
++}
++
++function asTurn(value) {
++    const turn = Number(value);
++    return Number.isSafeInteger(turn) && turn >= 0 ? turn : undefined;
++}
++
++/** Read only completed assistant turns from the bound canonical main session. */
++async function completedReplies(deps, key) {
++    const header = await boundSessionHeader(deps, key);
++    const query = deps.sessionQuery;
++    if (!header || header.origin === 'subagent' || !query || typeof query.readSession !== 'function')
++        return undefined;
++    const result = await query.readSession(sessionId(String(header.id)));
++    const session = result?.session;
++    if (session?.origin === 'subagent' || (session?.id && String(session.id) !== String(header.id)))
++        return undefined;
++    const events = Array.isArray(result?.events) ? result.events : [];
++    const texts = new Map();
++    const completed = new Set();
++    let currentTurn;
++    for (const event of events) {
++        if (event?.type === 'turn/start') {
++            currentTurn = asTurn(event.data?.turn);
++            continue;
++        }
++        const turn = asTurn(event?.data?.turn) ?? currentTurn;
++        if (event?.type === 'assistant/message') {
++            const text = assistantText(event);
++            if (Number.isSafeInteger(turn) && text)
++                texts.set(turn, text);
++        }
++        else if (event?.type === 'turn/end') {
++            if (Number.isSafeInteger(turn) && completedTurnReason(event.data?.reason))
++                completed.add(turn);
++            currentTurn = undefined;
++        }
++    }
++    return [...completed]
++        .filter((turn) => texts.has(turn))
++        .sort((left, right) => right - left)
++        .slice(0, MAX_ARTIFACTS)
++        .map((turn) => ({
++        turn,
++        text: texts.get(turn),
++        textChecksum: textChecksum(texts.get(turn)),
++    }));
 +}
 +
 +function safeArtifactSegment(name) {
@@ -375,6 +751,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +                relativeName,
 +                type: artifactType(entry.name),
 +                size: formatBytes(stat.size),
++                sizeBytes: stat.size,
 +                time: new Date(stat.mtimeMs).toISOString(),
 +                mtimeMs: stat.mtimeMs,
 +            });
@@ -384,6 +761,74 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +    return found
 +        .sort((left, right) => right.mtimeMs - left.mtimeMs || left.relativeName.localeCompare(right.relativeName))
 +        .slice(0, MAX_ARTIFACTS);
++}
++
++/**
++ * Re-check a relative artifact path immediately before handing it to dws.
++ * This keeps the command numeric-only and rejects a path that changed to a
++ * symlink or escaped the canonical cwd/output root after the list was shown.
++ */
++function safeArtifactPath(cwd, relativeName) {
++    if (typeof cwd !== 'string' || !cwd.trim() || typeof relativeName !== 'string' || !relativeName.trim())
++        return undefined;
++    const base = resolve(cwd);
++    const full = resolve(base, relativeName);
++    const within = relative(base, full);
++    if (!within || within.startsWith('..') || within.split(/[\\/]/).some((part) => !safeArtifactSegment(part)))
++        return undefined;
++    try {
++        const baseStat = lstatSync(base);
++        if (!baseStat.isDirectory() || baseStat.isSymbolicLink())
++            return undefined;
++    }
++    catch {
++        return undefined;
++    }
++    let root = base;
++    try {
++        const output = resolve(base, 'output');
++        const outputStat = lstatSync(output);
++        if (outputStat.isSymbolicLink())
++            return undefined;
++        if (outputStat.isDirectory())
++            root = output;
++    }
++    catch {
++        // No output directory: cwd is the documented fallback root.
++    }
++    const withinRoot = relative(root, full);
++    if (!withinRoot || withinRoot.startsWith('..') || withinRoot.split(/[\\/]/).some((part) => !safeArtifactSegment(part)))
++        return undefined;
++    // Check every path component. A final lstat alone is not enough because a
++    // parent directory may have changed to a symlink after the list scan.
++    let current = root;
++    const parts = withinRoot.split(/[\\/]/);
++    for (const [index, part] of parts.entries()) {
++        current = resolve(current, part);
++        try {
++            const stat = lstatSync(current);
++            if (stat.isSymbolicLink())
++                return undefined;
++            if (index === parts.length - 1)
++                return stat.isFile() ? full : undefined;
++            if (!stat.isDirectory())
++                return undefined;
++        }
++        catch {
++            return undefined;
++        }
++    }
++    return undefined;
++}
++
++function sameArtifact(left, right) {
++    if (!left || !right || left.relativeName !== right.relativeName)
++        return false;
++    if (Number(left.mtimeMs) !== Number(right.mtimeMs))
++        return false;
++    if (left.sizeBytes !== undefined || right.sizeBytes !== undefined)
++        return Number(left.sizeBytes) === Number(right.sizeBytes);
++    return left.size === right.size;
 +}
 +
 +function effortIds(info) {
@@ -490,7 +935,18 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
  /** Commands that must win over a pending human-interaction answer. */
  export function isSessionControl(text) {
      const command = text.trim().split(/\s+/, 1)[0];
-@@ -37,6 +340,131 @@ export class Commands {
+@@ -28,6 +470,10 @@ export class Commands {
+     pendingBusyChoice = new Map();
+     /** Interactive busy cards: outTrackId → conversationId (buttons and text answers share one pending state). */
+     busyCards = new Map();
++    /** Short-lived `/artifacts` numbering; `/send` never trusts a stale index. */
++    artifactSnapshots = new Map();
++    /** Short-lived `/replies` numbering; `/resend` re-reads before sending. */
++    replySnapshots = new Map();
+     constructor(deps) {
+         this.deps = deps;
+     }
+@@ -37,6 +483,162 @@ export class Commands {
      registerBusyCard(outTrackId, conversationId) {
          this.busyCards.set(outTrackId, conversationId);
      }
@@ -533,6 +989,8 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +            return { ok: false, reason: matches.length > 1 ? 'ambiguous' : 'not-found' };
 +        const picked = matches[0];
 +        this.deps.bindings.set(scopeKey, picked.id);
++        this.artifactSnapshots.delete(scopeKey);
++        this.replySnapshots.delete(scopeKey);
 +        return { ok: true, row: picked };
 +    }
 +    /** Validate and apply an exact model route, then force a fresh bound session. */
@@ -593,6 +1051,8 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +            catch { /* reset still clears this channel's route */ }
 +        }
 +        this.pendingBusyChoice.delete(scopeKey);
++        this.artifactSnapshots.delete(scopeKey);
++        this.replySnapshots.delete(scopeKey);
 +        this.deps.queue.clear(scopeKey);
 +        this.deps.bindings.delete(scopeKey);
 +        return { ok: true };
@@ -619,10 +1079,37 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +            return undefined;
 +        return scanArtifacts({ cwd: header.cwd, createdAt: header.createdAt });
 +    }
++    async completedRepliesFor(scopeKey) {
++        return completedReplies(this.deps, scopeKey);
++    }
++    rememberReplySnapshot(scopeKey, sessionIdValue, items) {
++        this.replySnapshots.set(scopeKey, {
++            at: Date.now(),
++            sessionId: String(sessionIdValue ?? ''),
++            items: items.map((item) => ({
++                turn: item.turn,
++                text: item.text,
++                textChecksum: item.textChecksum,
++            })),
++        });
++    }
++    rememberArtifactSnapshot(scopeKey, header, artifacts) {
++        this.artifactSnapshots.set(scopeKey, {
++            at: Date.now(),
++            sessionId: String(header.id ?? ''),
++            cwd: header.cwd,
++            items: artifacts.map((artifact) => ({
++                relativeName: artifact.relativeName,
++                mtimeMs: artifact.mtimeMs,
++                sizeBytes: artifact.sizeBytes,
++                size: artifact.size,
++            })),
++        });
++    }
      /**
       * Consume a busy-card button press: approve = interrupt, reject = steer.
       * Only the queued message's own sender may decide.
-@@ -122,10 +550,25 @@ export class Commands {
+@@ -122,10 +724,25 @@ export class Commands {
          if (!text.startsWith('/'))
              return false;
          const [cmd, sub, ...rest] = text.split(/\s+/);
@@ -648,7 +1135,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
              case '/status': {
                  const bound = this.deps.bindings.get(key);
                  const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
-@@ -135,7 +578,8 @@ export class Commands {
+@@ -135,7 +752,8 @@ export class Commands {
                  await reply([
                      '**状态**',
                      `- 会话：${bound ? `\`${bound.slice(0, 8)}…\`${agent ? `（${agent.status === 'running' ? '执行中' : '空闲'}）` : '（未加载，下条消息恢复）'}` : '尚未建立'}`,
@@ -658,7 +1145,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
                      `- 排队：${this.deps.queue.depth(key)} 条在途`,
                      ...(this.deps.defaultWorkspace
                          ? [`- 工作区：${ws ?? this.deps.defaultWorkspace}${ws ? '（本会话覆盖）' : '（默认）'}`]
-@@ -145,25 +589,16 @@ export class Commands {
+@@ -145,25 +763,16 @@ export class Commands {
                  ].join('\n'));
                  return true;
              }
@@ -692,7 +1179,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
              case '/stop':
                  await this.stop(msg, reply, '✅ 已停止当前任务。', key);
                  return true;
-@@ -171,7 +606,7 @@ export class Commands {
+@@ -171,7 +780,7 @@ export class Commands {
                  if (!sub) {
                      const override = this.deps.modelOverrides.get(key);
                      const model = override ?? this.deps.defaultModel();
@@ -701,7 +1188,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
                      return true;
                  }
                  if (sub === 'reset') {
-@@ -181,21 +616,159 @@ export class Commands {
+@@ -181,21 +790,324 @@ export class Commands {
                      return true;
                  }
                  if (sub === 'use') {
@@ -835,6 +1322,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +                }
 +                const picked = matches[0];
 +                this.deps.bindings.set(key, picked.id);
++                this.artifactSnapshots.delete(key);
 +                await reply(`✅ 当前钉钉对话已切换到「${cleanInline(picked.title)}」\n会话：\`${picked.id.slice(0, 8)}…\`\n下条消息将按该会话原有 preset 恢复；其他钉钉对话不受影响。`);
 +                return true;
 +            }
@@ -851,23 +1339,194 @@ index b186308646d5c7098ee739918f885ee0907b0ade..bc57c72904ebea0c87ce7eadc35e4c65
 +                    return true;
 +                }
 +                const artifacts = scanArtifacts({ cwd: header.cwd, createdAt: header.createdAt });
++                this.rememberArtifactSnapshot(key, header, artifacts);
 +                if (!artifacts.length) {
 +                    await reply('当前会话暂无近期产物（仅扫描 cwd/output 或 cwd，隐藏路径、敏感名和符号链接已跳过）。');
 +                    return true;
 +                }
 +                await reply([
 +                    '**当前会话近期产物**',
-+                    ...artifacts.map((artifact) => `- \`${cleanInline(artifact.relativeName, 240)}\` · ${cleanInline(artifact.type)} · ${artifact.size} · ${artifact.time}`),
++                    ...artifacts.map((artifact, index) => `${index + 1}. \`${cleanInline(artifact.relativeName, 240)}\` · ${cleanInline(artifact.type)} · ${artifact.size} · ${artifact.time}`),
 +                    '',
-+                    '仅展示相对 cwd 的文件名、类型、大小和时间；钉钉端不读取内容、不上传，也不提供直接下载。',
++                    '发送清单中的文件：`/send 1`（把 1 换成上面的序号）。发送前会重新扫描当前绑定主会话的 cwd/output。',
 +                ].join('\n'));
++                return true;
++            }
++            case '/send': {
++                const target = sub && !rest.length ? sub : '';
++                if (!/^\d+$/.test(target) || Number(target) < 1) {
++                    await reply('用法：`/send <序号>`；请先发送 `/artifacts`，再选择其中的序号。');
++                    return true;
++                }
++                if (!this.deps.dws?.sendFile) {
++                    await reply('⚠️ 机器人附件发送能力未启用，请确认 dws 已安装并重启大神后重试。');
++                    return true;
++                }
++                let header;
++                let artifacts;
++                try {
++                    header = await boundSessionHeader(this.deps, key);
++                    artifacts = header?.cwd ? scanArtifacts({ cwd: header.cwd, createdAt: header.createdAt }) : [];
++                }
++                catch (error) {
++                    this.deps.log(`artifact send scan failed: ${error instanceof Error ? error.message : error}`);
++                    await reply('⚠️ 近期产物读取失败，文件未发送；请重新发送 `/artifacts` 后重试。');
++                    return true;
++                }
++                if (!header || typeof header.cwd !== 'string' || !header.cwd) {
++                    await reply('当前钉钉对话尚未绑定可发送产物的主会话；未知、未绑定或子代理会话不会发送。');
++                    return true;
++                }
++                const snapshot = this.artifactSnapshots.get(key);
++                if (!snapshot
++                    || Date.now() - snapshot.at > ARTIFACT_SNAPSHOT_TTL_MS
++                    || snapshot.sessionId !== String(header.id ?? '')
++                    || snapshot.cwd !== header.cwd) {
++                    this.artifactSnapshots.delete(key);
++                    await reply('请先发送 `/artifacts` 获取当前会话的带序号清单，再用 `/send <序号>` 发送；旧序号不会直接复用。');
++                    return true;
++                }
++                const index = Number(target) - 1;
++                const listed = snapshot.items[index];
++                if (!listed) {
++                    await reply(`没有第 ${Number(target)} 项近期产物；请先发送 `/artifacts` 查看最新序号。`);
++                    return true;
++                }
++                // The index comes from the user's short-lived list. A fresh
++                // scan must still contain the same path, mtime and byte size;
++                // a newly inserted file cannot silently shift `/send 1`.
++                const picked = artifacts.find((artifact) => sameArtifact(artifact, listed));
++                if (!picked) {
++                    await reply('⚠️ 近期产物清单已变化，该序号未发送；请重新发送 `/artifacts` 后再选序号。');
++                    return true;
++                }
++                const filePath = safeArtifactPath(header.cwd, picked.relativeName);
++                if (!filePath) {
++                    await reply('⚠️ 该产物在发送前已失效或不满足安全条件，文件未发送；请重新发送 `/artifacts`。');
++                    return true;
++                }
++                let sent;
++                try {
++                    sent = await this.deps.dws.sendFile({
++                        conversationType: msg.conversationType,
++                        conversationId: msg.conversationId,
++                        senderStaffId: msg.senderStaffId,
++                        filePath,
++                    });
++                }
++                catch (error) {
++                    this.deps.log(`artifact send failed: ${error instanceof Error ? error.message : error}`);
++                    await reply(`⚠️ 产物「${cleanInline(picked.relativeName, 160)}」未发送；请稍后重试。`);
++                    return true;
++                }
++                if (!sent?.ok) {
++                    const reason = typeof sent?.reason === 'string' ? cleanInline(sent.reason, 180) : '钉钉未确认发送成功';
++                    await reply(`⚠️ 产物「${cleanInline(picked.relativeName, 160)}」未发送：${reason} 请稍后重试。`);
++                    return true;
++                }
++                await reply(`✅ 产物「${cleanInline(picked.relativeName, 160)}」已发送到当前钉钉对话，可在移动端查看。`);
++                return true;
++            }
++            case '/replies': {
++                let header;
++                let rows;
++                try {
++                    header = await boundSessionHeader(this.deps, key);
++                    rows = header ? await completedReplies(this.deps, key) : undefined;
++                }
++                catch (error) {
++                    this.deps.log(`completed reply lookup failed: ${error instanceof Error ? error.message : 'unknown error'}`);
++                    await reply('历史回复读取失败，未执行补发。');
++                    return true;
++                }
++                if (!header || !Array.isArray(rows)) {
++                    await reply('当前钉钉对话尚未绑定可读取回复的主会话；未知、未绑定或子代理会话不会读取。');
++                    return true;
++                }
++                this.rememberReplySnapshot(key, header.id, rows);
++                if (!rows.length) {
++                    await reply('当前主会话暂无已完成的非空回复。');
++                    return true;
++                }
++                await reply([
++                    '**当前主会话最近已完成回复**',
++                    ...rows.map((row, index) => `${index + 1}. turn ${row.turn}：${cleanInline(row.text, 180)}`),
++                    '',
++                    '补发：`/resend 1`（按本清单序号）或 `/resend turn:10`（按明确 turn 号）。清单两分钟内有效，发送前会重新读取并核对内容。',
++                ].join('\n'));
++                return true;
++            }
++            case '/resend': {
++                const target = [sub, ...rest].filter(Boolean).join(' ').trim();
++                if (!target || (!/^\d+$/.test(target) && !/^turn:\d+$/i.test(target))) {
++                    await reply('用法：`/resend <清单序号>` 或 `/resend turn:<编号>`；请先发送 `/replies` 查看最近回复。');
++                    return true;
++                }
++                let header;
++                let rows;
++                try {
++                    header = await boundSessionHeader(this.deps, key);
++                    rows = header ? await completedReplies(this.deps, key) : undefined;
++                }
++                catch (error) {
++                    this.deps.log(`resend reply lookup failed: ${error instanceof Error ? error.message : 'unknown error'}`);
++                    await reply('历史回复读取失败，未执行补发。');
++                    return true;
++                }
++                if (!header || !Array.isArray(rows)) {
++                    await reply('当前钉钉对话尚未绑定可补发回复的主会话；未知、未绑定或子代理会话不会发送。');
++                    return true;
++                }
++                let picked;
++                if (/^turn:/i.test(target)) {
++                    const turn = Number(target.slice(5));
++                    picked = rows.find((row) => row.turn === turn);
++                }
++                else {
++                    const snapshot = this.replySnapshots.get(key);
++                    if (!snapshot
++                        || Date.now() - snapshot.at > REPLY_SNAPSHOT_TTL_MS
++                        || snapshot.sessionId !== String(header.id ?? '')) {
++                        this.replySnapshots.delete(key);
++                        await reply('请先发送 `/replies` 获取当前主会话的带序号清单，再用 `/resend <序号>`；旧序号不会直接复用。');
++                        return true;
++                    }
++                    const listed = snapshot.items[Number(target) - 1];
++                    const current = rows.find((row) => row.turn === listed?.turn);
++                    if (!listed || !current || current.textChecksum !== listed.textChecksum) {
++                        await reply('历史回复清单已变化，该序号未发送；请重新发送 `/replies` 后再选序号。');
++                        return true;
++                    }
++                    picked = current;
++                }
++                if (!picked) {
++                    await reply(`没有找到已完成的 turn：${cleanInline(target, 40)}。请先发送 \/replies 查看清单。`);
++                    return true;
++                }
++                const sent = typeof this.deps.outbound.sendMarkdownResult === 'function'
++                    ? await this.deps.outbound.sendMarkdownResult(msg.sessionWebhook, this.deps.markdownTitle, picked.text)
++                    : { ok: await this.deps.outbound.sendMarkdown(msg.sessionWebhook, this.deps.markdownTitle, picked.text), uncertain: true };
++                if (!sent?.ok) {
++                    await reply(sent?.uncertain === true
++                        ? `⚠️ turn ${picked.turn} 补发状态未知，未自动重试；请确认钉钉是否已收到后再操作。`
++                        : `⚠️ turn ${picked.turn} 补发失败，请稍后重试。`);
++                    return true;
++                }
++                await reply(`✅ turn ${picked.turn} 的历史回复已补发到当前钉钉对话。`);
 +                return true;
 +            }
              case '/ws': {
                  if (!this.deps.listWorkspaces || !this.deps.workspaceOverrides) {
                      await reply('工作区模块未装配。');
+@@ -284,4 +1196,4 @@ export class Commands {
+         }
+     }
+ }
+-//# sourceMappingURL=commands.js.map
+\ No newline at end of file
++//# sourceMappingURL=commands.js.map
 diff --git a/lib/config.d.ts b/lib/config.d.ts
-index db2d69918ef076488d316794a27b6b1ca8947c1f..032926407095f8d91c83f2ba2a7881f53737ae9a 100644
+index db2d69918ef076488d316794a27b6b1ca8947c1f..7f039f5f06d5f8ef47936d7afb8d1c0b1e56bf1b 100644
 --- a/lib/config.d.ts
 +++ b/lib/config.d.ts
 @@ -23,6 +23,8 @@ export interface Config {
@@ -880,7 +1539,7 @@ index db2d69918ef076488d316794a27b6b1ca8947c1f..032926407095f8d91c83f2ba2a7881f5
      senderAccess: SenderAccess;
      allowedSenders: string[];
 diff --git a/lib/config.js b/lib/config.js
-index 3dc84c2a5fdd1475e9be02e74328069488254dff..8a1d1493993ddbfe754bce4d1434821336b94e94 100644
+index 3dc84c2a5fdd1475e9be02e74328069488254dff..2d4cdfbfd8458104f4d25f1cd599aa8cd8112434 100644
 --- a/lib/config.js
 +++ b/lib/config.js
 @@ -29,6 +29,12 @@ export const Config = Schema.object({
@@ -1427,8 +2086,426 @@ index 0000000000000000000000000000000000000000..ccab90db2a93d0f1f232f223794a9ed9
 +    }
 +    return byName;
 +}
+diff --git a/lib/delivery-store.d.ts b/lib/delivery-store.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5453d8f4965eff13b4cc9fd60e8e0573c75eeda8
+--- /dev/null
++++ b/lib/delivery-store.d.ts
+@@ -0,0 +1,63 @@
++export declare const DELIVERY_STORE_VERSION = 1;
++export declare const DEFAULT_DELIVERY_MAX_ENTRIES = 32;
++export declare const DEFAULT_DELIVERY_MAX_TEXT_CHARS = 1000000;
++export declare const DEFAULT_DELIVERY_MAX_WEBHOOK_CHARS = 4096;
++export declare const DEFAULT_DINGTALK_HTTP_TIMEOUT_MS = 15000;
++export declare const DEFAULT_DINGTALK_RESPONSE_MAX_CHARS = 8192;
++export declare function textChecksum(text: string): string;
++export declare function timeoutError(stage: string, ms: number): Error & {
++    code: string;
++    stage: string;
++    timeoutMs: number;
++    uncertain: boolean;
++};
++export declare function abortError(stage: string): Error & {
++    code: string;
++    stage: string;
++    uncertain: boolean;
++};
++export declare function promiseWithTimeout<T>(promise: PromiseLike<T> | T, options?: {
++    stage?: string;
++    timeoutMs?: number;
++}): Promise<T>;
++export declare function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, options?: {
++    stage?: string;
++    timeoutMs?: number;
++}): Promise<Response>;
++export declare function boundedResponseText(response: Response, maxChars?: number): Promise<string>;
++export declare function boundedResponseJson(response: Response, maxChars?: number): Promise<Record<string, any>>;
++export interface DeliveryPendingEntry {
++    scope?: string;
++    session?: string;
++    turn?: number;
++    outTrackId: string;
++    text: string;
++    textChecksum: string;
++    sessionWebhook: string;
++    mode: string;
++    updatedAt: number;
++    chunkIndex?: number;
++    chunkCount?: number;
++    fullTextChecksum?: string;
++    failureFingerprint?: string;
++    failureCount?: number;
++}
++export interface DeliveryStoreOptions {
++    maxEntries?: number;
++    maxTextChars?: number;
++    maxWebhookChars?: number;
++}
++export declare class DeliveryStore {
++    readonly filePath: string;
++    readonly maxEntries: number;
++    readonly maxTextChars: number;
++    readonly maxWebhookChars: number;
++    constructor(stateDirOrFile: string, options?: DeliveryStoreOptions);
++    load(): void;
++    list(): DeliveryPendingEntry[];
++    get(outTrackId: string): DeliveryPendingEntry | undefined;
++    put(value: Partial<DeliveryPendingEntry> & Pick<DeliveryPendingEntry, 'outTrackId' | 'text' | 'sessionWebhook'>): DeliveryPendingEntry;
++    update(outTrackId: string, patch: Partial<DeliveryPendingEntry>): DeliveryPendingEntry | undefined;
++    remove(outTrackId: string): boolean;
++    clear(): void;
++}
+diff --git a/lib/delivery-store.js b/lib/delivery-store.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..dbf907f8b48da32bda4ab8ede722071e8df16ad2
+--- /dev/null
++++ b/lib/delivery-store.js
+@@ -0,0 +1,343 @@
++/**
++ * Private, bounded journal for DingTalk replies whose remote delivery state is
++ * not known yet.  The journal is deliberately synchronous: renderer state
++ * transitions already happen on one Node event loop and a synchronous atomic
++ * rename keeps a process crash from leaving a half-written JSON document.
++ */
++import crypto from 'node:crypto';
++import fs from 'node:fs';
++import path from 'node:path';
++
++export const DELIVERY_STORE_VERSION = 1;
++export const DEFAULT_DELIVERY_MAX_ENTRIES = 32;
++export const DEFAULT_DELIVERY_MAX_TEXT_CHARS = 1_000_000;
++export const DEFAULT_DELIVERY_MAX_WEBHOOK_CHARS = 4_096;
++export const DEFAULT_DINGTALK_HTTP_TIMEOUT_MS = 15_000;
++export const DEFAULT_DINGTALK_RESPONSE_MAX_CHARS = 8_192;
++
++export function textChecksum(text) {
++    return crypto.createHash('sha256').update(String(text ?? ''), 'utf8').digest('hex');
++}
++
++function timeoutValue(value, fallback = DEFAULT_DINGTALK_HTTP_TIMEOUT_MS) {
++    const number = Number(value);
++    return Number.isFinite(number) && number > 0 ? Math.max(1, Math.floor(number)) : fallback;
++}
++
++function transportError(stage, message, { uncertain = true, cause } = {}) {
++    const error = new Error(`${stage} request ${message}`);
++    error.name = 'DingTalkTransportError';
++    error.code = 'DINGTALK_TRANSPORT_ERROR';
++    error.stage = stage;
++    error.uncertain = uncertain;
++    if (cause !== undefined)
++        error.cause = cause;
++    return error;
++}
++
++export function timeoutError(stage, ms) {
++    const error = new Error(`${stage} request timed out after ${ms}ms`);
++    error.name = 'DingTalkTimeoutError';
++    error.code = 'DINGTALK_TIMEOUT';
++    error.stage = stage;
++    error.timeoutMs = ms;
++    error.uncertain = true;
++    return error;
++}
++
++export function abortError(stage) {
++    const error = new Error(`${stage} request was aborted`);
++    error.name = 'DingTalkAbortError';
++    error.code = 'DINGTALK_ABORTED';
++    error.stage = stage;
++    error.uncertain = true;
++    return error;
++}
++
++export async function promiseWithTimeout(promise, options = {}) {
++    const stage = String(options.stage || 'DingTalk operation');
++    const ms = timeoutValue(options.timeoutMs);
++    let timer;
++    let timedOut = false;
++    try {
++        return await Promise.race([
++            Promise.resolve(promise),
++            new Promise((_, reject) => {
++                timer = setTimeout(() => {
++                    timedOut = true;
++                    reject(timeoutError(stage, ms));
++                }, ms);
++            }),
++        ]);
++    }
++    catch (error) {
++        if (timedOut || error?.code === 'DINGTALK_TIMEOUT')
++            throw error?.code === 'DINGTALK_TIMEOUT' ? error : timeoutError(stage, ms);
++        throw error;
++    }
++    finally {
++        clearTimeout(timer);
++    }
++}
++
++/** Fetch with a per-request deadline.  The caller's signal is preserved. */
++export async function fetchWithTimeout(input, init = {}, options = {}) {
++    const stage = String(options.stage || 'DingTalk HTTP');
++    const ms = timeoutValue(options.timeoutMs);
++    const controller = new AbortController();
++    const external = init.signal;
++    let timedOut = false;
++    let timer;
++    let removeExternal;
++    if (external) {
++        if (external.aborted)
++            throw abortError(stage);
++        const abort = () => controller.abort();
++        external.addEventListener?.('abort', abort, { once: true });
++        removeExternal = () => external.removeEventListener?.('abort', abort);
++    }
++    let rejectTimeout;
++    const timeoutPromise = new Promise((_, reject) => {
++        rejectTimeout = reject;
++        timer = setTimeout(() => {
++            timedOut = true;
++            controller.abort();
++            reject(timeoutError(stage, ms));
++        }, ms);
++    });
++    try {
++        // Race as well as abort: test doubles and some non-fetch adapters may
++        // ignore AbortSignal and leave their promise unresolved forever.
++        return await Promise.race([
++            fetch(input, { ...init, signal: controller.signal }),
++            timeoutPromise,
++        ]);
++    }
++    catch (cause) {
++        if (timedOut)
++            throw timeoutError(stage, ms);
++        if (external?.aborted)
++            throw abortError(stage);
++        throw transportError(stage, 'failed', { cause });
++    }
++    finally {
++        clearTimeout(timer);
++        rejectTimeout = undefined;
++        removeExternal?.();
++    }
++}
++
++/**
++ * Read only a bounded response body.  This avoids retaining an untrusted
++ * DingTalk error page or token response and is intentionally not used in logs.
++ */
++export async function boundedResponseText(response, maxChars = DEFAULT_DINGTALK_RESPONSE_MAX_CHARS) {
++    const max = Math.max(1, Math.floor(Number(maxChars) || DEFAULT_DINGTALK_RESPONSE_MAX_CHARS));
++    if (response?.body?.getReader) {
++        const reader = response.body.getReader();
++        const decoder = new TextDecoder();
++        let out = '';
++        try {
++            while (out.length <= max) {
++                const next = await reader.read();
++                if (next.done)
++                    break;
++                out += decoder.decode(next.value, { stream: true });
++                if (out.length > max) {
++                    try { await reader.cancel(); } catch { /* best effort */ }
++                    break;
++                }
++            }
++            out += decoder.decode();
++        }
++        finally {
++            try { reader.releaseLock?.(); } catch { /* best effort */ }
++        }
++        return out.slice(0, max);
++    }
++    if (typeof response?.text === 'function') {
++        const text = await response.text();
++        return String(text ?? '').slice(0, max);
++    }
++    return '';
++}
++
++export async function boundedResponseJson(response, maxChars = DEFAULT_DINGTALK_RESPONSE_MAX_CHARS) {
++    const text = await boundedResponseText(response, maxChars);
++    if (!text)
++        return {};
++    try {
++        return JSON.parse(text);
++    }
++    catch {
++        throw transportError('DingTalk response', 'returned invalid JSON', { uncertain: false });
++    }
++}
++
++function isJsonFile(value) {
++    return typeof value === 'string' && /\.json$/i.test(value);
++}
++
++function finiteInteger(value, fallback) {
++    const number = Number(value);
++    return Number.isSafeInteger(number) && number >= 0 ? number : fallback;
++}
++
++function boundedString(value, max) {
++    return typeof value === 'string' ? value.slice(0, max) : '';
++}
++
++function normalizeEntry(value, limits) {
++    if (!value || typeof value !== 'object')
++        return null;
++    const outTrackId = boundedString(value.outTrackId, 240).trim();
++    const text = boundedString(value.text, limits.maxTextChars);
++    const sessionWebhook = boundedString(value.sessionWebhook, limits.maxWebhookChars).trim();
++    if (!outTrackId || !text || !sessionWebhook)
++        return null;
++    const checksum = textChecksum(text);
++    return {
++        scope: boundedString(value.scope, 240),
++        session: boundedString(value.session, 240),
++        turn: Number.isSafeInteger(Number(value.turn)) ? Number(value.turn) : undefined,
++        outTrackId,
++        text,
++        textChecksum: checksum,
++        sessionWebhook,
++        mode: boundedString(value.mode, 32) || 'aicard',
++        updatedAt: finiteInteger(value.updatedAt, Date.now()),
++        chunkIndex: Number.isSafeInteger(Number(value.chunkIndex)) ? Number(value.chunkIndex) : undefined,
++        chunkCount: Number.isSafeInteger(Number(value.chunkCount)) ? Number(value.chunkCount) : undefined,
++        fullTextChecksum: boundedString(value.fullTextChecksum, 128),
++        failureFingerprint: boundedString(value.failureFingerprint, 512),
++        failureCount: finiteInteger(value.failureCount, 0),
++    };
++}
++
++/**
++ * A private on-disk delivery journal.  The constructor accepts either a
++ * state directory or the complete JSON filename so tests can use a temporary
++ * directory without changing production layout.
++ */
++export class DeliveryStore {
++    filePath;
++    maxEntries;
++    maxTextChars;
++    maxWebhookChars;
++    #entries = new Map();
++    #loaded = false;
++    constructor(stateDirOrFile, options = {}) {
++        const supplied = String(stateDirOrFile ?? '').trim();
++        this.filePath = isJsonFile(supplied) ? supplied : path.join(supplied || '.', 'delivery-pending.json');
++        this.maxEntries = Math.max(1, finiteInteger(options.maxEntries, DEFAULT_DELIVERY_MAX_ENTRIES));
++        this.maxTextChars = Math.max(1, finiteInteger(options.maxTextChars, DEFAULT_DELIVERY_MAX_TEXT_CHARS));
++        this.maxWebhookChars = Math.max(1, finiteInteger(options.maxWebhookChars, DEFAULT_DELIVERY_MAX_WEBHOOK_CHARS));
++    }
++    ensureDirectory() {
++        const directory = path.dirname(this.filePath);
++        fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
++        try {
++            fs.chmodSync(directory, 0o700);
++        }
++        catch {
++            // A read-only test fixture may not support chmod; the write below
++            // still reports the actual failure rather than hiding it.
++        }
++    }
++    load() {
++        if (this.#loaded)
++            return;
++        this.#loaded = true;
++        try {
++            const raw = fs.readFileSync(this.filePath, 'utf8');
++            const parsed = JSON.parse(raw);
++            const entries = Array.isArray(parsed) ? parsed : parsed?.entries;
++            for (const entry of Array.isArray(entries) ? entries : []) {
++                const normalized = normalizeEntry(entry, this);
++                if (normalized)
++                    this.#entries.set(normalized.outTrackId, normalized);
++            }
++            this.trim();
++        }
++        catch (error) {
++            if (error?.code !== 'ENOENT') {
++                // Do not expose the file path or persisted body.  A malformed
++                // journal is treated as empty; the next successful write
++                // replaces it atomically.
++                this.#entries.clear();
++            }
++        }
++    }
++    trim() {
++        const entries = [...this.#entries.values()]
++            .sort((left, right) => Number(right.updatedAt) - Number(left.updatedAt));
++        this.#entries.clear();
++        for (const entry of entries.slice(0, this.maxEntries))
++            this.#entries.set(entry.outTrackId, entry);
++    }
++    persist() {
++        this.ensureDirectory();
++        this.trim();
++        const payload = `${JSON.stringify({ version: DELIVERY_STORE_VERSION, entries: [...this.#entries.values()] }, null, 2)}\n`;
++        const temporary = `${this.filePath}.tmp-${process.pid}-${crypto.randomBytes(6).toString('hex')}`;
++        try {
++            fs.writeFileSync(temporary, payload, { encoding: 'utf8', mode: 0o600 });
++            fs.chmodSync(temporary, 0o600);
++            fs.renameSync(temporary, this.filePath);
++            fs.chmodSync(this.filePath, 0o600);
++        }
++        catch (error) {
++            try {
++                fs.unlinkSync(temporary);
++            }
++            catch {
++                // Best effort cleanup; preserve the original write error.
++            }
++            throw error;
++        }
++    }
++    list() {
++        this.load();
++        return [...this.#entries.values()]
++            .sort((left, right) => Number(right.updatedAt) - Number(left.updatedAt))
++            .map((entry) => ({ ...entry }));
++    }
++    get(outTrackId) {
++        this.load();
++        const entry = this.#entries.get(String(outTrackId ?? ''));
++        return entry ? { ...entry } : undefined;
++    }
++    put(value) {
++        this.load();
++        const normalized = normalizeEntry(value, this);
++        if (!normalized)
++            throw new Error('delivery pending entry is invalid');
++        this.#entries.set(normalized.outTrackId, normalized);
++        this.persist();
++        return { ...normalized };
++    }
++    update(outTrackId, patch) {
++        this.load();
++        const current = this.#entries.get(String(outTrackId ?? ''));
++        if (!current)
++            return undefined;
++        return this.put({ ...current, ...patch, outTrackId: current.outTrackId });
++    }
++    remove(outTrackId) {
++        this.load();
++        const key = String(outTrackId ?? '');
++        const removed = this.#entries.delete(key);
++        if (removed)
++            this.persist();
++        return removed;
++    }
++    clear() {
++        this.load();
++        if (!this.#entries.size)
++            return;
++        this.#entries.clear();
++        this.persist();
++    }
++}
++
++//# sourceMappingURL=delivery-store.js.map
 diff --git a/lib/index.js b/lib/index.js
-index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b6fa8f068 100644
+index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d33e69eb5 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -22,6 +22,7 @@ import { Commands, isSessionControl } from './commands.js';
@@ -1439,16 +2516,31 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
  import { OwnerBinding } from './owner.js';
  import { DwsTools } from './tools.js';
  import { downloadImageByCode } from './media.js';
-@@ -30,7 +31,7 @@ import { exactPackageSpec } from './package-info.js';
+@@ -29,8 +30,9 @@ import { modelAcceptsImages } from './image-mode.js';
+ import { exactPackageSpec } from './package-info.js';
  import { resolveStateDir } from './paths.js';
  import { cardTarget } from './targets.js';
++import { DeliveryStore } from './delivery-store.js';
  export const name = 'dingtalk-channel';
 -export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm'];
 +export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm', 'sessionQuery', 'agentPresets'];
  export { Config };
  export async function apply(ctx, config) {
      const log = (line) => console.log(`[dsh-dingtalk ${new Date().toTimeString().slice(0, 8)}] ${line}`);
-@@ -78,6 +79,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -55,12 +57,8 @@ export async function apply(ctx, config) {
+     }
+     const cwd = config.workspace || path.join(os.homedir(), 'dsh-dingtalk-workspace');
+     fs.mkdirSync(cwd, { recursive: true });
+-    const primary = resolution.accounts[0];
+     const dwsTools = new DwsTools({
+         workspace: cwd,
+-        clientId: primary.clientId,
+-        clientSecret: primary.clientSecret,
+-        exposeCredentials: resolution.accounts.length === 1,
+         log,
+     });
+     if (config.tools.enabled)
+@@ -78,6 +76,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
      const { clientId, clientSecret } = account;
      const log = (line) => console.log(`[dsh-dingtalk:${account.id} ${new Date().toTimeString().slice(0, 8)}] ${line}`);
      const interactionCardTemplateId = config.interactionCardTemplateId || process.env.DINGTALK_INTERACTION_CARD_TEMPLATE_ID || '';
@@ -1457,7 +2549,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
      const stateDir = accountStateDir(resolveStateDir(), account.id);
      let streamStatus = 'connecting';
      const owner = new OwnerBinding({
-@@ -113,6 +116,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -113,6 +113,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
      void workspace.start();
      // Host services are typed structurally (see host.ts); inject guarantees presence.
      const agents = ctx.agents;
@@ -1465,7 +2557,17 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
      const defaultModel = ctx.agentDefaultModel;
      const currentDefault = () => {
          try {
-@@ -128,6 +132,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -123,11 +124,18 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             return undefined;
+         }
+     };
+-    const outbound = new Outbound({ clientId, clientSecret }, log);
++    const configuredHttpTimeout = Number(process.env.DINGTALK_HTTP_TIMEOUT_MS);
++    const httpTimeoutMs = Number.isFinite(configuredHttpTimeout) && configuredHttpTimeout > 0
++        ? Math.max(1, Math.floor(configuredHttpTimeout))
++        : undefined;
++    const outbound = new Outbound({ clientId, clientSecret }, log, { timeoutMs: httpTimeoutMs });
+     // Shared by question/plan-review/approval cards and the queue busy card.
      const interactionCards = interactionCardTemplateId
          ? new InteractionCards(() => outbound.token(), clientId, interactionCardTemplateId, log)
          : undefined;
@@ -1475,7 +2577,30 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
      const cardCapabilityFile = path.join(stateDir, 'capabilities.json');
      const cardCapability = new CardCapability((reason) => {
          fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
-@@ -152,6 +159,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -137,14 +145,20 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+         fs.chmodSync(cardCapabilityFile, 0o600);
+     });
+     const emotion = new Emotion(() => outbound.token(), clientId, log);
++    const deliveryStore = new DeliveryStore(stateDir);
+     const renderer = new Renderer({
+         config,
+         outbound,
+         emotion,
+-        createCard: (target) => AICard.create({
++        deliveryStore,
++        createCard: (target, options = {}) => AICard.create({
+             token: () => outbound.token(),
+             robotCode: clientId,
+-            target,
++            ...(options.existing === true ? {} : { target }),
++            ...(options.outTrackId ? { outTrackId: options.outTrackId } : {}),
++            ...(options.existing === true ? { existing: true } : {}),
++            ...(httpTimeoutMs ? { timeoutMs: httpTimeoutMs } : {}),
++            maxCardChars: config.streaming.maxCardChars,
+             capability: cardCapability,
+             log,
+         }),
+@@ -152,6 +166,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
      });
      const bindings = new JsonStore(path.join(stateDir, 'bindings.json'), log);
      const modelOverrides = new JsonStore(path.join(stateDir, 'models.json'), log);
@@ -1483,7 +2608,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
      const workspaceOverrides = new JsonStore(path.join(stateDir, 'workspaces.json'), log);
      const queue = new Queue(log);
      const questions = new QuestionManager({
-@@ -168,6 +176,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -168,6 +183,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          log,
          modelOverrides,
          workspaceOverrides,
@@ -1493,7 +2618,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
          modelSelection: currentDefault,
          resolveImage: async (downloadCode, scopeKey) => {
              const legacyMode = config.attachImages === true ? 'always' : config.attachImages === false ? 'never' : undefined;
-@@ -201,15 +212,15 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -201,15 +219,15 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              questions.bindSession(agent.id, msg);
              void workspace.attach(agent.id);
          },
@@ -1512,7 +2637,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
                  return {
                      agentPreset: resolved.id,
                      setup: async (agentCtx) => {
-@@ -224,12 +235,29 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -224,12 +242,41 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              }
          },
      });
@@ -1533,6 +2658,18 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
 +        defaultPresetId,
 +        agentPresets,
          queue,
++        dws: config.tools.enabled
++            ? {
++                // Resolve credentials from this account at call time. In
++                // particular, never fall back to a process-global primary
++                // account when several robots are configured.
++                sendFile: (request) => dwsTools.sendFile({
++                    ...request,
++                    clientId,
++                    clientSecret,
++                }),
++            }
++            : undefined,
 +        sessionQuery: ctx.sessionQuery,
 +        llm: ctx.llm,
 +        isOwner,
@@ -1542,7 +2679,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
          defaultModel: currentDefault,
          toolsStatusLine: () => dwsTools.statusLine(),
          workspaceOverrides,
-@@ -270,6 +298,17 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -270,6 +317,17 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          markdownTitle: config.markdownTitle,
          log,
      });
@@ -1560,7 +2697,16 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
      ctx.on('session/event', (session, event) => {
          renderer.onSessionEvent(session, event);
      });
-@@ -438,14 +477,19 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -411,6 +469,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+                         token: () => outbound.token(),
+                         robotCode: clientId,
+                         target,
++                        ...(httpTimeoutMs ? { timeoutMs: httpTimeoutMs } : {}),
++                        maxCardChars: config.streaming.maxCardChars,
+                         capability: cardCapability,
+                         log,
+                     });
+@@ -438,17 +498,29 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              });
          },
          onCardCallback: async (callback) => {
@@ -1587,7 +2733,20 @@ index dd24fdc083454f222cf5a320536705929f676dee..1c009166d7396eb6a7403ba7bbf10a5b
 +            return {};
          },
      });
-     ctx.on('dispose', () => stop());
+-    ctx.on('dispose', () => stop());
++    // Start Stream first so a slow historical recovery can never prevent the
++    // channel from becoming reachable.  Recovery itself is bounded per entry
++    // and a new inbound gets one additional coalesced opportunity.
++    void renderer.recoverPending().catch((error) => log(`pending recovery failed (${error instanceof Error ? error.message : 'unknown error'})`));
++    ctx.on('dispose', async () => {
++        await renderer.dispose();
++        await stop();
++    });
+     log(`channel up: workspace=${cwd} replyMode=${config.replyMode.direct}/${config.replyMode.group} streaming=${config.streaming.enabled} async=${config.asyncMode}`);
+ }
+-//# sourceMappingURL=index.js.map
+\ No newline at end of file
++//# sourceMappingURL=index.js.map
 diff --git a/lib/interaction-card.d.ts b/lib/interaction-card.d.ts
 index a0f646b033971f7f83f7948166e7361712d317e7..bac89a232fd988202aec4c148989e133e8c03f1e 100644
 --- a/lib/interaction-card.d.ts
@@ -1655,48 +2814,256 @@ index 11b0821a2cd3344bde5d4a873163cc41f9111619..d58aab7b9febdbba27cc6344d4f2f967
              return true;
          }
          catch (err) {
+diff --git a/lib/outbound.d.ts b/lib/outbound.d.ts
+index 9c6f7e3be8241f36bbd0ce6f6d1ab267a0266087..25a5fc6bb52a6cdfef4051aa6765af7a56ae350c 100644
+--- a/lib/outbound.d.ts
++++ b/lib/outbound.d.ts
+@@ -8,12 +8,19 @@ export declare class Outbound {
+     #private;
+     private readonly credentials;
+     private readonly log;
+-    constructor(credentials: DingTalkAppCredentials, log: (line: string) => void);
++    constructor(credentials: DingTalkAppCredentials, log: (line: string) => void, options?: {
++        timeoutMs?: number;
++    });
+     /** Cached app access token, shared by emotion/card modules. */
+     token(): Promise<string>;
+     private accessToken;
+     private send;
+     sendMarkdown(sessionWebhook: string, title: string, text: string): Promise<boolean>;
+     sendText(sessionWebhook: string, content: string): Promise<boolean>;
++    sendMarkdownResult(sessionWebhook: string, title: string, text: string): Promise<{
++        ok: boolean;
++        uncertain?: boolean;
++        error?: unknown;
++    }>;
+ }
+-//# sourceMappingURL=outbound.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=outbound.d.ts.map
+diff --git a/lib/outbound.js b/lib/outbound.js
+index 620f618328acfa370f40cecbf1234d22e728a128..886c68233113bb02b75f48cafbd7a2df8e20037e 100644
+--- a/lib/outbound.js
++++ b/lib/outbound.js
+@@ -1,3 +1,11 @@
++import {
++    DEFAULT_DINGTALK_HTTP_TIMEOUT_MS,
++    boundedResponseJson,
++    boundedResponseText,
++    fetchWithTimeout,
++    promiseWithTimeout,
++} from './delivery-store.js';
++
+ function markdownSummary(text, fallback) {
+     const firstLine = text
+         .split(/\r?\n/)
+@@ -14,10 +22,14 @@ function markdownSummary(text, fallback) {
+ export class Outbound {
+     credentials;
+     log;
++    timeoutMs;
+     #token;
+-    constructor(credentials, log) {
++    constructor(credentials, log, options = {}) {
+         this.credentials = credentials;
+         this.log = log;
++        this.timeoutMs = Number.isFinite(Number(options.timeoutMs)) && Number(options.timeoutMs) > 0
++            ? Math.max(1, Math.floor(Number(options.timeoutMs)))
++            : DEFAULT_DINGTALK_HTTP_TIMEOUT_MS;
+     }
+     /** Cached app access token, shared by emotion/card modules. */
+     async token() {
+@@ -26,14 +38,30 @@ export class Outbound {
+     async accessToken() {
+         if (this.#token && Date.now() < this.#token.expiresAt - 60_000)
+             return this.#token.value;
+-        const resp = await fetch('https://api.dingtalk.com/v1.0/oauth2/accessToken', {
++        const resp = await fetchWithTimeout('https://api.dingtalk.com/v1.0/oauth2/accessToken', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ appKey: this.credentials.clientId, appSecret: this.credentials.clientSecret }),
++        }, { stage: 'DingTalk access token', timeoutMs: this.timeoutMs });
++        if (!resp.ok) {
++            // Response bodies can contain credentials or provider diagnostics;
++            // status is sufficient for callers and safe to log.
++            await promiseWithTimeout(boundedResponseText(resp), {
++                stage: 'DingTalk access token response',
++                timeoutMs: this.timeoutMs,
++            });
++            const error = new Error(`accessToken failed with HTTP ${resp.status}`);
++            error.code = `DINGTALK_HTTP_${resp.status}`;
++            error.stage = 'DingTalk access token';
++            error.uncertain = false;
++            throw error;
++        }
++        const data = await promiseWithTimeout(boundedResponseJson(resp), {
++            stage: 'DingTalk access token response',
++            timeoutMs: this.timeoutMs,
+         });
+-        if (!resp.ok)
+-            throw new Error(`accessToken failed ${resp.status}: ${await resp.text()}`);
+-        const data = await resp.json();
++        if (typeof data.accessToken !== 'string' || !data.accessToken)
++            throw new Error('accessToken response did not contain a token');
+         this.#token = {
+             value: data.accessToken,
+             expiresAt: Date.now() + (data.expireIn ?? 7200) * 1000,
+@@ -41,26 +69,43 @@ export class Outbound {
+         return this.#token.value;
+     }
+     async send(sessionWebhook, payload, chars) {
++        const result = await this.sendResult(sessionWebhook, payload, chars);
++        return result.ok;
++    }
++    /** Detailed outcome for renderer recovery; send() remains boolean-compatible. */
++    async sendResult(sessionWebhook, payload, chars) {
+         try {
+-            const token = await this.accessToken();
+-            const resp = await fetch(sessionWebhook, {
++            const token = await promiseWithTimeout(this.accessToken(), {
++                stage: 'DingTalk access token',
++                timeoutMs: this.timeoutMs,
++            });
++            const resp = await fetchWithTimeout(sessionWebhook, {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'x-acs-dingtalk-access-token': token,
+                 },
+                 body: JSON.stringify(payload),
+-            });
++            }, { stage: 'DingTalk sessionWebhook', timeoutMs: this.timeoutMs });
+             if (!resp.ok) {
+-                this.log(`reply failed ${resp.status}: ${await resp.text()}`);
+-                return false;
++                await promiseWithTimeout(boundedResponseText(resp), {
++                    stage: 'DingTalk sessionWebhook response',
++                    timeoutMs: this.timeoutMs,
++                });
++                const error = new Error(`DingTalk sessionWebhook failed with HTTP ${resp.status}`);
++                error.code = `DINGTALK_HTTP_${resp.status}`;
++                error.stage = 'DingTalk sessionWebhook';
++                error.uncertain = false;
++                this.log(`reply failed HTTP ${resp.status}`);
++                return { ok: false, uncertain: false, error };
+             }
+             this.log(`reply sent (${chars} chars)`);
+-            return true;
++            return { ok: true, uncertain: false };
+         }
+         catch (err) {
+-            this.log(`reply error: ${err instanceof Error ? err.message : err}`);
+-            return false;
++            const safe = err instanceof Error ? err.message : 'unknown error';
++            this.log(`reply error: ${safe}`);
++            return { ok: false, uncertain: err?.uncertain !== false, error: err };
+         }
+     }
+     async sendMarkdown(sessionWebhook, title, text) {
+@@ -72,5 +117,11 @@ export class Outbound {
+     async sendText(sessionWebhook, content) {
+         return this.send(sessionWebhook, { msgtype: 'text', text: { content } }, content.length);
+     }
++    async sendMarkdownResult(sessionWebhook, title, text) {
++        return this.sendResult(sessionWebhook, {
++            msgtype: 'markdown',
++            markdown: { title: markdownSummary(text, title), text },
++        }, text.length);
++    }
+ }
+-//# sourceMappingURL=outbound.js.map
+\ No newline at end of file
++//# sourceMappingURL=outbound.js.map
 diff --git a/lib/renderer.d.ts b/lib/renderer.d.ts
-index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..81516638394266682547d5a72f0874ec297d1084 100644
+index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..52f04ae2d0fdd801d66093da1c4d79802edb7ddf 100644
 --- a/lib/renderer.d.ts
 +++ b/lib/renderer.d.ts
-@@ -12,6 +12,7 @@ import type { InboundMessage } from './stream.js';
+@@ -12,17 +12,31 @@ import type { InboundMessage } from './stream.js';
  import type { Outbound } from './outbound.js';
  import type { Emotion } from './emotion.js';
  import { AICard, type CardTarget } from './aicard.js';
++import type { DeliveryStore } from './delivery-store.js';
 +export declare const DINGTALK_ROUTE_TTL_MS: number;
  export interface RendererDeps {
      config: Pick<Config, 'replyMode' | 'streaming' | 'asyncMode' | 'ackText' | 'markdownTitle' | 'emotionFirstResponse'>;
      outbound: Outbound;
-@@ -22,6 +23,7 @@ export interface RendererDeps {
+     emotion: Emotion;
+-    createCard(target: CardTarget): Promise<AICard | null>;
++    createCard(target: CardTarget | undefined, options?: {
++        outTrackId?: string;
++        existing?: boolean;
++    }): Promise<AICard | null>;
++    deliveryStore?: DeliveryStore;
++    /** Injectable transport deadline for tests; production defaults to 15s. */
++    timeoutMs?: number;
+     log(line: string): void;
+ }
  export declare class Renderer {
      private readonly deps;
      private states;
 +    private routes;
      constructor(deps: RendererDeps);
++    recoverPending(): Promise<{
++        attempted: number;
++        recovered: number;
++    }>;
++    dispose(): Promise<void>;
      /**
       * Register the reply context for the turn this inbound message will drive.
+      * The emotion was already added at message intake (before queueing).
+@@ -41,4 +55,4 @@ export declare class Renderer {
+     private flush;
+     private finalize;
+ }
+-//# sourceMappingURL=renderer.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=renderer.d.ts.map
 diff --git a/lib/renderer.js b/lib/renderer.js
-index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a43a76781 100644
+index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef51b263d2e 100644
 --- a/lib/renderer.js
 +++ b/lib/renderer.js
-@@ -2,6 +2,7 @@ import { CardCapabilityError } from './aicard.js';
+@@ -1,7 +1,9 @@
+ import { CardCapabilityError } from './aicard.js';
  import { cardTarget } from './targets.js';
  import { describeTurnError } from './errors.js';
++import { promiseWithTimeout, textChecksum } from './delivery-store.js';
  const EMPTY_MODEL_RESPONSE = '⚠️ **模型本次未产出正文**\n> 可能是输出额度被推理占满，请调大 `max_tokens` 或更换模型后重试。';
 +export const DINGTALK_ROUTE_TTL_MS = 2 * 60 * 60 * 1000;
  /**
   * Render live segments to markdown: consecutive tool lines merge into one
   * compact blockquote (one line per tool, no blank lines between them), text
-@@ -31,6 +32,8 @@ function renderLive(segments) {
+@@ -31,6 +33,10 @@ function renderLive(segments) {
  export class Renderer {
      deps;
      states = new Map();
 +    /** Session-id → minimal DingTalk parent route; never persisted or full-text. */
 +    routes = new Map();
++    recoveryPromise;
++    disposed = false;
      constructor(deps) {
          this.deps = deps;
      }
-@@ -60,6 +63,7 @@ export class Renderer {
+@@ -41,6 +47,10 @@ export class Renderer {
+      */
+     onInbound(sessionId, msg) {
+         const { config } = this.deps;
++        // A new inbound is a second bounded recovery opportunity.  Do not hold
++        // the queue lane on it: uncertain records remain pending and the
++        // current turn can proceed independently.
++        void this.recoverPending().catch((error) => this.deps.log(`pending recovery skipped: ${error instanceof Error ? error.message : 'unknown error'}`));
+         const isDirect = msg.conversationType === 'direct';
+         const mode = isDirect ? config.replyMode.direct : config.replyMode.group;
+         let settle;
+@@ -55,21 +65,133 @@ export class Renderer {
+             finalParts: [],
+             lastFlushed: '',
+             flushing: false,
++            opChain: Promise.resolve(),
++            finalizing: false,
++            settled: false,
++            cardError: undefined,
+             needsRollover: false,
+             cardUnavailable: false,
              carryOffset: 0,
              settle,
          };
@@ -1704,7 +3071,18 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a
          if (config.asyncMode) {
              // Ack now; the settled result is pushed at turn end, no streaming card.
              void this.deps.outbound.sendText(msg.sessionWebhook, config.ackText);
-@@ -70,6 +74,106 @@ export class Renderer {
+         }
+         else if (mode === 'aicard') {
+-            state.cardPromise = this.deps.createCard(cardTarget(msg));
++            // Keep creation failures observable to finalize without allowing a
++            // rejected promise to become an unhandled rejection while the host
++            // is still producing turn events.
++            state.cardPromise = Promise.resolve(this.deps.createCard(cardTarget(msg)))
++                .catch((error) => {
++                state.cardError = error;
++                return null;
++            });
+         }
          this.states.set(sessionId, state);
          return settled;
      }
@@ -1811,9 +3189,67 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a
      /**
       * A new bubble entered the conversation below any live card — mark its
       * turn(s) so the next frame rolls output over to a fresh card at the bottom.
-@@ -97,9 +201,35 @@ export class Renderer {
+@@ -81,25 +203,86 @@ export class Renderer {
+             }
+         }
+     }
+-    /** Settle the old card with a pointer note and continue on a fresh one. */
++    /** Queue one carrier operation; a final operation always follows prior frames. */
++    enqueue(st, operation) {
++        const next = st.opChain
++            .catch(() => undefined)
++            .then(operation);
++        st.opChain = next.catch(() => undefined);
++        return next;
++    }
++    async createNextCard(st) {
++        const promise = promiseWithTimeout(Promise.resolve(this.deps.createCard(cardTarget(st.msg))), {
++            stage: 'DingTalk successor card creation',
++            timeoutMs: this.deliveryTimeoutMs(),
++        })
++            .catch((error) => {
++            st.cardError = error;
++            return null;
++        });
++        st.cardPromise = promise;
++        return promise;
++    }
++    maxCardChars() {
++        const value = Number(this.deps.config.streaming.maxCardChars);
++        return Number.isFinite(value) && value > 0 ? Math.max(1, Math.floor(value)) : 15_000;
++    }
++    deliveryTimeoutMs() {
++        const value = Number(this.deps.timeoutMs ?? this.deps.config.httpTimeoutMs ?? process.env.DINGTALK_HTTP_TIMEOUT_MS);
++        return Number.isFinite(value) && value > 0 ? Math.max(1, Math.floor(value)) : 15_000;
++    }
++    /** Finish the current card at a bounded boundary, then create its successor. */
+     async rollover(st, card, content) {
+         st.needsRollover = false;
+-        try {
+-            await card.finish(`${content || st.lastFlushed || '…'}\n\n> ⤵️ 输出继续，见下方新卡片`);
+-            this.deps.log('card rolled over');
+-        }
+-        catch (err) {
+-            this.deps.log(`rollover finish failed: ${err instanceof Error ? err.message : err}`);
++        const max = this.maxCardChars();
++        const value = String(content || st.lastFlushed || '');
++        if (value.trim()) {
++            const chunk = value.slice(0, max);
++            await promiseWithTimeout(card.finish(chunk), {
++                stage: 'DingTalk card rollover finish',
++                timeoutMs: this.deliveryTimeoutMs(),
++            });
++            st.carryOffset += chunk.length;
+         }
+         st.lastFlushed = '';
+-        st.cardPromise = this.deps.createCard(cardTarget(st.msg));
+-        return st.cardPromise;
++        this.deps.log('card rolled over');
++        return this.createNextCard(st);
      }
      onSessionEvent(session, event) {
++        if (this.disposed)
++            return;
          const st = this.states.get(session.id);
 -        if (!st)
 +        if (!st) {
@@ -1839,8 +3275,10 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a
 +            }
 +            if (event.type === 'turn/end')
 +                this.replayEnd(session.id, route, event.data);
-             return;
++            return;
 +        }
++        if (st.finalizing && event.type !== 'turn/end')
+             return;
          switch (event.type) {
 +            case 'turn/start':
 +                st.turn = event.data?.turn;
@@ -1848,7 +3286,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a
              case 'assistant/chunk': {
                  const chunk = event.data?.chunk;
                  if (chunk?.type === 'text-delta' && typeof chunk.text === 'string') {
-@@ -130,6 +260,7 @@ export class Renderer {
+@@ -130,6 +313,7 @@ export class Renderer {
                  break;
              }
              case 'assistant/message': {
@@ -1856,7 +3294,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a
                  const blocks = event.data?.message?.content;
                  if (Array.isArray(blocks)) {
                      const text = blocks
-@@ -142,6 +273,7 @@ export class Renderer {
+@@ -142,13 +326,14 @@ export class Renderer {
                  break;
              }
              case 'turn/end': {
@@ -1864,16 +3302,539 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..8473013941f6a2178f8462c50403761a
                  void this.finalize(session.id, st, event.data?.reason);
                  break;
              }
-@@ -201,6 +333,9 @@ export class Renderer {
-         // Snapshot-and-delete first: turn/end and a late flush may race, and a
-         // second finalize on the same state must be impossible.
-         this.states.delete(sessionId);
-+        const route = this.routes.get(sessionId);
-+        if (route && Number.isSafeInteger(st.turn))
-+            route.lastCompletedTurn = st.turn;
+         }
+     }
+     scheduleFlush(sessionId, st) {
+-        if (st.async || st.mode !== 'aicard' || st.cardUnavailable || !this.deps.config.streaming.enabled)
++        if (st.async || st.mode !== 'aicard' || st.cardUnavailable || st.finalizing || !this.deps.config.streaming.enabled)
+             return;
+         if (st.flushTimer)
+             return;
+@@ -158,11 +343,16 @@ export class Renderer {
+         }, this.deps.config.streaming.throttleMs);
+     }
+     async flush(sessionId, st) {
+-        if (st.flushing || st.cardUnavailable || !this.states.has(sessionId))
++        if (st.flushing || st.cardUnavailable || st.finalizing || !this.states.has(sessionId))
+             return;
+-        st.flushing = true;
+-        try {
+-            let card = st.cardPromise ? await st.cardPromise : null;
++        return this.enqueue(st, async () => {
++            if (st.flushing || st.cardUnavailable || st.finalizing || !this.states.has(sessionId))
++                return;
++            st.flushing = true;
++            try {
++            let card = st.cardPromise
++                ? await promiseWithTimeout(st.cardPromise, { stage: 'DingTalk card creation', timeoutMs: this.deliveryTimeoutMs() })
++                : null;
+             if (!card || !this.states.has(sessionId))
+                 return;
+             const full = renderLive(st.live);
+@@ -171,15 +361,14 @@ export class Renderer {
+                 return;
+             // Over-length roll-over (Feishu streamMaxElementChars analog): settle the
+             // full current card and continue the remainder on a fresh one.
+-            if (content.length > this.deps.config.streaming.maxCardChars) {
++            if (content.length > this.maxCardChars())
+                 st.needsRollover = true;
+-            }
+             if (st.needsRollover) {
+                 card = await this.rollover(st, card, content);
+                 if (!card || !this.states.has(sessionId))
+                     return;
+-                st.carryOffset = full.length;
+-                content = '';
++                // The rollover consumed only one bounded chunk.  The next
++                // queued flush/finalize sends the remaining suffix in order.
+                 return;
+             }
+             else if (content === st.lastFlushed) {
+@@ -187,90 +376,415 @@ export class Renderer {
+             }
+             await card.stream(content);
+             st.lastFlushed = content;
+-        }
+-        catch (err) {
++            }
++            catch (err) {
+             this.deps.log(`stream flush error: ${err instanceof Error ? err.message : err}`);
+             if (err instanceof CardCapabilityError)
+                 st.cardUnavailable = true;
++            }
++            finally {
++                st.flushing = false;
++            }
++        });
++    }
++    pendingId(sessionId, st, text, outTrackId) {
++        return outTrackId || `pending_${sessionId}_${Number.isSafeInteger(st.turn) ? st.turn : 'latest'}_${textChecksum(text).slice(0, 16)}`;
++    }
++    persistPending(sessionId, st, text, outTrackId, mode = 'aicard', patch = {}) {
++        const store = this.deps.deliveryStore;
++        if (!store)
++            return true;
++        try {
++            store.put({
++                scope: st.msg.conversationId,
++                session: sessionId,
++                turn: Number.isSafeInteger(st.turn) ? st.turn : undefined,
++                outTrackId: this.pendingId(sessionId, st, text, outTrackId),
++                text,
++                textChecksum: textChecksum(text),
++                sessionWebhook: st.msg.sessionWebhook,
++                mode,
++                updatedAt: Date.now(),
++                ...patch,
++            });
++            return true;
++        }
++        catch (error) {
++            this.deps.log(`delivery pending journal write failed: ${error instanceof Error ? error.message : 'unknown error'}`);
++            return false;
++        }
++    }
++    removePending(outTrackId) {
++        if (!outTrackId || !this.deps.deliveryStore)
++            return;
++        try {
++            this.deps.deliveryStore.remove(outTrackId);
+         }
+-        finally {
+-            st.flushing = false;
++        catch (error) {
++            this.deps.log(`delivery pending journal cleanup failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+         }
+     }
++    async markdownOutcome(outbound, webhook, title, text) {
++        if (typeof outbound.sendMarkdownResult === 'function')
++            return outbound.sendMarkdownResult(webhook, title, text);
++        try {
++            return { ok: await outbound.sendMarkdown(webhook, title, text), uncertain: true };
++        }
++        catch (error) {
++            return { ok: false, uncertain: error?.uncertain !== false, error };
++        }
++    }
++    async deliverCardText(sessionId, st, text, card, errorText) {
++        const chunks = [];
++        const max = this.maxCardChars();
++        for (let offset = 0; offset < text.length; offset += max)
++            chunks.push(text.slice(offset, offset + max));
++        if (!chunks.length)
++            chunks.push(EMPTY_MODEL_RESPONSE);
++        let current = card;
++        let currentId;
++        for (let index = 0; index < chunks.length; index += 1) {
++            if (index > 0) {
++                current = await this.createNextCard(st);
++                if (!current) {
++                    const failure = st.cardError || new Error('DingTalk card successor unavailable');
++                    failure.uncertain = failure.uncertain !== false;
++                    failure.outTrackId = failure.outTrackId || currentId;
++                    throw failure;
++                }
++            }
++            currentId = current.outTrackId;
++            const durable = this.persistPending(sessionId, st, chunks[index], currentId, 'aicard', {
++                chunkIndex: index,
++                chunkCount: chunks.length,
++                fullTextChecksum: textChecksum(text),
++            });
++            if (!durable) {
++                const failure = new Error('DingTalk delivery journal unavailable');
++                failure.code = 'DINGTALK_DELIVERY_JOURNAL_UNAVAILABLE';
++                failure.stage = 'DingTalk delivery journal';
++                failure.uncertain = true;
++                failure.durabilityFailure = true;
++                failure.outTrackId = currentId;
++                throw failure;
++            }
++            try {
++                if (index === chunks.length - 1 && errorText)
++                    await promiseWithTimeout(current.fail(chunks[index]), {
++                        stage: 'DingTalk card fail',
++                        timeoutMs: this.deliveryTimeoutMs(),
++                    });
++                else
++                    await promiseWithTimeout(current.finish(chunks[index]), {
++                        stage: 'DingTalk card finish',
++                        timeoutMs: this.deliveryTimeoutMs(),
++                    });
++            }
++            catch (error) {
++                error.outTrackId = error.outTrackId || currentId;
++                throw error;
++            }
++            this.removePending(currentId);
++        }
++        return true;
++    }
+     async finalize(sessionId, st, reason) {
+-        // Snapshot-and-delete first: turn/end and a late flush may race, and a
+-        // second finalize on the same state must be impossible.
+-        this.states.delete(sessionId);
++        if (st.finalizePromise)
++            return st.finalizePromise;
++        // Keep the state in the map while the serialized operation drains.  A
++        // late stream event can no longer delete or settle ahead of delivery.
++        st.finalizing = true;
          if (st.flushTimer)
              clearTimeout(st.flushTimer);
-         const { config, outbound, emotion } = this.deps;
+-        const { config, outbound, emotion } = this.deps;
+-        if (config.emotionFirstResponse)
+-            await emotion.recall(st.msg.msgId, st.msg.conversationId);
+-        // Release the queue lane no matter how rendering below fares.
+-        st.settle();
+-        const kind = reason?.kind;
+-        const failure = reason?.failure ?? reason?.error;
+-        const failureMessage = typeof failure === 'string' ? failure : failure?.message;
+-        const failureCode = typeof failure === 'object' && failure !== null && failure.code !== undefined ? String(failure.code) : undefined;
+-        const errText = kind === 'error' ? describeTurnError(failureMessage, failureCode) : '';
+-        if (errText)
+-            this.deps.log(`turn ended in error: ${failureMessage ?? failureCode ?? 'unknown'}`);
+-        // 'aborted' is the host's cancellation variant (TurnEndReasonMap) — the
+-        // user already got its confirmation elsewhere, settle without publishing.
+-        const interrupted = kind === 'aborted';
+-        const substance = st.finalParts.join('\n\n').trim();
+-        const liveText = renderLive(st.live);
+-        if (interrupted) {
+-            // Quiet settle: freeze the old card in place, never roll over or add
+-            // bubbles for a dead turn (a canceled task once spawned a ghost card
+-            // holding a single tool line).
+-            const card = !st.cardUnavailable && st.cardPromise ? await st.cardPromise : null;
+-            if (card) {
++        st.finalizePromise = this.enqueue(st, async () => {
++            const route = this.routes.get(sessionId);
++            if (route && Number.isSafeInteger(st.turn))
++                route.lastCompletedTurn = st.turn;
++            const { config, outbound, emotion } = this.deps;
++            let deliveryCommitted = false;
++            try {
++                if (config.emotionFirstResponse && typeof emotion.recall === 'function') {
++                    try {
++                        await promiseWithTimeout(emotion.recall(st.msg.msgId, st.msg.conversationId), {
++                            stage: 'DingTalk emotion recall',
++                            timeoutMs: this.deliveryTimeoutMs(),
++                        });
++                    }
++                    catch {
++                        // Emotion is ancillary; it must never hold the reply lane.
++                    }
++                }
++                const kind = reason?.kind;
++                const failure = reason?.failure ?? reason?.error;
++                const failureMessage = typeof failure === 'string' ? failure : failure?.message;
++                const failureCode = typeof failure === 'object' && failure !== null && failure.code !== undefined ? String(failure.code) : undefined;
++                const errText = kind === 'error' ? describeTurnError(failureMessage, failureCode) : '';
++                if (errText)
++                    this.deps.log(`turn ended in error: ${failureCode || 'known failure'}`);
++                const interrupted = kind === 'aborted';
++                const substance = st.finalParts.join('\n\n').trim();
++                const liveText = renderLive(st.live);
++                if (interrupted) {
++                    const interruptedText = `${liveText ? `${liveText}\n\n` : ''}⏹️ 任务已打断`;
++                    let card = null;
++                    if (!st.cardUnavailable && st.cardPromise) {
++                        try {
++                            card = await promiseWithTimeout(st.cardPromise, { stage: 'DingTalk card creation', timeoutMs: this.deliveryTimeoutMs() });
++                        }
++                        catch (error) {
++                            st.cardError = error;
++                        }
++                    }
++                    if (card) {
++                        try {
++                            await this.deliverCardText(sessionId, st, interruptedText, card, '');
++                            deliveryCommitted = true;
++                            this.deps.log('card settled (interrupted)');
++                        }
++                        catch (error) {
++                            if (error?.uncertain === true) {
++                                deliveryCommitted = this.persistPending(sessionId, st, interruptedText, error.outTrackId || card.outTrackId, 'aicard');
++                            }
++                            else {
++                                deliveryCommitted = (await this.markdownOutcome(outbound, st.msg.sessionWebhook, config.markdownTitle, interruptedText))?.ok === true;
++                            }
++                        }
++                    }
++                    else if (st.cardError?.uncertain === true) {
++                        deliveryCommitted = this.persistPending(sessionId, st, interruptedText, st.cardError.outTrackId, 'aicard');
++                    }
++                    else {
++                        // An interrupted turn has no final answer to publish;
++                        // there is no remote delivery to recover in this path.
++                        deliveryCommitted = true;
++                    }
++                    return;
++                }
++                // Once a prior live card consumed a prefix, only publish the
++                // suffix on the current card. Prefer the clean final message
++                // when available; live rendering remains the fallback.
++                let text = st.carryOffset > 0
++                    ? (substance ? substance.slice(st.carryOffset) : liveText.slice(st.carryOffset))
++                    : substance || liveText;
++                if (st.carryOffset > 0 && !text.trim())
++                    text = substance ? '（完整内容见上方卡片）' : '';
++                if (errText)
++                    text = text ? `${text}\n\n${errText}` : errText;
++                if (!text.trim())
++                    text = EMPTY_MODEL_RESPONSE;
++                let card = null;
++                if (!st.cardUnavailable && st.cardPromise) {
++                    try {
++                        card = await promiseWithTimeout(st.cardPromise, { stage: 'DingTalk card creation', timeoutMs: this.deliveryTimeoutMs() });
++                    }
++                    catch (error) {
++                        st.cardError = error;
++                    }
++                }
++                if (card) {
++                    try {
++                        await this.deliverCardText(sessionId, st, text, card, errText);
++                        deliveryCommitted = true;
++                        this.deps.log(`card settled (${text.length} chars)`);
++                        return;
++                    }
++                    catch (error) {
++                        // A timeout/abort/network error means the remote may
++                        // already have accepted the card. Never emit a second
++                        // Markdown bubble in that uncertain state.
++                        if (error?.uncertain === true) {
++                            deliveryCommitted = this.persistPending(sessionId, st, text, error.outTrackId || card.outTrackId, 'aicard');
++                            return;
++                        }
++                        this.deps.log(`card settle failed, falling back to markdown (${error instanceof Error ? error.message : 'unknown error'})`);
++                        const result = await this.markdownOutcome(outbound, st.msg.sessionWebhook, config.markdownTitle, text);
++                        if (result?.ok) {
++                            this.removePending(card.outTrackId);
++                            deliveryCommitted = true;
++                            return;
++                        }
++                        deliveryCommitted = this.persistPending(sessionId, st, text, card.outTrackId, 'markdown');
++                        return;
++                    }
++                }
++                // Card creation/delivery can fail before an object is returned.
++                // An uncertain create/deliver has an outTrackId and must remain
++                // pending; a clear HTTP/capability failure can use Markdown.
++                if (st.cardError?.uncertain === true) {
++                    deliveryCommitted = this.persistPending(sessionId, st, text, st.cardError.outTrackId, 'aicard');
++                    return;
++                }
++                if (st.mode === 'text' && !errText) {
++                    const ok = await outbound.sendText(st.msg.sessionWebhook, text);
++                    deliveryCommitted = ok || this.persistPending(sessionId, st, text, undefined, 'text');
++                    return;
++                }
++                const result = await this.markdownOutcome(outbound, st.msg.sessionWebhook, config.markdownTitle, text);
++                deliveryCommitted = result?.ok === true || this.persistPending(sessionId, st, text, undefined, 'markdown');
++            }
++            finally {
++                // Queue settlement is downstream of card/Markdown success or a
++                // durable pending write. Keep this finalizer idempotent.
++                if (!deliveryCommitted) {
++                    // The journal itself may be unavailable. Make one bounded,
++                    // non-sensitive fail-closed notice attempt so the queue is
++                    // not silently marked complete; if that transport is also
++                    // uncertain, leave the state until dispose can force a
++                    // final bounded cleanup.
++                    try {
++                        deliveryCommitted = (await this.markdownOutcome(
++                            outbound,
++                            st.msg.sessionWebhook,
++                            config.markdownTitle,
++                            '⚠️ 本机任务已结束，但钉钉交付状态暂时无法确认；未自动重复发送，请稍后重试。',
++                        ))?.ok === true;
++                    }
++                    catch {
++                        deliveryCommitted = false;
++                    }
++                }
++                if (deliveryCommitted && !st.settled) {
++                    st.settled = true;
++                    st.settle();
++                }
++                if (deliveryCommitted)
++                    this.states.delete(sessionId);
++                else
++                    this.deps.log('delivery not committed; keeping reply lane fail-closed');
++            }
++        });
++        return st.finalizePromise;
++    }
++    recoveryFingerprint(error) {
++        const stage = String(error?.stage || 'card-recovery').slice(0, 96);
++        const code = String(error?.code || error?.name || 'unknown').slice(0, 96);
++        return `${stage}:${code}`;
++    }
++    async recoverPending() {
++        if (this.disposed || !this.deps.deliveryStore)
++            return { attempted: 0, recovered: 0 };
++        if (this.recoveryPromise)
++            return this.recoveryPromise;
++        this.recoveryPromise = (async () => {
++            let attempted = 0;
++            let recovered = 0;
++            let entries;
++            try {
++                entries = this.deps.deliveryStore.list().slice(0, 10);
++            }
++            catch (error) {
++                this.deps.log(`pending delivery journal read failed: ${error instanceof Error ? error.message : 'unknown error'}`);
++                return { attempted, recovered };
++            }
++            for (const entry of entries) {
++                // Markdown/text pending records use synthetic ids and must
++                // never be treated as an existing AI Card during recovery.
++                if (this.disposed || entry.mode !== 'aicard' || !entry.outTrackId || entry.outTrackId.startsWith('pending_'))
++                    continue;
++                // The recovery contract allows one automatic retry per
++                // failure fingerprint.  Explicit /resend remains available
++                // for a human decision when that retry is inconclusive.
++                if (Number(entry.failureCount) > 0)
++                    continue;
++                if (!entry.text || textChecksum(entry.text) !== entry.textChecksum)
++                    continue;
++                attempted += 1;
+                 try {
+-                    await card.finish(`${liveText ? `${liveText}\n\n` : ''}⏹️ 任务已打断`);
+-                    this.deps.log('card settled (interrupted)');
++                    const card = await promiseWithTimeout(Promise.resolve(this.deps.createCard(undefined, {
++                        existing: true,
++                        outTrackId: entry.outTrackId,
++                    })), {
++                        stage: 'DingTalk pending card creation',
++                        timeoutMs: this.deliveryTimeoutMs(),
++                    });
++                    if (!card)
++                        throw Object.assign(new Error('DingTalk pending card unavailable'), {
++                            code: 'DINGTALK_PENDING_CARD_UNAVAILABLE',
++                            stage: 'DingTalk pending card creation',
++                            uncertain: true,
++                            outTrackId: entry.outTrackId,
++                        });
++                    const max = this.maxCardChars();
++                    if (entry.text.length > max)
++                        throw Object.assign(new Error('DingTalk pending card chunk exceeds frame limit'), {
++                            code: 'DINGTALK_PENDING_CHUNK_TOO_LARGE',
++                            stage: 'DingTalk pending card creation',
++                            uncertain: false,
++                            outTrackId: entry.outTrackId,
++                        });
++                    await promiseWithTimeout(card.finish(entry.text), {
++                        stage: 'DingTalk pending card finish',
++                        timeoutMs: this.deliveryTimeoutMs(),
++                    });
++                    this.deps.deliveryStore.remove(entry.outTrackId);
++                    recovered += 1;
+                 }
+-                catch (err) {
+-                    this.deps.log(`interrupted settle failed: ${err instanceof Error ? err.message : err}`);
++                catch (error) {
++                    const fingerprint = this.recoveryFingerprint(error);
++                    try {
++                        this.deps.deliveryStore.update(entry.outTrackId, {
++                            updatedAt: Date.now(),
++                            failureFingerprint: fingerprint,
++                            failureCount: Number(entry.failureCount || 0) + 1,
++                        });
++                    }
++                    catch (journalError) {
++                        this.deps.log(`pending delivery retry journal update failed: ${journalError instanceof Error ? journalError.message : 'unknown error'}`);
++                    }
++                    if (error?.uncertain !== true) {
++                        const result = await this.markdownOutcome(this.deps.outbound, entry.sessionWebhook, this.deps.config.markdownTitle, entry.text);
++                        if (result?.ok) {
++                            this.deps.deliveryStore.remove(entry.outTrackId);
++                            recovered += 1;
++                        }
++                    }
+                 }
+             }
++            return { attempted, recovered };
++        })().finally(() => {
++            this.recoveryPromise = undefined;
++        });
++        return this.recoveryPromise;
++    }
++    async dispose() {
++        if (this.disposed)
+             return;
++        this.disposed = true;
++        const pending = [];
++        for (const [sessionId, st] of this.states.entries()) {
++            if (st.flushTimer)
++                clearTimeout(st.flushTimer);
++            pending.push(this.finalize(sessionId, st, {
++                kind: 'error',
++                failure: { code: 'DINGTALK_RENDERER_DISPOSED', message: 'reply interrupted during shutdown' },
++            }));
+         }
+-        // After earlier roll-overs the settled cards already hold the prefix；
+-        // the final card carries the remainder (clean substance replaces the live
+-        // view only when no roll-over consumed part of it).
+-        let text = st.carryOffset > 0 ? liveText.slice(st.carryOffset) : substance || liveText;
+-        if (st.carryOffset > 0 && !text.trim())
+-            text = substance ? '（完整内容见上方卡片）' : '';
+-        if (errText)
+-            text = text ? `${text}\n\n${errText}` : errText;
+-        if (!text.trim())
+-            text = EMPTY_MODEL_RESPONSE;
+-        let card = !st.cardUnavailable && st.cardPromise ? await st.cardPromise : null;
+-        if (card && st.needsRollover && (substance || errText)) {
+-            // Newer bubbles sit below the old card: settle it with a pointer and
+-            // land the final answer on a fresh card at the bottom. Tool-lines-only
+-            // output is not worth a fresh card.
+-            card = await this.rollover(st, card, st.lastFlushed);
++        try {
++            await promiseWithTimeout(Promise.allSettled(pending), {
++                stage: 'DingTalk renderer dispose',
++                timeoutMs: this.deliveryTimeoutMs(),
++            });
+         }
+-        if (card) {
+-            try {
+-                if (errText)
+-                    await card.fail(text);
+-                else
+-                    await card.finish(text);
+-                this.deps.log(`card settled (${text.length} chars)`);
+-                return;
+-            }
+-            catch (err) {
+-                this.deps.log(`card settle failed, falling back to markdown: ${err instanceof Error ? err.message : err}`);
+-            }
++        catch {
++            // A broken carrier must not block Host shutdown; the common sweep
++            // below persists and settles any state whose remote outcome is
++            // still unknown.
++        }
++        // Include deterministic journal failures as well: dispose is the
++        // bounded fail-closed boundary for a connector that cannot persist.
++        for (const [sessionId, st] of this.states.entries()) {
++            if (st.settled)
++                continue;
++            const text = st.finalParts.join('\n\n').trim() || renderLive(st.live) || '⏹️ 任务已打断';
++            this.persistPending(sessionId, st, text, st.cardError?.outTrackId, 'aicard');
++            st.settled = true;
++            st.settle();
++            this.states.delete(sessionId);
++        }
++        for (const [sessionId, route] of this.routes.entries()) {
++            clearTimeout(route.expiryTimer);
++            this.routes.delete(sessionId);
+         }
+-        // markdown / text / asyncMode / card-fallback all land here.
+-        if (st.mode === 'text' && !errText)
+-            await outbound.sendText(st.msg.sessionWebhook, text);
+-        else
+-            await outbound.sendMarkdown(st.msg.sessionWebhook, config.markdownTitle, text);
+     }
+ }
+-//# sourceMappingURL=renderer.js.map
+\ No newline at end of file
++//# sourceMappingURL=renderer.js.map
 diff --git a/lib/stream.d.ts b/lib/stream.d.ts
 index a87cbf31f8387c382c54c39bdce883a0f6859e3a..5624d8f4fc196c492d3000ed2f2427c79181e955 100644
 --- a/lib/stream.d.ts
@@ -1932,3 +3893,320 @@ index 0833a5d337f69fe7024b313dadd976a913aa584b..b524f2401b7cc03f340a3ff526db74a5
          }
          catch (err) {
              opts.log(`card callback error: ${err instanceof Error ? err.message : err}`);
+diff --git a/lib/tools.d.ts b/lib/tools.d.ts
+index 6fc62ccc82033cde730853de52bb1d5e48e6cebc..917f3868b140e23977fc5915f6e076e83a2deff4 100644
+--- a/lib/tools.d.ts
++++ b/lib/tools.d.ts
+@@ -1,21 +1,49 @@
+ import type { DingTalkAppCredentials } from './credentials.js';
++export interface DwsCommandResult {
++    code: number | null;
++    signal?: NodeJS.Signals | null;
++    stdout?: string;
++    stderr?: string;
++    timedOut?: boolean;
++}
++export interface DwsRunnerOptions {
++    timeoutMs: number;
++    env?: NodeJS.ProcessEnv;
++}
++export type DwsRunner = (cmd: string, args: readonly string[], options: DwsRunnerOptions) => Promise<DwsCommandResult>;
+ export interface ToolsStatus {
+     enabled: boolean;
+     dwsFound: boolean;
+     dwsVersion?: string;
+     authed: boolean;
+     skillInstalled: boolean;
++    botFileAvailable: boolean;
+ }
+-export interface ToolsOptions extends DingTalkAppCredentials {
++export interface ToolsOptions extends Partial<DingTalkAppCredentials> {
+     workspace: string;
+     exposeCredentials?: boolean;
++    runner?: DwsRunner;
+     log(line: string): void;
+ }
++export interface SendFileRequest {
++    conversationType: 'direct' | 'group';
++    conversationId?: string;
++    senderStaffId?: string;
++    filePath: string;
++    clientId?: string;
++    clientSecret?: string;
++    timeoutMs?: number;
++}
++export interface SendFileResult {
++    ok: boolean;
++    reason?: string;
++}
+ export declare class DwsTools {
+     private readonly opts;
+     status: ToolsStatus;
+     constructor(opts: ToolsOptions);
+     enable(): Promise<ToolsStatus>;
++    sendFile(request: SendFileRequest): Promise<SendFileResult>;
+     statusLine(): string;
+ }
+-//# sourceMappingURL=tools.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=tools.d.ts.map
+diff --git a/lib/tools.js b/lib/tools.js
+index e41389954581e57aa7762c107c0fb29da156b474..082ae01215b501346ccf6e363762ee03da006774 100644
+--- a/lib/tools.js
++++ b/lib/tools.js
+@@ -1,74 +1,134 @@
+ /**
+  * The optional dws tools module (plan §5.3: dws + skill, zero native tools).
+- * Enabling it does three things:
+- *  1. verify the local dws CLI and its login state (guidance, never blocking),
+- *  2. export the channel env vars dws reads for attribution/credential reuse
+- *     (`DWS_CHANNEL` / `DWS_CLIENT_ID` / `DWS_CLIENT_SECRET`, same names the
+- *     OpenClaw connector injects),
+- *  3. install the bundled dws-cli skill into the channel workspace's
+- *     `.dsh/skills/` root, where DSH's filesystem skill provider discovers it
+- *     for DingTalk sessions only (other workspaces stay untouched).
++ * Enabling it verifies the local dws CLI and mounts the bundled skill. File
++ * sends are explicit command actions and pass the current account's app
++ * credentials only to that child process; no credentials are put in argv or
++ * exported to DSH's process environment.
+  */
+ import { spawn } from 'node:child_process';
+ import { cpSync, existsSync, mkdirSync } from 'node:fs';
+ import path from 'node:path';
+ import { fileURLToPath } from 'node:url';
+-function run(cmd, args, timeoutMs = 10_000) {
++const MAX_OUTPUT_CHARS = 16 * 1024;
++const DEFAULT_TIMEOUT_MS = 10_000;
++const FILE_SEND_TIMEOUT_MS = 30_000;
++
++function boundedAppend(current, chunk) {
++    const remaining = MAX_OUTPUT_CHARS - current.length;
++    if (remaining <= 0)
++        return current;
++    return current + String(chunk).slice(0, remaining);
++}
++
++function run(cmd, args, options = {}) {
++    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : DEFAULT_TIMEOUT_MS;
+     return new Promise((resolve) => {
+-        const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+-        let stdout = '';
+-        const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
+-        child.stdout.on('data', (d) => {
+-            stdout += String(d);
+-        });
+-        child.on('error', () => {
++        let settled = false;
++        let timedOut = false;
++        let timer;
++        let child;
++        const finish = (result) => {
++            if (settled)
++                return;
++            settled = true;
+             clearTimeout(timer);
+-            resolve({ code: null, stdout });
++            resolve({
++                code: result.code ?? null,
++                signal: result.signal,
++                stdout: result.stdout,
++                stderr: result.stderr,
++                timedOut,
++            });
++        };
++        try {
++            child = spawn(cmd, args, {
++                stdio: ['ignore', 'pipe', 'pipe'],
++                ...(options.env ? { env: { ...process.env, ...options.env } } : {}),
++            });
++        }
++        catch {
++            finish({ code: null, stdout: '', stderr: '' });
++            return;
++        }
++        let stdout = '';
++        let stderr = '';
++        timer = setTimeout(() => {
++            timedOut = true;
++            child.kill('SIGKILL');
++        }, Math.max(1, timeoutMs));
++        timer.unref?.();
++        child.stdout?.on('data', (data) => {
++            stdout = boundedAppend(stdout, data);
+         });
+-        child.on('close', (code) => {
+-            clearTimeout(timer);
+-            resolve({ code, stdout });
++        child.stderr?.on('data', (data) => {
++            stderr = boundedAppend(stderr, data);
+         });
++        child.on('error', () => finish({ code: null, stdout, stderr }));
++        child.on('close', (code, signal) => finish({ code, signal, stdout, stderr }));
+     });
+ }
++
++function parseJson(stdout) {
++    const value = String(stdout ?? '').trim();
++    if (!value)
++        return undefined;
++    try {
++        return JSON.parse(value);
++    }
++    catch {
++        return undefined;
++    }
++}
++
++function failedPayload(payload) {
++    if (!payload || typeof payload !== 'object')
++        return false;
++    if (payload.ok === false || payload.success === false || payload.status === 'failed' || payload.status === 'failure' || payload.status === 'error')
++        return true;
++    if (typeof payload.code === 'number' && payload.code !== 0)
++        return true;
++    if (payload.error || (Array.isArray(payload.errors) && payload.errors.length) || (Array.isArray(payload.failures) && payload.failures.length))
++        return true;
++    return failedPayload(payload.data) || failedPayload(payload.result);
++}
++
++function targetKind(conversationType) {
++    return conversationType === 'group' ? 'group' : conversationType === 'direct' ? 'direct' : '';
++}
+ /** The packaged skill directory, resolved relative to the built module. */
+ function bundledSkillDir() {
+     return path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'skills', 'dws-cli');
+ }
+ export class DwsTools {
+     opts;
+-    status = { enabled: false, dwsFound: false, authed: false, skillInstalled: false };
++    status = { enabled: false, dwsFound: false, authed: false, skillInstalled: false, botFileAvailable: false };
+     constructor(opts) {
+         this.opts = opts;
+     }
++    async execute(cmd, args, options = {}) {
++        if (this.opts.runner)
++            return this.opts.runner(cmd, args, options);
++        return run(cmd, args, options);
++    }
+     async enable() {
+         const { log } = this.opts;
+         this.status.enabled = true;
+-        const version = await run('dws', ['--version']);
++        const version = await this.execute('dws', ['--version']);
+         this.status.dwsFound = version.code === 0;
++        this.status.botFileAvailable = this.status.dwsFound;
+         if (this.status.dwsFound) {
+-            this.status.dwsVersion = version.stdout.trim().split('\n')[0];
++            this.status.dwsVersion = String(version.stdout ?? '').trim().split('\n')[0] || 'dws';
+         }
+         else {
+-            log('tools: dws CLI 未安装 — 钉钉能力不可用；安装 dws 后重启即可（channel 对话不受影响）');
++            log('tools: dws CLI 未安装 — 机器人附件不可用；安装 dws 后重启即可（channel 对话不受影响）');
+             return this.status;
+         }
+-        const auth = await run('dws', ['auth', 'status', '--format', 'json']);
+-        this.status.authed = auth.code === 0;
++        const auth = await this.execute('dws', ['auth', 'status', '--format', 'json']);
++        const authPayload = parseJson(auth.stdout);
++        this.status.authed = auth.code === 0
++            && (authPayload?.authenticated === true || authPayload?.data?.authenticated === true);
+         if (!this.status.authed) {
+-            log('tools: dws 未登录 — 在本机执行 `dws auth login` 完成个人授权后重启；工具将以登录用户本人身份执行');
+-        }
+-        // Channel attribution + credential reuse, read by dws itself (connector
+-        // injects the same names). Process-level: DSH's bash tool inherits them.
+-        process.env.DWS_CHANNEL = 'dsh-dingtalk';
+-        if (this.opts.exposeCredentials === false) {
+-            delete process.env.DWS_CLIENT_ID;
+-            delete process.env.DWS_CLIENT_SECRET;
+-            log('tools: multi-account mode does not export process-global app credentials; dws continues with personal auth');
+-        }
+-        else {
+-            process.env.DWS_CLIENT_ID = this.opts.clientId;
+-            process.env.DWS_CLIENT_SECRET = this.opts.clientSecret;
++            log('tools: dws 个人身份未登录 — 不影响机器人附件发送；需要个人能力时再执行 `dws auth login`');
+         }
+         try {
+             const source = bundledSkillDir();
+@@ -86,12 +146,77 @@ export class DwsTools {
+         log(`tools: enabled (dws=${this.status.dwsVersion ?? '?'} authed=${this.status.authed})`);
+         return this.status;
+     }
++    /**
++     * Send one local file as a bot attachment. The caller must have resolved
++     * the path from the current canonical artifact list; this method only
++     * assembles the official dws command and verifies its result.
++     */
++    async sendFile(request) {
++        const clientId = request.clientId ?? this.opts.clientId;
++        const clientSecret = request.clientSecret ?? this.opts.clientSecret;
++        const kind = targetKind(request.conversationType);
++        if (!clientId || !clientSecret)
++            return { ok: false, reason: '机器人凭据未配置。' };
++        if (!kind)
++            return { ok: false, reason: '当前会话类型不支持附件发送。' };
++        if (typeof request.filePath !== 'string' || !request.filePath)
++            return { ok: false, reason: '未找到可发送的文件。' };
++        const target = kind === 'group' ? request.conversationId : request.senderStaffId;
++        if (typeof target !== 'string' || !target)
++            return { ok: false, reason: '当前对话缺少可用的发送目标。' };
++        const args = [
++            'chat',
++            'message',
++            'send-by-bot',
++            '--robot-code',
++            clientId,
++            '--msg-type',
++            'file',
++            '--file-path',
++            request.filePath,
++            ...(kind === 'group' ? ['--conversation-id', target] : ['--users', target]),
++            '--format',
++            'json',
++        ];
++        let result;
++        try {
++            result = await this.execute('dws', args, {
++                timeoutMs: request.timeoutMs ?? FILE_SEND_TIMEOUT_MS,
++                env: {
++                    DWS_CHANNEL: 'dsh-dingtalk',
++                    DWS_CLIENT_ID: clientId,
++                    DWS_CLIENT_SECRET: clientSecret,
++                },
++            });
++        }
++        catch {
++            // Do not copy child error text: it can contain local paths or
++            // provider details that are not safe to echo into the chat log.
++            this.opts.log('tools: bot file send error');
++            return { ok: false, reason: '机器人附件发送失败，请稍后重试。' };
++        }
++        if (result?.timedOut)
++            return { ok: false, reason: '机器人附件发送超时，请稍后重试。' };
++        if (!result || result.code !== 0) {
++            this.opts.log(`tools: bot file send failed (exit=${result?.code ?? 'unknown'})`);
++            return { ok: false, reason: '机器人附件发送失败，请稍后重试。' };
++        }
++        const payload = parseJson(result.stdout);
++        if (payload === undefined || failedPayload(payload)) {
++            // stdout/stderr are bounded by the runner but still stay private;
++            // only the generic outcome is written to the connector log.
++            this.opts.log('tools: bot file send returned invalid or failed JSON');
++            return { ok: false, reason: '钉钉未确认附件发送成功，请稍后重试。' };
++        }
++        this.opts.log(`tools: bot file send succeeded (${kind})`);
++        return { ok: true };
++    }
+     statusLine() {
+         if (!this.status.enabled)
+             return '关闭（配置 `tools.enabled: true` 开启钉钉能力）';
+         if (!this.status.dwsFound)
+-            return '开启但 dws 未安装';
+-        return `开启（${this.status.dwsVersion ?? 'dws'}｜${this.status.authed ? '已登录' : '未登录，需 dws auth login'}｜skill ${this.status.skillInstalled ? '已挂载' : '挂载失败'}）`;
++            return '开启（机器人附件不可用：dws 未安装）';
++        return `开启（机器人附件可用｜${this.status.dwsVersion ?? 'dws'}｜个人身份：${this.status.authed ? '已登录' : '未登录'}｜skill ${this.status.skillInstalled ? '已挂载' : '挂载失败'}）`;
+     }
+ }
+-//# sourceMappingURL=tools.js.map
+\ No newline at end of file
++//# sourceMappingURL=tools.js.map

@@ -83,7 +83,7 @@
     groupAccess: none
     imageMode: auto
     tools:
-      enabled: false
+      enabled: true
     debug: false
     consoleCardTemplateId: f42ee85c-bdb9-4197-b8b7-4379e9b64878.schema
     defaultDingTalkPresetId: reliable-development

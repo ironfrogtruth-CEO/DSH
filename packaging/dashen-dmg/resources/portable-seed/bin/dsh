@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+ROOT="${DSH_HOME:-$(cd "$(dirname "$0")/.." && pwd)}"
+RUNTIME_FILE="$ROOT/.portable-runtime"
+if [[ ! -f "$RUNTIME_FILE" ]]; then
+  echo "大神便携运行时尚未完成初始化。" >&2
+  exit 1
+fi
+source "$RUNTIME_FILE"
+export DSH_HOME="$ROOT"
+export PATH="$(dirname "$DASHEN_NODE"):$PATH"
+exec "$DASHEN_NODE" "$ROOT/install/node_modules/@deepseek-ai/dsh/lib/bin.js" "$@"

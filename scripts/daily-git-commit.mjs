@@ -15,6 +15,13 @@ import { fileURLToPath } from 'node:url'
 import { join, relative, resolve } from 'node:path'
 
 export const DAILY_REPOSITORY = '/Users/marcus/.dsh'
+export const DAILY_REPOSITORIES = Object.freeze([
+  Object.freeze({ id: 'dashen', path: '/Users/marcus/.dsh' }),
+  // CyberMarcus-Chrome is a normal subdirectory of this repository, not a
+  // third Git root. Its source and tests are therefore committed together
+  // with ShrimpTank in one atomic repository commit.
+  Object.freeze({ id: 'shrimptank', path: '/Users/marcus/Desktop/虾缸' }),
+])
 export const DAILY_COMMIT_PREFIX = 'chore(backup): daily snapshot'
 const GIT = '/usr/bin/git'
 const NODE = '/usr/local/bin/node'
@@ -49,6 +56,9 @@ export const PROTECTED_PATH_PATTERNS = Object.freeze([
   /(?:^|\/)pytest\/cache(?:\/|$)/,
   /(?:^|\/)[^/]+\.py[cod]$/,
   /^(?:sessions|storages|goal-first-state|backups|private)(?:\/|$)/,
+  /^(?:screen-memory\/shots|runtimes\/stenographer\/models|cleanup-reports)(?:\/|$)/,
+  /^(?:notify-queue\.jsonl|notify-watcher-state\.json(?:\.tmp)?|shrimp-run-standing-auth\.json)$/,
+  /^(?:data|MODEL|RAG)(?:\/|$)/,
   /^(?:\.credentials\.yaml|\.anonymous-user-id|web\.log)$/,
 ])
 
@@ -377,6 +387,47 @@ export function runQuickValidations(repoRoot) {
   })
 }
 
+export function runShrimpTankValidations(repoRoot) {
+  const checks = [{ id: 'repository-root', ok: existsSync(join(repoRoot, 'backend')) && existsSync(join(repoRoot, 'tests')), detail: '虾缸仓库结构存在' }]
+  const staged = readStagedPaths(repoRoot)
+  if (!staged.ok) return [...checks, { id: 'staged-paths', ok: false, detail: staged.error }]
+
+  const pluginChanged = staged.paths.some((path) => path.startsWith('CyberMarcus-Chrome/'))
+  if (pluginChanged) {
+    const testFiles = [
+      'CyberMarcus-Chrome/background.test.mjs',
+      'CyberMarcus-Chrome/content.test.mjs',
+      'CyberMarcus-Chrome/run-live-acceptance.test.mjs',
+    ].filter((path) => existsSync(join(repoRoot, path)))
+    const result = testFiles.length ? runNode(['--test', ...testFiles], repoRoot) : { code: 0, stdout: '', stderr: '' }
+    checks.push({
+      id: 'cybermarcus-chrome',
+      ok: result.code === 0,
+      code: result.code,
+      detail: trimOutput([result.stdout, result.stderr].filter(Boolean).join('\n')) || (result.code === 0 ? '通过' : '失败'),
+    })
+  }
+
+  const pythonFiles = staged.paths.filter((path) => path.endsWith('.py') && existsSync(join(repoRoot, path)))
+  if (pythonFiles.length) {
+    const python = '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3'
+    const result = spawnSync('/usr/bin/arch', ['-arm64', python, '-m', 'py_compile', ...pythonFiles], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      timeout: VALIDATION_TIMEOUT_MS,
+      maxBuffer: MAX_COMMAND_OUTPUT,
+      windowsHide: true,
+    })
+    checks.push({
+      id: 'python-compile',
+      ok: result.status === 0,
+      code: Number.isInteger(result.status) ? result.status : 1,
+      detail: trimOutput([result.stdout, result.stderr].filter(Boolean).join('\n')) || (result.status === 0 ? '通过' : '失败'),
+    })
+  }
+  return checks
+}
+
 function normalizeValidationResult(value) {
   if (Array.isArray(value)) {
     const checks = value
@@ -481,6 +532,31 @@ export function runDailyGitCommit({ repoRoot = DAILY_REPOSITORY, dryRun = false,
   return result
 }
 
+export function runDailyGitCommitAll({ repositories = DAILY_REPOSITORIES, dryRun = false, now = new Date(), validations = {} } = {}) {
+  const results = []
+  for (const repository of repositories) {
+    const root = resolve(repository.path)
+    const validate = validations[repository.id]
+      || (root === resolve('/Users/marcus/Desktop/虾缸') ? runShrimpTankValidations : runQuickValidations)
+    results.push({ id: repository.id, ...runDailyGitCommit({ repoRoot: root, dryRun, now, validate }) })
+  }
+  const ok = results.every((result) => result.ok)
+  const committed = results.filter((result) => result.status === 'committed').length
+  const skipped = results.filter((result) => result.status === 'skipped').length
+  const blocked = results.filter((result) => !result.ok).length
+  return {
+    ok,
+    status: ok ? (committed ? 'committed' : dryRun ? 'dry-run' : 'skipped') : 'blocked',
+    push: false,
+    repository_count: results.length,
+    committed_count: committed,
+    skipped_count: skipped,
+    blocked_count: blocked,
+    results,
+    summary: `每日本地 Git 提交：${committed} 个仓库已提交，${skipped} 个无改动，${blocked} 个阻断；永不 push`,
+  }
+}
+
 export function parseArgs(argv) {
   const args = { dryRun: false }
   for (const token of argv) {
@@ -502,11 +578,11 @@ export function main(argv = process.argv.slice(2)) {
     return result
   }
   if (args.help) {
-    const result = { ok: true, status: 'help', usage: 'daily-git-commit.mjs [--dry-run]', repository: DAILY_REPOSITORY, push: false }
+    const result = { ok: true, status: 'help', usage: 'daily-git-commit.mjs [--dry-run]', repositories: DAILY_REPOSITORIES, push: false }
     console.log(JSON.stringify(result))
     return result
   }
-  const result = runDailyGitCommit({ dryRun: args.dryRun })
+  const result = runDailyGitCommitAll({ dryRun: args.dryRun })
   console.log(JSON.stringify(result))
   process.exitCode = result.ok ? 0 : 1
   return result

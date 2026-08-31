@@ -1,6 +1,6 @@
 # deepseek-idesign / deepseek-ippt Studio 品牌与导出修复补丁
 
-修改日期:2026-08-25
+修改日期:2026-08-31
 适用:profiles/web/node_modules 下 deepseek-idesign、deepseek-ippt 两包的 studio/dist/assets/*.js
 安装版本:deepseek-idesign@0.2.2、deepseek-ippt@0.1.2(升级后需按本文重新应用)
 
@@ -18,7 +18,15 @@
 
 logo 图标保留原样(用户确认不再替换虾缸 logo)。
 
-## 二、PPTX 导出修复(span not covered 中止)
+## 二、模板 Logo 与缩略图缓存
+
+- PPT 4 套、Design 21 套内置模板统一恢复包内原始 `ipollowork-logo.svg`，不再把虾缸 PNG 包进大尺寸 SVG。
+- 每个模板继续使用原有 `.ipw-brand-slot img { width:18px; height:18px }`，位置和尺寸由模板自身控制。
+- Logo 引用使用 `v=20260831-logo-fix-1`，避免浏览器继续读取已缓存的巨型图标。
+- 模板封面请求带上 `manifest.version`；平安好医生模板升级到 `1.2.1` 后，缩略图 URL 随版本变化。
+- Host 的模板封面响应使用 `cache-control:no-store`，更新后不再保留 24 小时旧封面。
+
+## 三、PPTX 导出修复(span not covered 中止)
 
 现象:
 ```
@@ -40,7 +48,7 @@ l.matches("h1,h2,h3,h4,h5,h6,p,li,span,strong,b,em,i,small,sub,sup")||l8(l)&&l.c
 效果:独立文本 span 会被规划为文本框并计入覆盖;位于已规划文本(h1/p/li 等)
 内部的 span 不会被重复访问,行为不变。`aVe`(视觉设计判定)未改动。
 
-## 文件与备份
+## 四、文件与备份
 
 - 修改文件:
   - `node_modules/deepseek-idesign/studio/dist/assets/index-DL8JJYJS.js`
@@ -49,7 +57,7 @@ l.matches("h1,h2,h3,h4,h5,h6,p,li,span,strong,b,em,i,small,sub,sup")||l8(l)&&l.c
   - `original/` — 修改前的原始 bundle(回滚用)
   - `modified/` — 修改后的 bundle(升级后重新应用用)
 
-## 回滚 / 重放
+## 五、回滚 / 重放
 
 ```bash
 # 回滚

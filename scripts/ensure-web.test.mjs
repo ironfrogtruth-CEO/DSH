@@ -158,7 +158,7 @@ test('ensure-web fails closed when the selected-route patch cannot run', () => {
   }
 })
 
-test('ensure-web fails closed when the Avengers model-default patch cannot run', () => {
+test('ensure-web fails closed when the Avengers baseline migration cannot run', () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-avengers-route-fail-'))
   const dshHome = join(root, '.dsh')
   const binPath = join(dshHome, 'install', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
@@ -182,7 +182,7 @@ test('ensure-web fails closed when the Avengers model-default patch cannot run',
       timeout: 5000,
     })
     assert.equal(result.status, 1, result.stderr || result.stdout)
-    assert.match(readFileSync(join(dshHome, 'web.log'), 'utf8'), /Avengers model-default patch failed; refusing to start Host/)
+    assert.match(readFileSync(join(dshHome, 'web.log'), 'utf8'), /Avengers baseline restore failed; refusing to start Host/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -340,12 +340,12 @@ test('ensure-web validates goal-first contracts before stopping a healthy Host',
   )
 })
 
-test('大神 local model bootstrap uses the project model root without compatibility symlinks', () => {
+test('大神 local auxiliary model bootstrap uses the project root and only requires EmbeddingGemma', () => {
   const source = readFileSync(join(repoRoot, 'scripts', 'start-local-model-runtime'), 'utf8')
   assert.match(source, /MODEL_ROOT="\/Users\/marcus\/Desktop\/虾缸\/MODEL"/)
   assert.match(source, /OLLAMA_MODELS_ROOT="\$MODEL_ROOT\/ollama\/models"/)
-  assert.match(source, /cybermarcus:latest/)
-  assert.match(source, /glm-marcus:latest/)
+  assert.match(source, /embeddinggemma:latest/)
+  assert.doesNotMatch(source, /cybermarcus:latest|glm-marcus:latest|gemma4:26b-a4b-it-qat/)
   assert.match(source, /launchctl setenv OLLAMA_MODELS/)
   assert.match(readFileSync(ensureWeb, 'utf8'), /scripts\/start-local-model-runtime/)
 })
@@ -357,8 +357,11 @@ test('ensure-web replays reviewed client UI patches before Host startup', () => 
   assert.match(source, /TOOL_TITLE_PATCH="\$HOME\/\.dsh\/scripts\/patch-tool-call-presentation-titles\.mjs"/)
   assert.match(source, /node "\$TOOL_TITLE_PATCH" --apply/)
   assert.match(source, /tool presentation title patch failed; refusing to start Host/)
-  assert.match(source, /patch-avengers-model-default\.mjs" --apply/)
-  assert.match(source, /Avengers model-default patch failed; refusing to start Host/)
+  assert.match(source, /AVENGERS_BASELINE="\$HOME\/\.dsh\/scripts\/patch-avengers-model-default\.mjs"/)
+  assert.match(source, /node "\$AVENGERS_BASELINE" --apply/)
+  assert.match(source, /node "\$AVENGERS_BASELINE" --check/)
+  assert.match(source, /Avengers baseline restore failed; refusing to start Host/)
+  assert.match(source, /Avengers baseline check failed; refusing to start Host/)
 })
 
 test('foreground ensure-web releases startup lock after bind while keeping the Host owner alive', async () => {

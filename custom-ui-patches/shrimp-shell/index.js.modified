@@ -37,10 +37,8 @@ export const MAX_MESSAGE_IMAGE_BYTES = 200 * 1024 * 1024
 const MAX_VISION_BODY_BYTES = Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 256 * 1024
 const VISION_MEDIA_ROOT = join(homedir(), '.dsh', 'vision-media')
 const VISION_NOTES_ROOT = join(homedir(), '.dsh', 'vision-results')
-const OLLAMA_URL = process.env.SHRIMP_VISION_OLLAMA_URL || 'http://127.0.0.1:11434'
-const VISION_MODEL = process.env.SHRIMP_VISION_MODEL || 'gemma4:26b-a4b-it-qat'
-// Host 视觉桥固定优先走智谱免费 GLM 视觉链。保留旧环境变量读取仅为
-// 兼容已有启动参数，但不允许它把识图路由切到本地或其他云端线路。
+// Host 视觉桥固定走智谱免费视觉；本地对话模型不参与识图。
+// 保留旧 provider 环境变量读取仅为兼容已有启动参数。
 const VISION_PROVIDER = process.env.SHRIMP_VISION_PROVIDER || 'zhipu-mcp'
 const MODELSCOPE_TOKEN = process.env.SHRIMP_VISION_MODELSCOPE_TOKEN
   || process.env.MODELSCOPE_ACCESS_TOKEN
@@ -94,6 +92,12 @@ const HEARTBEAT_RUNNER_SPECS = Object.freeze({
     args: Object.freeze(['/Users/marcus/.dsh/scripts/daily-git-commit.mjs']),
     cwd: '/Users/marcus/.dsh',
     timeoutMs: 5 * 60 * 1000,
+  }),
+  'weekly-safe-cleanup': Object.freeze({
+    command: '/usr/local/bin/node',
+    args: Object.freeze(['/Users/marcus/.dsh/scripts/weekly-safe-cleanup.mjs', '--execute']),
+    cwd: '/Users/marcus/.dsh',
+    timeoutMs: 4 * 60 * 60 * 1000,
   }),
 })
 export const HEARTBEAT_RUNNERS = HEARTBEAT_RUNNER_SPECS
@@ -178,6 +182,51 @@ export function nextHeartbeatCronAt(nowMs = Date.now(), cron) {
     if (normalized.days.includes(candidateDate.getUTCDay()) && candidate > current) return candidate
   }
   return null
+}
+
+/**
+ * Normalize the durable heartbeat registration fields before they enter the
+ * read-modify-write transaction. Host-bound tasks must have a carrier, and a
+ * valid cron must never be persisted with an empty nextRunAt when the caller
+ * omitted it (the old UI did exactly that when changing a schedule).
+ *
+ * An explicitly supplied, usable nextRunAt remains authoritative. A null or
+ * malformed explicit value is treated as omitted for an enabled cron/carrier
+ * task so re-enabling and cron changes cannot recreate a zombie.
+ */
+export function normalizeHeartbeatRegistration({ body = {}, previous = null, nowMs = Date.now() } = {}) {
+  const input = body && typeof body === 'object' && !Array.isArray(body) ? body : {}
+  const prior = previous && typeof previous === 'object' ? previous : {}
+  const runner = input.runner === undefined ? String(prior.runner || '').trim() : String(input.runner || '').trim()
+  const pipelineSlug = input.pipelineSlug === undefined
+    ? String(prior.pipelineSlug || '').trim()
+    : String(input.pipelineSlug || '').trim()
+  const enabled = input.enabled === undefined ? (previous ? prior.enabled !== false : true) : input.enabled !== false
+  if (enabled && !runner && !pipelineSlug) {
+    return { ok: false, code: 'HEARTBEAT_CARRIER_REQUIRED', error: '启用的心跳必须绑定 runner 或 pipelineSlug，已拒绝无载体任务' }
+  }
+
+  const cronInput = input.cron === undefined ? (prior.cron || null) : input.cron
+  const cron = cronInput ? normalizeHeartbeatCron(cronInput) : null
+  if (cronInput && !cron) return { ok: false, code: 'HEARTBEAT_CRON_INVALID', error: 'cron 无效：需要合法 time、days 和 timezone' }
+
+  const hasExplicitNextRunAt = Object.prototype.hasOwnProperty.call(input, 'nextRunAt')
+  const explicitNextRunAt = heartbeatEpochMs(input.nextRunAt)
+  let nextRunAt
+  if (!enabled) nextRunAt = null
+  else if (hasExplicitNextRunAt && explicitNextRunAt > 0) nextRunAt = input.nextRunAt
+  else if (cron && (runner || pipelineSlug)) nextRunAt = nextHeartbeatCronAt(nowMs, cron)
+  else if (hasExplicitNextRunAt) nextRunAt = input.nextRunAt ?? null
+  else nextRunAt = prior.nextRunAt || null
+
+  return {
+    ok: true,
+    runner,
+    pipelineSlug,
+    enabled,
+    cron,
+    nextRunAt,
+  }
 }
 
 export function planHeartbeatTask(task, nowMs = Date.now(), { missedWindowMs = HEARTBEAT_CRON_MISSED_WINDOW_MS } = {}) {
@@ -338,9 +387,8 @@ const sendJson = (res, code, body) => {
   res.end(JSON.stringify(body))
 }
 
-// ── 统一视觉路由：所有会话模型（包括本地/native-capable 模型）都先走
-// ── Host 视觉桥。桥内优先智谱免费 GLM，智谱不可用、限流或无网时才回退
-// ── 本地 Gemma。Host 只替换发给最终模型的临时请求视图，durable 用户消息
+// ── 统一视觉路由：所有会话模型都先走 Host 视觉桥。桥内使用智谱免费视觉，
+// ── 云端不可用时明确阻断，不调用本地对话模型。Host 只替换发给最终模型的临时请求视图，durable 用户消息
 // ── 仍保留原图和文字；模型能力元数据不得绕过这条固定链。
 // ── SHRIMP_VISION_MODE=native 已废弃并会被忽略；bridge 仅作兼容性标记。
 export async function visionPolicy(ctx) {
@@ -355,17 +403,17 @@ export async function visionPolicy(ctx) {
       provider: selection.provider,
       model: selection.model,
       visionProvider: 'zhipu-mcp',
-      fallbackProvider: 'ollama',
-      fallbackModel: VISION_MODEL,
-      reason: `统一视觉桥：先调用智谱免费 GLM，失败后回退本地 Gemma；原图保留在会话历史，模型请求仅使用临时识图投影${forcedNote}`,
+      fallbackProvider: 'zhipu-mcp',
+      fallbackModel: 'glm-4.6v-flash',
+      reason: `统一视觉桥：使用智谱免费视觉；云端不可用时明确阻断，不调用本地对话模型；原图保留在会话历史，模型请求仅使用临时识图投影${forcedNote}`,
     }
   } catch (error) {
     return {
       mode: 'bridge',
       visionProvider: 'zhipu-mcp',
-      fallbackProvider: 'ollama',
-      fallbackModel: VISION_MODEL,
-      reason: `无法读取当前模型，仍使用统一视觉桥：先调用智谱免费 GLM，失败后回退本地 Gemma；${errorText(error)}`,
+      fallbackProvider: 'zhipu-mcp',
+      fallbackModel: 'glm-4.6v-flash',
+      reason: `无法读取当前模型，仍使用统一视觉桥：使用智谱免费视觉；云端不可用时明确阻断，不调用本地对话模型；${errorText(error)}`,
     }
   }
 }
@@ -606,32 +654,6 @@ async function recognizeWithModelScope({
   return { provider: 'modelscope', model, content }
 }
 
-async function recognizeWithOllama({ imageBase64, fetchImpl, ollamaUrl, model }) {
-  const response = await fetchImpl(`${ollamaUrl.replace(/\/$/, '')}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(180_000),
-    body: JSON.stringify({
-      model,
-      stream: false,
-      think: false,
-      keep_alive: '10m',
-      options: { temperature: 0.1, num_predict: 700 },
-      messages: [{ role: 'user', content: VISION_PROMPT, images: [imageBase64] }],
-    }),
-  })
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500)
-    throw new Error(`本地识图服务返回 ${response.status}: ${detail}`)
-  }
-  const data = await response.json()
-  const content = data && data.message && typeof data.message.content === 'string'
-    ? data.message.content.trim()
-    : ''
-  if (!content) throw new Error('本地识图模型没有返回内容')
-  return { provider: 'ollama', model, content }
-}
-
 async function recognizeWithZhipuMcp({ imageBase64, mimeType, prompt = VISION_PROMPT }) {
   const result = await chatWithImageDetailed({
     imageUrl: `data:${mimeType};base64,${imageBase64}`,
@@ -701,8 +723,6 @@ export async function recognizeImage({
   modelScopeToken = MODELSCOPE_TOKEN,
   modelScopeModel = MODELSCOPE_MODEL,
   modelScopeApiBase = MODELSCOPE_API_BASE,
-  ollamaUrl = OLLAMA_URL,
-  ollamaModel = VISION_MODEL,
   zhipuRecognizer = recognizeWithZhipuMcp,
 }) {
   let fallbackReason = ''
@@ -714,14 +734,7 @@ export async function recognizeImage({
   } catch (error) {
     fallbackReason = errorText(error)
   }
-
-  const local = await recognizeWithOllama({
-    imageBase64,
-    fetchImpl,
-    ollamaUrl,
-    model: ollamaModel,
-  })
-  return fallbackReason ? { ...local, fallbackFrom: 'zhipu-mcp', fallbackReason } : local
+  throw new Error(`云端视觉桥不可用，已停止识图；未调用本地对话模型${fallbackReason ? `；智谱视觉：${fallbackReason}` : ''}`)
 }
 
 export function containsImageBlocks(blocks) {
@@ -796,7 +809,7 @@ function selectedModel(options, ctx) {
 async function routeNeedsVisionBridge(options, ctx) {
   // 统一固定桥：不要根据 provider/model 或 inputModalities 放行 native。
   // 这样本地 CyberMarcus、Qwen 以及未来声明 image 能力的模型仍先由
-  // 智谱 GLM 识图，失败后才回退 Gemma；ctx 仅保留在签名中兼容旧调用。
+  // 智谱视觉识图；云端不可用时明确阻断，不调用本地对话模型。
   void options
   void ctx
   return true
@@ -1364,7 +1377,7 @@ export function apply(ctx) {
     },
   }), 'shrimp-shell: vision media')
 
-  // ---- 免费识图：优先智谱 MCP 视觉链，网络不可用时回退本地 Gemma；最终分析仍交给当前 DeepSeek ----
+  // ---- 免费识图：智谱 MCP 视觉链；不可用时明确阻断，最终分析仍交给当前云端模型 ----
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/api/shrimp/vision',
@@ -2072,9 +2085,13 @@ export function apply(ctx) {
         await withHeartbeatMutation(async (data) => {
         const prev = data.tasks.find((t) => t.id === id)
         const name = typeof body.name === 'string' && body.name ? body.name : (prev && prev.name) || id
-        const runner = body.runner === undefined
-          ? String((prev && prev.runner) || '').trim()
-          : String(body.runner || '').trim()
+        const registration = normalizeHeartbeatRegistration({ body, previous: prev, nowMs: Date.now() })
+        if (!registration.ok) {
+          const error = new Error(registration.error)
+          error.code = registration.code
+          throw error
+        }
+        const { runner, pipelineSlug, cron, enabled, nextRunAt } = registration
         if (runner && !heartbeatRunnerSpec(runner)) throw new Error(`不允许的心跳 runner：${runner}`)
         // [local-mod] 若与扫描到的会话周期任务同 id,继承其 sessionId/workspaceId,
         // 使 list 合并时原地更新该行,而不是另建一条重复任务(需服务重启后生效)
@@ -2089,14 +2106,6 @@ export function apply(ctx) {
             workspaceId = scanned.workspaceId || ''
           }
         }
-        const cronInput = body.cron === undefined ? ((prev && prev.cron) || null) : body.cron
-        const cron = cronInput ? normalizeHeartbeatCron(cronInput) : null
-        if (cronInput && !cron) throw new Error('cron 无效：需要合法 time、days 和 timezone')
-        const nextRunAt = body.nextRunAt !== undefined
-          ? body.nextRunAt
-          : body.cron !== undefined
-            ? null
-            : (prev && prev.nextRunAt) || null
         data.tasks = data.tasks.filter((t) => t.id !== id)
         data.tasks.push({
           id,
@@ -2105,17 +2114,17 @@ export function apply(ctx) {
           sessionId,
           workspaceId,
           // [shrimp-native] 绑定虾后由 DSH host 自己触发，不依赖浏览器页面。
-          pipelineSlug: typeof body.pipelineSlug === 'string' && body.pipelineSlug
-            ? body.pipelineSlug.trim()
-            : (prev && prev.pipelineSlug) || '',
+          pipelineSlug,
           runner,
           payload: body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
             ? body.payload
             : (prev && prev.payload) || {},
-          enabled: body.enabled === undefined ? (prev && prev.enabled !== false) : body.enabled !== false,
+          enabled,
           nextRunAt,
           lastRunId: (prev && prev.lastRunId) || null,
-          status: (prev && prev.status) || 'scheduled',
+          status: enabled && (body.enabled === true || body.runner !== undefined || body.cron !== undefined)
+            ? 'scheduled'
+            : (prev && prev.status) || 'scheduled',
           lastError: null,
           // [local-mod] cron 定时计划(周几+时刻)持久化
           cron,

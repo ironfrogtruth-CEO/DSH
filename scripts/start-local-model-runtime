@@ -23,7 +23,9 @@ set_model_environment() {
 catalog_ready() {
   local catalog
   catalog=$(/usr/bin/curl -fsS --max-time 2 "$OLLAMA_URL" 2>/dev/null) || return 1
-  [[ "$catalog" == *'cybermarcus:latest'* && "$catalog" == *'glm-marcus:latest'* ]]
+  # Ollama remains a后台服务 for EmbeddingGemma and the media sidecars.
+  # Local conversation models are intentionally not a startup dependency.
+  [[ "$catalog" == *'embeddinggemma:latest'* ]]
 }
 
 set_model_environment
@@ -57,5 +59,5 @@ for _ in {1..120}; do
   sleep 0.25
 done
 
-echo "本地模型运行时未能从 $OLLAMA_MODELS_ROOT 加载 CyberMarcus 与 GLM-Marcus" >&2
+echo "本地模型运行时未能从 $OLLAMA_MODELS_ROOT 加载 EmbeddingGemma" >&2
 exit 1

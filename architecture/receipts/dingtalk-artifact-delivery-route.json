@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "route",
+  "status": "completed",
+  "input_checksum": "77e900e3886bfa5e689ba6ef5e54c2c3cd8f944e913a52ae8cd6591404304603",
+  "version_refs": {"contract": "dingtalk-artifact-delivery-20260831"},
+  "actual_bindings": {"skill": "goal-first-control"},
+  "artifacts": ["architecture/dingtalk-artifact-delivery.v1.json"],
+  "qa_result": {"status": "passed", "checks": ["终态锁定为当前钉钉对话中的可下载附件，移动端可打开"]},
+  "evidence": ["用户要求把大神本地生成的图片和文件发送到钉钉对话，在移动端查看"],
+  "failure_fingerprint": null,
+  "rollback_to": null
+}

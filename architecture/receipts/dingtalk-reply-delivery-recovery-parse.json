@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "parse",
+  "status": "completed",
+  "input_checksum": "d4938fcb681ea4ba58a469d1e698a6b7f69cac2e91590702e5a30338f27298fc",
+  "version_refs": {"connector": "0.6.2"},
+  "actual_bindings": {"tool": "zstdcat+jq+rg"},
+  "artifacts": ["session eb8d23e2 turn 10 timeline"],
+  "qa_result": {"status": "passed", "checks": ["238 字完整到达", "1684 字本地答复", "turn/end completed", "无 card settled"]},
+  "evidence": ["00:17:52 inbound", "00:19:24 local completed", "00:27 Host restart"],
+  "failure_fingerprint": "renderer-finalize:0.6.2:no-timeout:no-card-settled",
+  "rollback_to": "route"
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@local/dsh-stenographer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./runtime/constants": "./runtime/constants.js",
+    "./runtime/service": "./runtime/service.js",
+    "./runtime/model-supervisor": "./runtime/model-supervisor.js",
+    "./runtime/speaker-cluster": "./runtime/speaker-cluster.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "client.test.mjs",
+    "index.test.mjs",
+    "runtime",
+    "scripts",
+    "README.md",
+    "cordis.patch.yml",
+    "package.json"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter spec index.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}

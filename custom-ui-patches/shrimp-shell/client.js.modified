@@ -2145,6 +2145,12 @@ window.__ModuleLoader__.load({
                 const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
                 const dow = now.getDay()
                 for (const task of d.tasks || []) {
+                  // Host-bound and disabled tasks are driven by the durable
+                  // Host scheduler (or intentionally paused); the legacy UI
+                  // timer must never inject a second browser run. The manual
+                  // "运行" button below remains available for either state.
+                  if (!task || task.enabled === false) continue
+                  if (String(task.runner || '').trim() || String(task.pipelineSlug || '').trim()) continue
                   const cron = readCron(task)
                   if (!cron || cron.time !== hhmm || !(cron.days || []).includes(dow)) continue
                   const lastKey = `${hbCronKey(task)}:last`

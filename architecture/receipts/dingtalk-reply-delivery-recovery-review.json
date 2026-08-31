@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "review",
+  "status": "completed",
+  "input_checksum": "d4938fcb681ea4ba58a469d1e698a6b7f69cac2e91590702e5a30338f27298fc",
+  "version_refs": {"contract": "dingtalk-reply-delivery-recovery-20260831"},
+  "actual_bindings": {"skill": "native-chinese-expression"},
+  "artifacts": ["final delivery summary"],
+  "qa_result": {"status": "passed", "checks": ["实现、自动测试、正式 Host 和真实钉钉验收分开报告"]},
+  "evidence": ["turn 10 confirmed available for explicit resend; real mobile receipt remains user acceptance"],
+  "failure_fingerprint": null,
+  "rollback_to": "validate"
+}

@@ -1,0 +1,183 @@
+{
+  "schema": "cybermarcus_work_contract.v1",
+  "goal_contract": {
+    "problem": "大神本机会话已经完成，但钉钉 AI Card 的远程定稿可能无限等待；Host 重启后进程内状态消失，卡片永久停在回复中。",
+    "audience_action": "用户在钉钉发出任务后，必须收到完成答复、明确失败/降级消息，或能从同一会话安全补发已有答复。",
+    "deliverables": [
+      "所有钉钉回复 HTTP 调用的有界超时",
+      "流式刷新与最终定稿串行化",
+      "本地完成与钉钉交付绑定的完成语义",
+      "未完成卡片的私有持久记录和重启恢复",
+      "owner-only 的历史回复清单与补发命令",
+      "持久 pnpm patch、回归测试和正式 Host 验收"
+    ],
+    "minimum_deliverable": "超时后不再永久回复中，能降级为 Markdown；若重启发生，保留待恢复记录并支持显式补发。"
+  },
+  "source_contract": {
+    "truth_sources": [
+      "session eb8d23e2-4521-4267-9fb6-bafa0d900266 的 append-only 事件日志",
+      "/Users/marcus/.dsh/web.log",
+      "@dingtalk-real-ai/dsh-dingtalk@0.6.2 当前加载代码",
+      "/Users/marcus/.dsh/settings.yaml"
+    ],
+    "derived_outputs": ["故障时间线", "修复代码", "测试报告", "恢复回执"],
+    "debug_notes": [
+      "原指令 238 字完整到达；本机 91 秒后产出 1684 字答复并记录 turn/end completed。",
+      "web.log 没有 card settled 或 card settle failed；00:27 Host 重启。",
+      "单卡阈值 15000 字符，模型上下文 1048576 tokens，本次均未超限。"
+    ],
+    "pollution_risks": [
+      "不得把本机 turn/end 冒充钉钉已交付。",
+      "不得在补发不确定时自动发送重复 Markdown。",
+      "待恢复记录含答复正文和路由，只能存入 0700 目录内的 0600 私有文件。",
+      "保留当前文件发送补丁、控制台功能和既有脏改动。"
+    ],
+    "knowledge_versions": ["dsh-dingtalk 0.6.2", "dws 1.0.60", "DSH 0.1.1-rc.2"]
+  },
+  "output_contract": {
+    "language": "zh-CN",
+    "timeouts": "卡片、token 和 Markdown HTTP 请求均必须有显式超时；测试使用可注入短超时。",
+    "recovery": "优先对同一 outTrackId 做幂等卡片收尾；状态不确定时保留 pending，不自动发送可能重复的 Markdown。",
+    "commands": ["/replies", "/resend <序号或turn>"],
+    "security": "补发只允许已绑定管理员私聊，且只读取当前绑定 canonical 主会话的最终 assistant 文本。"
+  },
+  "production_blueprint": {
+    "task_mode": "one_off_complex",
+    "nodes": [
+      {
+        "node_id": "route",
+        "goal": "锁定钉钉答复可见且可恢复的终态。",
+        "dependencies": [],
+        "inputs": ["用户授权修复"],
+        "outputs": ["目标与验收边界"],
+        "source_refs": ["用户原话"],
+        "ability_bindings": {"skill": "goal-first-control"},
+        "artifact_contract": {"kind": "goal_contract"},
+        "qa_gate": {"requires": ["本机完成与钉钉交付分开"]},
+        "rollback_to": null
+      },
+      {
+        "node_id": "parse",
+        "goal": "冻结真实事件、长度配置和失败责任层。",
+        "dependencies": ["route"],
+        "inputs": ["session log", "web.log", "connector code"],
+        "outputs": ["failure sequence"],
+        "source_refs": ["turn 10 seq 4783/6883/6885", "aicard.js", "renderer.js"],
+        "ability_bindings": {"tool": "zstdcat+jq+rg"},
+        "artifact_contract": {"kind": "diagnosis"},
+        "qa_gate": {"requires": ["238 字完整", "1684 字答复", "turn/end completed", "无 card settled"]},
+        "rollback_to": "route"
+      },
+      {
+        "node_id": "structure",
+        "goal": "编译超时、串行、持久恢复和补发合同。",
+        "dependencies": ["parse"],
+        "inputs": ["failure sequence"],
+        "outputs": ["dingtalk-reply-delivery-recovery.v1.json"],
+        "source_refs": ["cybermarcus_work_contract.v1.schema.json"],
+        "ability_bindings": {"skill": "plan-before-action"},
+        "artifact_contract": {"kind": "cybermarcus_work_contract.v1"},
+        "qa_gate": {"requires": ["幂等边界", "隐私边界", "回退点"]},
+        "rollback_to": "parse"
+      },
+      {
+        "node_id": "generate",
+        "goal": "修改钉钉连接器及持久补丁。",
+        "dependencies": ["structure"],
+        "inputs": ["validated contract", "current patched connector"],
+        "outputs": ["runtime code", "private delivery journal", "commands", "tests", "pnpm patch"],
+        "source_refs": ["profiles/web/node_modules/.../dsh-dingtalk/lib", "profiles/web/patches"],
+        "ability_bindings": {"executor": "luna_worker"},
+        "artifact_contract": {"kind": "scoped_code_change"},
+        "qa_gate": {"requires": ["不改 UI", "不泄露 webhook/正文", "保留现有功能"]},
+        "rollback_to": "structure"
+      },
+      {
+        "node_id": "validate",
+        "goal": "复现并阻断挂起、竞争、重启和超长失败。",
+        "dependencies": ["generate"],
+        "inputs": ["implementation"],
+        "outputs": ["focused and broader QA"],
+        "source_refs": ["dingtalk-runtime-patch.test.mjs", "dingtalk-profile.test.mjs"],
+        "ability_bindings": {"tool": "node --test"},
+        "artifact_contract": {"kind": "qa_evidence"},
+        "qa_gate": {"requires": ["timeout fallback", "no late stream after finish", "restart recovery", "15000+ chunking", "resend owner-only"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "export",
+        "goal": "重启正式 Host 并验证真实连接状态。",
+        "dependencies": ["validate"],
+        "inputs": ["QA passed patch"],
+        "outputs": ["live DSH runtime"],
+        "source_refs": ["scripts/restart", "dingtalk status API", "web.log"],
+        "ability_bindings": {"tool": "DSH lifecycle"},
+        "artifact_contract": {"kind": "runtime_release"},
+        "qa_gate": {"requires": ["single 3080", "Stream connected", "owner bound", "startup recovery result"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "review",
+        "goal": "回读完成项、真实钉钉验收和剩余限制。",
+        "dependencies": ["export"],
+        "inputs": ["all receipts"],
+        "outputs": ["delivery summary"],
+        "source_refs": ["work contract", "test output", "live log"],
+        "ability_bindings": {"skill": "native-chinese-expression"},
+        "artifact_contract": {"kind": "delivery_summary"},
+        "qa_gate": {"requires": ["不把模拟测试写成移动端真验收"]},
+        "rollback_to": "validate"
+      }
+    ]
+  },
+  "qa_contract": {
+    "node_gates": [
+      "远程请求永不无限等待",
+      "定稿不得与未完成流式帧并发",
+      "交付结果持久化后才释放当前钉钉队列",
+      "重启后同一 outTrackId 重试必须幂等",
+      "Markdown 状态不确定时禁止自动重复发送",
+      "补发只读当前绑定主会话并限制管理员私聊"
+    ],
+    "final_acceptance": [
+      "注入挂起 fetch 时在阈值内结束并留下可解释状态",
+      "重启恢复测试通过",
+      "真实钉钉短回复完成",
+      "真实钉钉已有 turn 可通过命令补发"
+    ],
+    "release_conditions": ["focused tests pass", "broader regressions pass", "clean patch restore passes", "live Host healthy"]
+  },
+  "recovery_contract": {
+    "rollback_points": ["generate", "structure", "parse"],
+    "max_retries": 1,
+    "failure_fingerprint_fields": ["stage", "session_id", "turn", "out_track_id", "http_stage", "timeout", "connector_version", "text_checksum"]
+  },
+  "lineage": {
+    "contract_id": "dingtalk-reply-delivery-recovery-20260831",
+    "created_at": "2026-08-31T06:35:00+08:00",
+    "workspace": "/Users/marcus/.dsh",
+    "status": "live_ready_real_dingtalk_acceptance_pending",
+    "parent_contract": "dingtalk-artifact-delivery-20260831",
+    "implementation": {
+      "connector": "@dingtalk-real-ai/dsh-dingtalk@0.6.2",
+      "patch_hash": "je33xw7b4spyxquobh6vvplihi",
+      "http_timeout_ms": 15000,
+      "pending_store": "~/.dsh-dingtalk/delivery-pending.json",
+      "recovery_commands": ["/replies", "/resend <序号>", "/resend turn:<编号>"]
+    },
+    "qa": {
+      "focused": "26/26 passed",
+      "broader_regression": "50/50 passed",
+      "clean_patch_apply": "passed",
+      "frozen_profile_restore_and_tests": "passed",
+      "historical_turn_10": "available, 1684 chars, checksum prefix 829ed5acd2dc4038"
+    },
+    "runtime": {
+      "listener": "single 127.0.0.1:3080",
+      "stream": "connected",
+      "owner": "bound",
+      "bound_session_running": false
+    },
+    "pending_acceptance": "在钉钉管理员私聊切换到 eb8d23e2 会话并执行 /resend turn:10，确认移动端收到完整答复；再发送一条普通评估请求，确认卡片结束为完成态。"
+  }
+}

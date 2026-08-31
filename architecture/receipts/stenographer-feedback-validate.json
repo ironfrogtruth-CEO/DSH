@@ -1,0 +1,48 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "validate",
+  "status": "completed",
+  "input_checksum": "user-feedback-20260831-accuracy-artifact-delete",
+  "version_refs": {
+    "client_sha256": "670526fd7b3f0d4724a17f96bc2345ea8d5c5b9b1ebf63103356fe834e9d242f",
+    "service_sha256": "a8d4c0efd2c7ce4a3bbf43e915b93dc5f9a2c498a561feb8d5e49fc4e23f56f5",
+    "model_supervisor_sha256": "29265534c6a2fa33b2430dfd402d6a96db0d491bd91871315f2bda964619909f",
+    "model_manifest_sha256": "7fdbd48e561ce82543ec690c88bcf5298545450c5263fc46d4224f2b0e11c8fa"
+  },
+  "actual_bindings": {
+    "stt_primary": "FunASR Paraformer-large v2.0.5 CPU",
+    "stt_fallback": "MLX Whisper large-v3-turbo on primary worker failure only",
+    "speaker": "FunASR ERes2NetV2",
+    "artifact_writer": "zhipu-glm/glm-5.3-flash",
+    "history_delete": "authenticated rename to local recoverable trash"
+  },
+  "artifacts": [
+    "extensions/dsh-stenographer/scripts/paraformer_worker.py",
+    "extensions/dsh-stenographer/scripts/stt_worker.py",
+    "extensions/dsh-stenographer/client.js",
+    "extensions/dsh-stenographer/runtime/service.js",
+    "/tmp/dsh-stenographer-feedback-regression.log"
+  ],
+  "qa_result": {
+    "status": "passed",
+    "checks": [
+      "user microphone replay no longer emits subtitle-credit tail hallucination",
+      "Paraformer returns the recovered 18-second Chinese pet-service passage",
+      "GLM-5.3-Flash receives complete transcript text and returns a persisted full artifact",
+      "real panel renders complete artifact and copy button changes to 已复制",
+      "history rows expose delete controls",
+      "delete moves data to recoverable trash and blocks active sessions",
+      "only two user-created sessions remain visible",
+      "403 of 403 Node tests pass",
+      "10 of 10 Python accuracy tests pass"
+    ]
+  },
+  "evidence": [
+    "The real user tail region previously decoded as 中文字幕志愿者 李宗盛; Paraformer decoded a coherent passage about pets, full-cycle services and Ping An.",
+    "A real Host pipeline produced a GLM-5.3-Flash meeting-minutes artifact, persisted it, then deleted the temporary record to recoverable trash.",
+    "Computer-use acceptance read the full artifact in the panel and observed the copy button state 已复制.",
+    "After cleanup the Host list contains only st-mtgj4w9p-b027033c99a746b8 and st-mtgj2x01-5d7e8ad3077148d2."
+  ],
+  "failure_fingerprint": null,
+  "rollback_to": "generate"
+}

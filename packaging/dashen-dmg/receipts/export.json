@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "export",
+  "status": "completed",
+  "input_checksum": "42af72ddef83a1068bc3b39039c6b85be9a32b515931a699d85470c5d299286a",
+  "version_refs": {"package": "2.1.1"},
+  "actual_bindings": {"outputRoot": "/Users/marcus/Desktop/大神安装包"},
+  "artifacts": ["大神-2.1.1-universal.dmg", "大神-2.1.1-universal.dmg.sha256", "交付清单.md", "QA报告.md"],
+  "qa_result": {"status": "passed", "checks": ["paths exist", "SHA-256 matches", "limitations disclosed"]},
+  "evidence": ["DMG size 519938238 bytes", "SHA-256 42af72ddef83a1068bc3b39039c6b85be9a32b515931a699d85470c5d299286a", "2.1.0 moved to withdrawn folder"],
+  "failure_fingerprint": null,
+  "rollback_to": "validate"
+}

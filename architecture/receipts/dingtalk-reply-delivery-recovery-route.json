@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "route",
+  "status": "completed",
+  "input_checksum": "d4938fcb681ea4ba58a469d1e698a6b7f69cac2e91590702e5a30338f27298fc",
+  "version_refs": {"contract": "dingtalk-reply-delivery-recovery-20260831"},
+  "actual_bindings": {"skill": "goal-first-control"},
+  "artifacts": ["architecture/dingtalk-reply-delivery-recovery.v1.json"],
+  "qa_result": {"status": "passed", "checks": ["终态要求钉钉完成、明确降级或持久 pending"]},
+  "evidence": ["用户明确授权修复"],
+  "failure_fingerprint": null,
+  "rollback_to": null
+}

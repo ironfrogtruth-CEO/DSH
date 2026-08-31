@@ -2,13 +2,16 @@
 /**
  * Idempotently repair generic in-process subagent route inheritance.
  *
- * A live parent may change provider/model through the agent/request waterfall
- * without changing Agent.options. The latest canonical request/header is the
- * durable route truth; Agent.options remains the creation-time fallback only.
- * Explicit request.agentOptions are still applied last and therefore win.
+ * A live parent may change provider/model/reasoning through the
+ * agent/request waterfall without changing Agent.options. The latest
+ * canonical request/header is the route's first source for each field;
+ * Agent.options supplies only fields missing from that request. Explicit
+ * request.agentOptions are still applied last and therefore win.
  *
- * v2 deliberately patches only @deepseek-ai/dsh-subagent/lib/index.js. v1 used
- * a helper in lib/invariant.js; the migration below removes that old helper by
+ * v2 deliberately patches only @deepseek-ai/dsh-subagent/lib/index.js. The
+ * in-process driver imports `resolveChildAgentOptions` from this package, so
+ * both one-shot and continuable child paths share this single runtime seam.
+ * v1 used a helper in lib/invariant.js; the migration below removes that old helper by
  * reversing the exact v1 replacement before installing the single-file v2.
  * Every runtime write is staged, fsynced, closed, then atomically renamed.
  */
@@ -24,7 +27,11 @@ export const LEGACY_MARKER = '[dsh-patch:subagent-selected-route v1]'
 const scriptRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const defaultPackageRoot = path.join(scriptRoot, 'install/node_modules/@deepseek-ai/dsh-subagent')
 
+// rc.2 has appeared in two equivalent bundle import layouts. The route patch
+// is self-contained and does not need either import, but both are accepted as
+// baseline anchors so a package refresh cannot be mistaken for a partial patch.
 const INDEX_IMPORT_OLD = 'import { isAbsolute, resolve } from "node:path";'
+const INDEX_IMPORT_BUNDLED = 'import { dirname, isAbsolute, join, resolve } from "node:path";'
 const INDEX_IMPORT_V1 = `${INDEX_IMPORT_OLD}\nimport { resolveSelectedRoute } from "@deepseek-ai/dsh-subagent/invariant";`
 
 const INDEX_RESOLVER_OLD = `function resolveChildAgentOptions(parent, requested, childDepth) {
@@ -40,7 +47,11 @@ const INDEX_RESOLVER_OLD = `function resolveChildAgentOptions(parent, requested,
 	};
 }`
 
-const ROUTE_HELPER = `/**
+// The v2 bundle currently installed by the previous migration. Keep this
+// exact source only as a migration anchor; it is never emitted as a target
+// state. This lets a package refresh converge old v2 and fresh rc.2 bundles
+// to the same current route implementation.
+const LEGACY_ROUTE_HELPER = `/**
 * Resolve the latest valid parent request route for a generic child.
 *
 * A request/header snapshot is authoritative once it exists, including an
@@ -67,7 +78,7 @@ function resolveSelectedRoute(parent) {
 	};
 }`
 
-const CHILD_RESOLVER = `function resolveChildAgentOptions(parent, requested, childDepth) {
+const LEGACY_CHILD_RESOLVER = `function resolveChildAgentOptions(parent, requested, childDepth) {
 	const inherited = resolveSelectedRoute(parent);
 	return {
 		...inherited,
@@ -76,40 +87,54 @@ const CHILD_RESOLVER = `function resolveChildAgentOptions(parent, requested, chi
 	};
 }`
 
+const ROUTE_HELPER = `/**
+* Resolve the latest valid parent request route for a generic child.
+*
+* Each route field comes from the latest request/header when present and falls
+* back to the corresponding creation option only when that field is absent.
+* This keeps a UI route switch from being overwritten by stale creation
+* options while retaining a creation-time value for fields the request did
+* not declare. The helper is shared by the bundled subagent runtime and the
+* in-process driver, so one-shot and continuable children cannot diverge.
+* @param parent - the live delegating Agent.
+* @returns provider/model/reasoningEffort/maxTokens fields suitable for AgentOptions.
+*/
+function resolveSelectedRoute(parent) {
+	const config = parent.session?.requestHeader?.()?.config ?? {};
+	const options = parent.options ?? {};
+	const route = {};
+	for (const field of ["provider", "model", "reasoningEffort", "maxTokens"]) {
+		const value = config[field] !== void 0 ? config[field] : options[field];
+		if (value !== void 0) route[field] = value;
+	}
+	return route;
+}`
+
+const CHILD_RESOLVER = `function resolveChildAgentOptions(parent, requested, childDepth) {
+	const inherited = resolveSelectedRoute(parent);
+	const { provider, model, reasoningEffort, maxTokens, ...extra } = requested ?? {};
+	return {
+		...inherited,
+		...extra,
+		...provider !== void 0 ? { provider } : {},
+		...model !== void 0 ? { model } : {},
+		...reasoningEffort !== void 0 ? { reasoningEffort } : {},
+		...maxTokens !== void 0 ? { maxTokens } : {},
+		subagentDepth: childDepth
+	};
+}`
+
 const INDEX_RESOLVER_V2 = `${ROUTE_HELPER}\n${CHILD_RESOLVER}\n\n// ${MARKER}`
-const INDEX_RESOLVER_V1 = `${CHILD_RESOLVER}\n\n// ${LEGACY_MARKER}`
+const INDEX_RESOLVER_PREVIOUS_V2 = `${LEGACY_ROUTE_HELPER}\n${LEGACY_CHILD_RESOLVER}\n\n// ${MARKER}`
+const INDEX_RESOLVER_V1 = `${LEGACY_CHILD_RESOLVER}\n\n// ${LEGACY_MARKER}`
 
 const CONTINUABLE_ROUTE_OLD = 'const agentProvider = request.agentOptions?.provider ?? parent.options.provider;\n\t\tconst agentModel = request.agentOptions?.model ?? parent.options.model;'
+const CONTINUABLE_ROUTE_BUNDLED = 'const inheritedRoute = resolveSelectedRoute(parent);\n\t\tconst agentProvider = request.agentOptions?.provider ?? inheritedRoute.provider;\n\t\tconst agentModel = request.agentOptions?.model ?? inheritedRoute.model;'
 const CONTINUABLE_ROUTE_V1 = 'const inheritedRoute = resolveSelectedRoute(parent);\n\t\tconst agentProvider = request.agentOptions?.provider ?? inheritedRoute.provider;\n\t\tconst agentModel = request.agentOptions?.model ?? inheritedRoute.model;'
 const CONTINUABLE_ROUTE_V2 = CONTINUABLE_ROUTE_V1
 
 const INVARIANT_EXPORT_OLD = 'export { apply, inject, name };'
-const LEGACY_INVARIANT_HELPER = `/**
-* Resolve the latest valid parent request route for a generic child.
-*
-* A request/header snapshot is authoritative once it exists, including an
-* intentionally omitted maxTokens.  Agent.options is consulted only when the
-* parent has not built a request header yet.  This keeps a UI route switch from
-* being overwritten by stale creation options while preserving the caller's
-* explicit child overrides at the composition site.
-* @param parent - the live delegating Agent.
-* @returns provider/model/maxTokens fields suitable for AgentOptions.
-*/
-function resolveSelectedRoute(parent) {
-	const header = parent.session?.requestHeader?.();
-	const config = header?.config;
-	if (config !== void 0) return {
-		...config.provider !== void 0 ? { provider: config.provider } : {},
-		...config.model !== void 0 ? { model: config.model } : {},
-		...config.maxTokens !== void 0 ? { maxTokens: config.maxTokens } : {}
-	};
-	const options = parent.options ?? {};
-	return {
-		...options.provider !== void 0 ? { provider: options.provider } : {},
-		...options.model !== void 0 ? { model: options.model } : {},
-		...options.maxTokens !== void 0 ? { maxTokens: options.maxTokens } : {}
-	};
-}
+const LEGACY_INVARIANT_HELPER = `${LEGACY_ROUTE_HELPER}
 
 // ${LEGACY_MARKER}`
 const LEGACY_INVARIANT_EXPORT = `${LEGACY_INVARIANT_HELPER}\n${INVARIANT_EXPORT_OLD.replace('export { ', 'export { resolveSelectedRoute, ')}`
@@ -122,6 +147,7 @@ export const PATCH_TEXT = Object.freeze({
 	indexResolverOld: INDEX_RESOLVER_OLD,
 	indexResolverV1: INDEX_RESOLVER_V1,
 	indexResolverV2: INDEX_RESOLVER_V2,
+	indexResolverPreviousV2: INDEX_RESOLVER_PREVIOUS_V2,
 	continuableRouteOld: CONTINUABLE_ROUTE_OLD,
 	continuableRouteV1: CONTINUABLE_ROUTE_V1,
 	continuableRouteV2: CONTINUABLE_ROUTE_V2,
@@ -195,21 +221,28 @@ function assertSingleBaselineAnchor(source, text, label) {
 }
 
 function validateV1(indexSource, invariantSource) {
-	if (!indexSource.includes(INDEX_IMPORT_V1) || !indexSource.includes(INDEX_RESOLVER_V1) || !indexSource.includes(CONTINUABLE_ROUTE_V1)) throw new Error('subagent selected-route patch found a malformed v1 index; refusing to guess')
+	if (!indexSource.includes(INDEX_RESOLVER_V1) || !indexSource.includes(CONTINUABLE_ROUTE_V1) && !indexSource.includes(CONTINUABLE_ROUTE_OLD)) throw new Error('subagent selected-route patch found a malformed v1 index; refusing to guess')
 	if (!invariantSource.includes(LEGACY_INVARIANT_EXPORT) || countOccurrences(invariantSource, LEGACY_INVARIANT_EXPORT) !== 1) throw new Error('subagent selected-route patch found a malformed v1 invariant; refusing to guess')
 }
 
 function validateV2(indexSource, invariantSource) {
-	if (!indexSource.includes(INDEX_RESOLVER_V2) || !indexSource.includes(CONTINUABLE_ROUTE_V2) || indexSource.includes(INDEX_IMPORT_V1) || indexSource.includes(LEGACY_MARKER)) throw new Error('subagent selected-route patch found a malformed v2 index; refusing to guess')
+	const current = indexSource.includes(INDEX_RESOLVER_V2)
+	const previous = indexSource.includes(INDEX_RESOLVER_PREVIOUS_V2)
+	if (current === previous || indexSource.includes(INDEX_IMPORT_V1) || indexSource.includes(LEGACY_MARKER)) throw new Error('subagent selected-route patch found a malformed v2 index; refusing to guess')
+	if (current && !indexSource.includes(CONTINUABLE_ROUTE_V2) && !indexSource.includes(CONTINUABLE_ROUTE_OLD)) throw new Error('subagent selected-route patch found a malformed v2 index; refusing to guess')
+	if (previous && !indexSource.includes(CONTINUABLE_ROUTE_V1) && !indexSource.includes(CONTINUABLE_ROUTE_OLD)) throw new Error('subagent selected-route patch found a malformed previous v2 index; refusing to guess')
 	const legacyInvariant = invariantSource.includes(LEGACY_MARKER)
 	if (invariantSource.includes(MARKER) || legacyInvariant && (!invariantSource.includes(LEGACY_INVARIANT_EXPORT) || countOccurrences(invariantSource, LEGACY_INVARIANT_EXPORT) !== 1) || !legacyInvariant && countOccurrences(invariantSource, INVARIANT_EXPORT_OLD) !== 1) throw new Error('subagent selected-route patch found a malformed v2 invariant; refusing to guess')
+	return { current, previous }
 }
 
 function validateBaseline(indexSource, invariantSource) {
 	if (indexSource.includes(MARKER) || indexSource.includes(LEGACY_MARKER) || invariantSource.includes(MARKER) || invariantSource.includes(LEGACY_MARKER)) throw new Error('subagent selected-route patch found an unsupported partial state; refusing to guess')
-	assertSingleBaselineAnchor(indexSource, INDEX_IMPORT_OLD, 'index import anchor')
+	const importAnchors = [INDEX_IMPORT_OLD, INDEX_IMPORT_BUNDLED].filter((anchor) => indexSource.includes(anchor))
+	if (importAnchors.length !== 1 || countOccurrences(indexSource, importAnchors[0]) !== 1) throw new Error('subagent selected-route patch expected exactly one index import anchor')
 	assertSingleBaselineAnchor(indexSource, INDEX_RESOLVER_OLD, 'child route resolver')
-	assertSingleBaselineAnchor(indexSource, CONTINUABLE_ROUTE_OLD, 'continuable route resolver')
+	const continuationAnchors = [CONTINUABLE_ROUTE_OLD, CONTINUABLE_ROUTE_BUNDLED].filter((anchor) => indexSource.includes(anchor))
+	if (continuationAnchors.length !== 1 || countOccurrences(indexSource, continuationAnchors[0]) !== 1) throw new Error('subagent selected-route patch expected exactly one continuable route resolver')
 	assertSingleBaselineAnchor(invariantSource, INVARIANT_EXPORT_OLD, 'invariant export anchor')
 }
 
@@ -226,11 +259,16 @@ export async function patchSubagentSelectedRoute({ packageRoot = defaultPackageR
 	if (indexV2 && indexV1) throw new Error('subagent selected-route patch found both v1 and v2 markers in index; refusing to guess')
 	if (invariantV1 && !indexV1 && !indexV2) throw new Error('subagent selected-route patch found an orphaned v1 invariant; refusing to guess')
 	if (indexV1) validateV1(indexSource, invariantSource)
-	if (indexV2) validateV2(indexSource, invariantSource)
+	const v2Shape = indexV2 ? validateV2(indexSource, invariantSource) : undefined
 	if (!indexV1 && !indexV2) validateBaseline(indexSource, invariantSource)
 
 	let changed = false
 	if (indexV2) {
+		if (v2Shape.previous) {
+			indexSource = replaceExactly(indexSource, INDEX_RESOLVER_PREVIOUS_V2, INDEX_RESOLVER_V2, 'previous v2 route migration')
+			await atomicReplaceFile(targets.index, indexSource, { fsApi })
+			changed = true
+		}
 		if (invariantV1) {
 			const restored = replaceExactly(invariantSource, LEGACY_INVARIANT_EXPORT, INVARIANT_EXPORT_OLD, 'legacy invariant restoration')
 			await atomicReplaceFile(targets.invariant, restored, { fsApi })
@@ -239,12 +277,14 @@ export async function patchSubagentSelectedRoute({ packageRoot = defaultPackageR
 	} else {
 		let nextIndex
 		if (indexV1) {
-			nextIndex = replaceExactly(indexSource, INDEX_IMPORT_V1, INDEX_IMPORT_OLD, 'legacy index import removal')
+			nextIndex = indexSource.includes(INDEX_IMPORT_V1)
+				? replaceExactly(indexSource, INDEX_IMPORT_V1, INDEX_IMPORT_OLD, 'legacy index import removal')
+				: indexSource
 			nextIndex = replaceExactly(nextIndex, INDEX_RESOLVER_V1, INDEX_RESOLVER_V2, 'legacy child route migration')
-			nextIndex = replaceExactly(nextIndex, CONTINUABLE_ROUTE_V1, CONTINUABLE_ROUTE_V2, 'legacy continuable route migration')
+			if (nextIndex.includes(CONTINUABLE_ROUTE_OLD)) nextIndex = replaceExactly(nextIndex, CONTINUABLE_ROUTE_OLD, CONTINUABLE_ROUTE_V2, 'legacy continuable route migration')
 		} else {
 			nextIndex = replaceExactly(indexSource, INDEX_RESOLVER_OLD, INDEX_RESOLVER_V2, 'child route resolver')
-			nextIndex = replaceExactly(nextIndex, CONTINUABLE_ROUTE_OLD, CONTINUABLE_ROUTE_V2, 'continuable route resolver')
+			if (nextIndex.includes(CONTINUABLE_ROUTE_OLD)) nextIndex = replaceExactly(nextIndex, CONTINUABLE_ROUTE_OLD, CONTINUABLE_ROUTE_V2, 'continuable route resolver')
 		}
 		// Publish the self-contained index first. If the legacy invariant restore
 		// is interrupted, the v2 index remains runnable and the next invocation

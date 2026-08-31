@@ -1,11 +1,12 @@
 ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
+  # 对话默认走云端 GLM；本地 Ollama 只承载后台媒体/检索模型，不进入对话选择器。
   provider: zhipu-glm
   model: glm-5.3-flash
   reasoningEffort: high
 agent-presets:
-  default: avengers
+  default: reliable-development
 permission:
   defaultPreset: danger-full-access
 ui-conversation:
@@ -14,7 +15,7 @@ llm-deepseek:
   reasoningEffort: high
   # 当前会话的 Flash/Pro 仍是文本主模型；这里声明 image 仅用于通过 Host
   # durable 附件准入，随后由 shrimp-shell 固定视觉桥接管原图。桥内顺序：
-  # V4 Flash Vision → 智谱免费视觉 → 本地 Gemma。
+  # V4 Flash Vision → 智谱免费视觉；云端均不可用时明确阻断。
   models:
     - id: deepseek-v4-flash
       name: DeepSeek-V4-Flash
@@ -58,26 +59,7 @@ llm-pi-ai:
           compat:
             supportsReasoningEffort: true
             thinkingFormat: zai
-    ollama-local:
-      displayName: 本地模型
-      api: openai-completions
-      baseURL: http://127.0.0.1:11434/v1
-      headers:
-        Authorization: Bearer ollama-local
-      models:
-        - id: cybermarcus:latest
-          name: CyberMarcus 本地开发
-          contextWindow: 32768
-          maxTokens: 4096
-          input:
-            - text
-            - image
-        - id: glm-marcus:latest
-          name: GLM-Marcus
-          contextWindow: 32768
-          maxTokens: 4096
-          input:
-            - text
-            - image
 ui-theme:
   preference: system
+locale:
+  preference: zh

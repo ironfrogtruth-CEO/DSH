@@ -1,2 +1,2 @@
 name: Avengers
-description: 直接委派模式：父代理以 DeepSeek V4 Pro High 负责目标、规划、监督和验收，所有任务由 Marvel 英雄或反英雄子代理以 GLM-5.3-Flash Medium 执行，并沿用 CyberMarcus 的证据、QA、回退和交付纪律。
+description: 直接委派模式：主代理负责目标、规划、监督和验收，Marvel 英雄或反英雄子代理负责边界内执行；默认沿用当前选中的模型、推理强度和请求参数，并沿用 CyberMarcus 的证据、QA、回退和交付纪律。

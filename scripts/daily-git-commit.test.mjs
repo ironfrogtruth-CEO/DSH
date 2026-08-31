@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process'
 
 import {
   DAILY_LOCK_FILENAME,
+  DAILY_REPOSITORIES,
   QUICK_VALIDATIONS,
   acquireDailyLock,
   captureStagedSnapshot,
@@ -15,6 +16,7 @@ import {
   parsePorcelainZ,
   releaseDailyLock,
   runDailyGitCommit,
+  runDailyGitCommitAll,
 } from './daily-git-commit.mjs'
 
 const GIT = '/usr/bin/git'
@@ -51,6 +53,12 @@ test('porcelain parser keeps status paths and protected-path policy is explicit'
   assert.equal(isProtectedRuntimePath('keys/service.p12'), true)
   assert.equal(isProtectedRuntimePath('.ssh/id_ed25519'), true)
   assert.equal(isProtectedRuntimePath('keys/private-key.txt'), true)
+  assert.equal(isProtectedRuntimePath('screen-memory/shots/2026-09-01/a.png'), true)
+  assert.equal(isProtectedRuntimePath('runtimes/stenographer/models/model.pt'), true)
+  assert.equal(isProtectedRuntimePath('cleanup-reports/weekly-safe-cleanup/latest.json'), true)
+  assert.equal(isProtectedRuntimePath('notify-watcher-state.json'), true)
+  assert.equal(isProtectedRuntimePath('shrimp-run-standing-auth.json'), true)
+  assert.equal(isProtectedRuntimePath('data/shrimptank.db'), true)
   assert.equal(isProtectedRuntimePath('skills/reliable-development/SKILL.md'), false)
   assert.equal(isProtectedRuntimePath('extensions/dsh-git/index.js'), false)
 })
@@ -147,6 +155,48 @@ test('daily commit validates, commits locally with the required message, and nev
   assert.equal(existsSync(join(root, '.git', DAILY_LOCK_FILENAME)), false)
 })
 
+test('multi-repository daily commit creates one local commit per Git root and includes plugin source in ShrimpTank parent', () => {
+  const dashen = fixture()
+  const shrimptank = fixture()
+  writeFileSync(join(dashen, 'settings.yaml'), 'dashen\n')
+  mkdirSync(join(shrimptank, 'CyberMarcus-Chrome'), { recursive: true })
+  writeFileSync(join(shrimptank, 'CyberMarcus-Chrome/background.js'), 'export const ok = true\n')
+  const result = runDailyGitCommitAll({
+    repositories: [
+      { id: 'dashen', path: dashen },
+      { id: 'shrimptank', path: shrimptank },
+    ],
+    validations: { dashen: passValidation, shrimptank: passValidation },
+    now: new Date('2026-09-01T00:00:00+08:00'),
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.committed_count, 2)
+  assert.equal(result.push, false)
+  assert.equal(git(dashen, ['log', '-1', '--format=%s']).stdout.trim(), 'chore(backup): daily snapshot 2026-09-01')
+  assert.equal(git(shrimptank, ['log', '-1', '--format=%s']).stdout.trim(), 'chore(backup): daily snapshot 2026-09-01')
+  assert.match(git(shrimptank, ['show', '--name-only', '--format=', 'HEAD']).stdout, /CyberMarcus-Chrome\/background\.js/)
+})
+
+test('multi-repository result reports one protected-path block without pushing either repository', () => {
+  const dashen = fixture()
+  const shrimptank = fixture()
+  mkdirSync(join(dashen, 'screen-memory', 'shots'), { recursive: true })
+  writeFileSync(join(dashen, 'screen-memory', 'shots', 'capture.png'), 'runtime\n')
+  writeFileSync(join(shrimptank, 'README.md'), 'changed\n')
+  const result = runDailyGitCommitAll({
+    repositories: [
+      { id: 'dashen', path: dashen },
+      { id: 'shrimptank', path: shrimptank },
+    ],
+    validations: { dashen: passValidation, shrimptank: passValidation },
+  })
+  assert.equal(result.ok, false)
+  assert.equal(result.blocked_count, 1)
+  assert.equal(result.results.find((item) => item.id === 'dashen').code, 'PROTECTED_PATH')
+  assert.equal(result.results.find((item) => item.id === 'shrimptank').status, 'committed')
+  assert.equal(result.push, false)
+})
+
 test('validation failure removes only this invocation staging and does not commit', () => {
   const root = fixture()
   writeFileSync(join(root, 'settings.yaml'), 'should remain unstaged\n')
@@ -184,6 +234,7 @@ test('CLI accepts only dry-run', () => {
 })
 
 test('daily quick validations cover the runtime seams before commit', () => {
+  assert.deepEqual(DAILY_REPOSITORIES.map((item) => item.id), ['dashen', 'shrimptank'])
   assert.deepEqual(
     QUICK_VALIDATIONS.map((check) => check.id),
     ['reliable-preset', 'avengers-preset', 'avengers-model-default', 'goal-first', 'dsh-git-heartbeat', 'shrimp-vision', 'local-route', 'subagent-route', 'ensure-web'],

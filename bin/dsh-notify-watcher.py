@@ -59,7 +59,9 @@ def scan_shrimp_runs(st, baseline):
         rows = [ln.split("|", 2) for ln in out.stdout.splitlines() if "|" in ln]
     except Exception as e:
         print(f"shrimp db error: {e}", file=sys.stderr)
-        return seen, []
+        # `seen` is an internal set for de-duplication; persist only a JSON
+        # compatible list when the read-only DB probe is unavailable.
+        return list(seen), []
     current = set()
     for rid, status, name in rows:
         current.add(rid)
@@ -81,7 +83,8 @@ def scan_heartbeats(st, baseline):
         tasks = data.get("tasks", [])
     except Exception as e:
         print(f"heartbeat read error: {e}", file=sys.stderr)
-        return seen, []
+        # Keep the failure path serializable for the atomic state checkpoint.
+        return list(seen), []
     for t in tasks:
         if t.get("status") != "failed":
             continue

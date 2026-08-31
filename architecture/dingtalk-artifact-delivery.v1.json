@@ -1,0 +1,180 @@
+{
+  "schema": "cybermarcus_work_contract.v1",
+  "goal_contract": {
+    "problem": "大神生成的图片和文件只留在本机，钉钉会话只能看到产物元数据，移动端无法直接取得文件。",
+    "audience_action": "已绑定的钉钉管理员在当前对话中明确选择一个近期产物，并在移动端收到、打开该附件。",
+    "deliverables": [
+      "owner-only 的 /send <序号> 钉钉命令",
+      "基于官方 dws 的机器人本地附件上传和发送能力",
+      "可持久恢复的 web profile 配置与 pnpm patch",
+      "聚焦回归、运行时健康检查和真实移动端验收说明"
+    ],
+    "minimum_deliverable": "完成代码、配置和本地回归；若没有用户触发真实发送，则将生产就绪状态明确标为待钉钉移动端验收。"
+  },
+  "source_contract": {
+    "truth_sources": [
+      "/Users/marcus/.dsh/profiles/web/node_modules/@dingtalk-real-ai/dsh-dingtalk/lib",
+      "/Users/marcus/.dsh/profiles/web/patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch",
+      "/Users/marcus/.dsh/profiles/web/cordis.patch.yml",
+      "dws v1.0.60 本机 help 与 dry-run 行为",
+      "钉钉官方 dingtalk-workspace-cli 文档"
+    ],
+    "derived_outputs": [
+      "本工作合同",
+      "测试结果",
+      "运行时状态投影"
+    ],
+    "debug_notes": [
+      "现有 /artifacts 只展示相对路径、类型、大小和时间，明确不上传文件。",
+      "当前 tools.enabled=false，变更前本机没有 dws。"
+    ],
+    "pollution_risks": [
+      "工作区已有大量与本任务无关的脏改动，禁止覆盖或提交。",
+      "不得把本地文件存在、CLI 退出码或机器人 Stream 在线冒充移动端已收到附件。",
+      "不得把凭据、绝对路径、会话 ID 或敏感文件名回显到钉钉。"
+    ],
+    "knowledge_versions": [
+      "@dingtalk-real-ai/dsh-dingtalk@0.6.2",
+      "dingtalk-workspace-cli@1.0.60",
+      "dsh web profile 2026-08-31"
+    ]
+  },
+  "output_contract": {
+    "language": "zh-CN",
+    "interaction": "/artifacts 列出最多 10 个近期产物；/send <序号> 发送同一清单中的文件到当前钉钉对话",
+    "security": "仅管理员私聊可用；沿用近期、敏感名、隐藏路径、符号链接和子代理会话过滤；凭据只通过子进程环境传递",
+    "compatibility": "保留现有文字、Markdown、AI Card、会话绑定和控制台行为"
+  },
+  "production_blueprint": {
+    "task_mode": "one_off_complex",
+    "nodes": [
+      {
+        "node_id": "route",
+        "goal": "锁定同一钉钉对话的移动端附件终态。",
+        "dependencies": [],
+        "inputs": ["用户需求"],
+        "outputs": ["目标与验收边界"],
+        "source_refs": ["用户原话"],
+        "ability_bindings": {"skill": "goal-first-control"},
+        "artifact_contract": {"kind": "goal_contract"},
+        "qa_gate": {"requires": ["目标不是本地文件生成成功"]},
+        "rollback_to": null
+      },
+      {
+        "node_id": "parse",
+        "goal": "核对现有钉钉连接器、产物扫描和官方发送能力。",
+        "dependencies": ["route"],
+        "inputs": ["本地代码", "官方 CLI 行为"],
+        "outputs": ["能力缺口与可用发送接口"],
+        "source_refs": ["dsh-dingtalk lib", "dws help"],
+        "ability_bindings": {"tool": "rg", "cli": "dws"},
+        "artifact_contract": {"kind": "diagnosis"},
+        "qa_gate": {"requires": ["确认 bot 本地 file 发送参数", "确认当前功能只展示元数据"]},
+        "rollback_to": "route"
+      },
+      {
+        "node_id": "structure",
+        "goal": "形成 owner-only、同会话、可回退的附件发送合同。",
+        "dependencies": ["parse"],
+        "inputs": ["能力缺口", "安全边界"],
+        "outputs": ["dingtalk-artifact-delivery.v1.json"],
+        "source_refs": ["cybermarcus_work_contract.v1.schema.json"],
+        "ability_bindings": {"skill": "plan-before-action"},
+        "artifact_contract": {"kind": "cybermarcus_work_contract.v1"},
+        "qa_gate": {"requires": ["schema valid", "发送动作必须显式触发"]},
+        "rollback_to": "parse"
+      },
+      {
+        "node_id": "generate",
+        "goal": "实现 dws 机器人附件发送和 /send 命令，并启用钉钉工具模块。",
+        "dependencies": ["structure"],
+        "inputs": ["工作合同", "现有 patched connector"],
+        "outputs": ["运行时代码", "持久 patch", "配置", "测试"],
+        "source_refs": ["profiles/web/node_modules", "profiles/web/patches", "cordis.patch.yml"],
+        "ability_bindings": {"executor": "luna_worker", "cli": "dws v1.0.60"},
+        "artifact_contract": {"kind": "scoped_code_change"},
+        "qa_gate": {"requires": ["不改现有 UI", "不覆盖脏改动", "凭据不进入参数或日志"]},
+        "rollback_to": "structure"
+      },
+      {
+        "node_id": "validate",
+        "goal": "验证选择、过滤、目标路由、CLI 参数、失败回执和现有钉钉回归。",
+        "dependencies": ["generate"],
+        "inputs": ["实现和测试"],
+        "outputs": ["测试与运行时证据"],
+        "source_refs": ["dingtalk-runtime-patch.test.mjs", "dingtalk-profile.test.mjs"],
+        "ability_bindings": {"tool": "node --test", "runtime": "大神.app"},
+        "artifact_contract": {"kind": "qa_evidence"},
+        "qa_gate": {"requires": ["focused tests pass", "profile patch persists", "Host healthy"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "export",
+        "goal": "把已验收能力交付到正式大神运行时。",
+        "dependencies": ["validate"],
+        "inputs": ["QA 通过的补丁和配置"],
+        "outputs": ["正式 web profile 运行态"],
+        "source_refs": ["scripts/restart", "scripts/status"],
+        "ability_bindings": {"tool": "dsh lifecycle scripts"},
+        "artifact_contract": {"kind": "runtime_release"},
+        "qa_gate": {"requires": ["单一 3080 监听", "钉钉 Stream 正常", "dws ready"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "review",
+        "goal": "逐项回读实现、测试、移动端验收和生产就绪状态。",
+        "dependencies": ["export"],
+        "inputs": ["所有节点证据"],
+        "outputs": ["最终交付说明"],
+        "source_refs": ["工作合同", "测试报告", "真实发送回执"],
+        "ability_bindings": {"skill": "native-chinese-expression"},
+        "artifact_contract": {"kind": "delivery_summary"},
+        "qa_gate": {"requires": ["不把待验收写成已完成"]},
+        "rollback_to": "validate"
+      }
+    ]
+  },
+  "qa_contract": {
+    "node_gates": [
+      "敏感文件、隐藏路径、符号链接、旧文件和未绑定会话不得发送",
+      "非管理员不得执行 /send",
+      "direct 使用 senderStaffId，group 使用 conversationId，目标不由模型猜测",
+      "凭据只进入 dws 子进程环境，不进入 argv、回复或日志",
+      "dws 非零退出、超时或失败 JSON 不得回报成功"
+    ],
+    "final_acceptance": [
+      "钉钉桌面或移动端当前对话出现附件消息",
+      "移动端可以打开或下载文件",
+      "回读文件名与选择的近期产物一致"
+    ],
+    "release_conditions": [
+      "代码和配置回归通过",
+      "正式 Host 健康",
+      "真实发送必须由管理员主动触发"
+    ]
+  },
+  "recovery_contract": {
+    "rollback_points": ["generate", "structure", "parse"],
+    "max_retries": 1,
+    "failure_fingerprint_fields": ["node", "dws_version", "connector_version", "conversation_type", "error_code", "artifact_relative_name", "artifact_checksum"]
+  },
+  "lineage": {
+    "contract_id": "dingtalk-artifact-delivery-20260831",
+    "created_at": "2026-08-31T00:00:00+08:00",
+    "workspace": "/Users/marcus/.dsh",
+    "status": "live_ready_mobile_acceptance_pending",
+    "implementation": {
+      "connector": "@dingtalk-real-ai/dsh-dingtalk@0.6.2",
+      "dws": "v1.0.60",
+      "command": "/send <序号>",
+      "patch_hash": "nqkjp2oucffdj6qpn5uxbpbgc4"
+    },
+    "qa": {
+      "focused": "19/19 passed",
+      "broader_regression": "43/43 passed",
+      "frozen_profile_restore": "passed",
+      "live_host": "3080 single listener; Stream connected; owner bound; dws ready"
+    },
+    "pending_acceptance": "管理员在钉钉私聊执行 /artifacts 后 /send 1，并在移动端打开真实附件。"
+  }
+}

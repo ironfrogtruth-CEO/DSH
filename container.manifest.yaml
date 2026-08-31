@@ -20,22 +20,12 @@ profile:
 agent:
   presets:
     - reliable-development          # CyberMarcus; 自有副本在 ~/.dsh/.agent-presets/reliable-development
-    - avengers                     # 直接委派模式；父 V4 Pro High，子 GLM-5.3-Flash Medium
+    - avengers                     # 直接委派模式；父子默认沿用当前会话选中的模型与推理强度
   default: reliable-development
   model:
     provider: deepseek-official
     model: deepseek-v4-pro
     reasoningEffort: high
-  preset_routes:
-    avengers:
-      parent:
-        provider: deepseek-official
-        model: deepseek-v4-pro
-        reasoningEffort: high
-      child:
-        provider: zhipu-glm
-        model: glm-5.3-flash
-        reasoningEffort: medium
   permission: danger-full-access
   # CyberMarcus does not mount low-level live Cordis inspect/mount providers;
   # those are Host singletons. Configuration uses bash/fs plus doctor/profile/
@@ -102,12 +92,9 @@ capabilities:
 
 dependencies:                        # 容器依赖的外部资源(不打包)
   ollama:
-    note: 本地模型（用户可选模型与后台专用模型）
+    note: 本地后台模型（不进入对话模型选择器）
     models:
-      - cybermarcus:latest
-      - glm-marcus:latest
-      # 后台静默模型：由视觉、生图、检索适配器按能力调用，不进入 LLM picker。
-      - gemma4:26b-a4b-it-qat
+      # 后台静默模型：由生图、检索适配器按能力调用，不进入对话模型 picker。
       - x/flux2-klein:4b
       - embeddinggemma:latest
   workspaces:
@@ -135,3 +122,4 @@ extensions:                          # 扩展注册点
     - "@dingtalk-real-ai/dsh-dingtalk" # 官方钉钉 Stream 连接器(凭据缺失时 fail-soft)
     - "@local/dsh-dingtalk-status" # 钉钉脱敏状态与侧栏入口(只读)
     - "@local/dsh-shrimp-run-status" # 会话顶部虾/heartbeat真实运行节点状态(只读桥 + UI)
+    - "@local/dsh-stenographer" # 免费本地速记：双轨录音、Whisper、ERes2NetV2、块编辑与会话交接

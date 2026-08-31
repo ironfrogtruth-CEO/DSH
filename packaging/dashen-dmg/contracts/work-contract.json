@@ -1,0 +1,139 @@
+{
+  "schema": "cybermarcus_work_contract.v1",
+  "goal_contract": {
+    "problem": "把当前大神桌面壳和 DSH Harness 制作成可在另一台 Mac 安装的完整 DMG，不依赖目标机器预装 Node 或 DSH。",
+    "audience_action": "Mac 用户拖入应用程序、首次配置 API 后即可启动大神并使用 DSH 核心能力。",
+    "deliverables": [
+      "兼容 arm64 与 x86_64 的 Universal 2 大神.app",
+      "预装双架构 Node 与完整 DSH 白名单运行时的 DMG",
+      "首次 API 配置、运行时安装、诊断、卸载与首次打开说明",
+      "SHA-256、版本清单、QA 报告与交付清单"
+    ],
+    "minimum_deliverable": "未公证但可通过 macOS 隐私与安全性中的仍要打开方式安装和运行的 Universal DMG。"
+  },
+  "source_contract": {
+    "truth_sources": [
+      "/Users/marcus/.dsh 当前工作树",
+      "/Users/marcus/.dsh/install/node_modules/@deepseek-ai/dsh/package.json",
+      "/Users/marcus/.dsh/apps/大神.swift",
+      "/Applications/大神.app 现有图标资源",
+      "Node.js 官方 macOS arm64/x64 发行包及 SHASUMS256"
+    ],
+    "derived_outputs": [
+      "便携桌面壳、便携 Host 启动器、清洁运行时种子、Universal DMG"
+    ],
+    "debug_notes": [
+      "现有工作树含用户未提交改动，构建只读复制，不回退、不覆盖。",
+      "当前 App 为 arm64 薄二进制且仅临时签名。"
+    ],
+    "pollution_risks": [
+      "真实 API 密钥、Token、私有凭证",
+      "sessions、attachments、logs、output、screen-memory 与浏览器 Profile",
+      "旧备份、缓存、绝对用户路径和本机 Ollama 强制启动逻辑"
+    ],
+    "knowledge_versions": [
+      "@deepseek-ai/dsh 0.1.1-rc.2",
+      "Node.js 22.23.1",
+      "portable-package-contract 1.0.0"
+    ]
+  },
+  "output_contract": {
+    "artifact_name": "大神-2.1.1-universal.dmg",
+    "architectures": ["arm64", "x86_64"],
+    "minimum_macos": "11.0",
+    "preinstall": ["Node.js", "DeepSeek Harness", "profiles", "plugins", "skills", "UI patches", "diagnostics"],
+    "first_run": "只要求配置 DeepSeek API；智谱 API 可选。",
+    "signing": "ad-hoc only; no Developer ID and no notarization",
+    "forbidden_content": ["credentials", "tokens", "sessions", "attachments", "personal logs", "browser profiles", "local model weights"]
+  },
+  "production_blueprint": {
+    "task_mode": "one_off_complex",
+    "nodes": [
+      {
+        "node_id": "route",
+        "goal": "锁定完整 DMG、双架构、预装运行时和未公证发行边界。",
+        "dependencies": [],
+        "inputs": ["用户明确授权"],
+        "outputs": ["goal_contract", "output_contract"],
+        "qa_gate": {"checks": ["目标、架构、安装体验、签名边界明确"]},
+        "rollback_to": null
+      },
+      {
+        "node_id": "parse",
+        "goal": "分离程序真源与用户运行态、敏感数据和污染内容。",
+        "dependencies": ["route"],
+        "inputs": ["当前 .dsh 工作树", "当前 大神.app"],
+        "outputs": ["allowlist", "denylist", "source inventory"],
+        "qa_gate": {"checks": ["敏感目录和凭证不进入种子"]},
+        "rollback_to": "route"
+      },
+      {
+        "node_id": "structure",
+        "goal": "定义 App、双架构 Node、DSH 种子、用户数据和启动器的可执行结构。",
+        "dependencies": ["parse"],
+        "inputs": ["allowlist", "现有启动链"],
+        "outputs": ["portable layout", "install and upgrade contract"],
+        "qa_gate": {"checks": ["不依赖系统 Node", "不强制本地模型", "用户数据可保留"]},
+        "rollback_to": "parse"
+      },
+      {
+        "node_id": "generate",
+        "goal": "构建 Universal App、双架构运行时和 DMG。",
+        "dependencies": ["structure"],
+        "inputs": ["portable layout", "Node official distributions", "DSH source tree"],
+        "outputs": ["大神.app", "大神-2.1.1-universal.dmg", "manifest"],
+        "qa_gate": {"checks": ["build succeeds", "secret scan passes", "codesign verify passes"]},
+        "rollback_to": "structure"
+      },
+      {
+        "node_id": "validate",
+        "goal": "验证 arm64 和 x86_64 Host、App、API 配置、UI 与数据隔离。",
+        "dependencies": ["generate"],
+        "inputs": ["built app", "built DMG"],
+        "outputs": ["qa report", "screenshots", "checksums"],
+        "qa_gate": {"checks": ["arm64 smoke", "x86_64 smoke", "real UI", "DMG mount", "no secrets"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "export",
+        "goal": "只交付通过 QA 的 DMG、说明、清单和校验值。",
+        "dependencies": ["validate"],
+        "inputs": ["passed QA artifacts"],
+        "outputs": ["delivery directory"],
+        "qa_gate": {"checks": ["artifact paths exist", "hashes match", "limitations disclosed"]},
+        "rollback_to": "validate"
+      },
+      {
+        "node_id": "review",
+        "goal": "逐项回读目标，不把本机或 Rosetta 测试说成目标 Intel Mac 用户验收。",
+        "dependencies": ["export"],
+        "inputs": ["delivery manifest", "qa report"],
+        "outputs": ["final status"],
+        "qa_gate": {"checks": ["implementation, tests, UI, production readiness separated"]},
+        "rollback_to": "validate"
+      }
+    ]
+  },
+  "qa_contract": {
+    "node_gates": ["schema", "secret scan", "universal binary", "dual-architecture Host", "DMG mount", "real UI"],
+    "final_acceptance": [
+      "App binary contains arm64 and x86_64",
+      "arm64 and Rosetta x86_64 Node can start isolated DSH Host",
+      "DMG mounts and contains 大神.app plus Applications link",
+      "API credentials are not bundled and first-run configuration persists with mode 0600",
+      "staged payload contains no source credential value or private runtime directory"
+    ],
+    "release_conditions": ["all blocking QA checks passed", "Developer ID absence disclosed", "target Intel hardware acceptance remains separate"]
+  },
+  "recovery_contract": {
+    "rollback_points": ["source inventory", "portable layout", "runtime seed", "app build", "DMG export"],
+    "max_retries": 1,
+    "failure_fingerprint_fields": ["node", "architecture", "source checksum", "runtime version", "error code", "artifact checksum"]
+  },
+  "lineage": {
+    "package_version": "2.1.1",
+    "build_contract_version": "1.0.0",
+    "source_repo": "/Users/marcus/.dsh",
+    "delivery_root": "/Users/marcus/Desktop/大神安装包"
+  }
+}

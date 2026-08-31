@@ -1,0 +1,13 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "generate",
+  "status": "completed",
+  "input_checksum": "77e900e3886bfa5e689ba6ef5e54c2c3cd8f944e913a52ae8cd6591404304603",
+  "version_refs": {"connector": "0.6.2", "dws": "1.0.60", "patch_hash": "nqkjp2oucffdj6qpn5uxbpbgc4"},
+  "actual_bindings": {"executor": "luna_worker", "command": "/send <序号>"},
+  "artifacts": ["profiles/web/patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch", "profiles/web/cordis.patch.yml", "profiles/web/pnpm-lock.yaml"],
+  "qa_result": {"status": "passed", "checks": ["凭据只进入子进程环境", "序号快照不漂移", "逐段拒绝符号链接"]},
+  "evidence": ["direct and group argv unit tests", "owner-only command test", "failure semantics tests"],
+  "failure_fingerprint": null,
+  "rollback_to": "structure"
+}

@@ -5493,12 +5493,13 @@ window.__ModuleLoader__.load({
 		// Codex process stream. The data is supplied by useSessions below; this
 		// style block intentionally uses existing DSW tokens only.
 		const subagentStatusCss = ".dsh-subagent-status-rail{flex-direction:column;gap:6px;display:flex}.dsh-subagent-status-pill{box-sizing:border-box;max-width:100%;min-height:30px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover-solid);border:1px solid var(--dsw-alias-border-l2);border-radius:16px;align-items:center;align-self:flex-start;gap:8px;padding:4px 10px 4px 7px;font-size:13px;line-height:20px;display:inline-flex;cursor:pointer}.dsh-subagent-status-pill:hover,.dsh-subagent-status-pill:focus-visible{background:var(--dsw-alias-interactive-bg-active);outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}.dsh-subagent-status-icon{width:20px;height:20px;flex:none;justify-content:center;align-items:center;display:inline-flex;font-size:14px}.dsh-subagent-status-label{min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.dsh-subagent-status-state{color:var(--dsw-alias-label-tertiary);white-space:nowrap;font-size:12px}.dsh-subagent-status-pill[data-state=running] .dsh-subagent-status-state{color:var(--dsw-alias-state-success-primary)}.dsh-subagent-status-pill[data-state=waiting] .dsh-subagent-status-state{color:var(--dsw-alias-state-warning-primary)}.dsh-subagent-status-pill[data-state=failed],.dsh-subagent-status-pill[data-state=interrupted]{border-color:var(--dsw-alias-state-error-primary)}.dsh-subagent-status-pill[data-state=failed] .dsh-subagent-status-state,.dsh-subagent-status-pill[data-state=interrupted] .dsh-subagent-status-state{color:var(--dsw-alias-state-error-primary)}";
+		const subagentStatusRailLayoutCss = ".dsh-subagent-status-header{align-items:center;gap:8px;min-height:28px;display:flex}.dsh-subagent-status-heading{align-items:baseline;gap:6px;min-width:0;display:flex}.dsh-subagent-status-title{color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:20px}.dsh-subagent-status-count{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.dsh-subagent-status-list{flex-direction:column;gap:6px;margin:0;padding:0;display:flex}.dsh-subagent-status-control{box-sizing:border-box;min-height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:1px solid transparent;border-radius:8px;align-items:center;justify-content:center;padding:3px 8px;font-size:12px;line-height:18px}.dsh-subagent-status-control:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}.dsh-subagent-status-control:focus-visible{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover);outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}.dsh-subagent-status-more{align-self:flex-start}.dsh-subagent-status-more[aria-expanded=true]{color:var(--dsw-alias-state-business-primary)}";
 		const subagentStatusCssTag = "@deepseek-ai/dsh-client-ui-conversation/SubagentStatusRail.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(subagentStatusCssTag) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
 			tag.dataset.pluginCss = subagentStatusCssTag;
-			tag.textContent = subagentStatusCss;
+			tag.textContent = `${subagentStatusCss}${subagentStatusRailLayoutCss}`;
 			document.head.appendChild(tag);
 		}
 		//#endregion
@@ -5712,6 +5713,16 @@ window.__ModuleLoader__.load({
 			failed: "失败",
 			interrupted: "已中断"
 		};
+		const SUBAGENT_STATUS_RAIL_LIMIT = 6;
+		/** Running and waiting children stay visible first; every other state keeps
+		* its source order so a settled history does not jump around on refresh. */
+		function subagentStatusPriority(status) {
+			switch (status) {
+				case "running": return 0;
+				case "waiting": return 1;
+				default: return 2;
+			}
+		}
 		/** One compact, clickable pill backed by one child summary. */
 		function SubagentStatusPill({ parentSessionId, summary, entry, openSubagent }) {
 			const id = summary?.id ?? entry?.id;
@@ -5755,27 +5766,62 @@ window.__ModuleLoader__.load({
 		function SubagentStatusRail({ sessionId, useSessions, openSubagent }) {
 			const summaries = useSessions((s) => s.byId);
 			const catalog = useSessions((s) => s.subagentsByParent[sessionId]);
+			const [expanded, setExpanded] = (0, react.useState)(false);
+			const sessionRef = (0, react.useRef)(sessionId);
+			(0, react.useEffect)(() => {
+				if (sessionRef.current === sessionId) return;
+				sessionRef.current = sessionId;
+				setExpanded(false);
+			}, [sessionId]);
 			const children = (0, react.useMemo)(() => {
 				const direct = new Map();
 				for (const summary of Object.values(summaries)) if (summary.origin === "subagent" && summary.parentId === sessionId) direct.set(summary.id, { summary });
 				for (const entry of catalog?.entries ?? []) if (entry.kind === "child" && !direct.has(entry.id)) direct.set(entry.id, { entry });
 				return [...direct.values()];
 			}, [catalog, sessionId, summaries]);
-			if (children.length === 0) return null;
-			return (0, react_jsx_runtime.jsx)("div", {
+			const orderedChildren = (0, react.useMemo)(() => children.map((child, index) => ({
+				...child,
+				index,
+				status: subagentStatusOf(child.summary, child.entry)
+			})).sort((left, right) => subagentStatusPriority(left.status) - subagentStatusPriority(right.status) || left.index - right.index), [children]);
+			const visibleChildren = expanded ? orderedChildren : orderedChildren.slice(0, SUBAGENT_STATUS_RAIL_LIMIT);
+			const remaining = Math.max(0, orderedChildren.length - SUBAGENT_STATUS_RAIL_LIMIT);
+			if (orderedChildren.length === 0) return null;
+			return (0, react_jsx_runtime.jsxs)("section", {
 				className: "dsh-subagent-status-rail",
 				"data-subagent-status-rail": "",
-				role: "list",
-				"aria-label": "子代理即时状态",
-				children: children.map(({ summary, entry }) => (0, react_jsx_runtime.jsx)("div", {
-					role: "listitem",
-					children: (0, react_jsx_runtime.jsx)(SubagentStatusPill, {
-						parentSessionId: sessionId,
-						summary,
-						entry,
-						openSubagent
+				"aria-label": `子代理即时状态，共 ${orderedChildren.length} 个`,
+				children: [(0, react_jsx_runtime.jsx)("div", {
+					className: "dsh-subagent-status-header",
+					children: (0, react_jsx_runtime.jsxs)("div", {
+						className: "dsh-subagent-status-heading",
+						children: [(0, react_jsx_runtime.jsx)("span", {
+							className: "dsh-subagent-status-title",
+							children: "子代理即时状态"
+						}), (0, react_jsx_runtime.jsx)("span", {
+							className: "dsh-subagent-status-count",
+							children: `（${orderedChildren.length}）`
+						})]
 					})
-				}, summary?.id ?? entry?.id))
+				}), (0, react_jsx_runtime.jsx)("div", {
+					className: "dsh-subagent-status-list",
+					role: "list",
+					children: visibleChildren.map(({ summary, entry }) => (0, react_jsx_runtime.jsx)("div", {
+						role: "listitem",
+						children: (0, react_jsx_runtime.jsx)(SubagentStatusPill, {
+							parentSessionId: sessionId,
+							summary,
+							entry,
+							openSubagent
+						})
+					}, summary?.id ?? entry?.id))
+				}), remaining > 0 && (0, react_jsx_runtime.jsx)("button", {
+					type: "button",
+					className: "dsh-subagent-status-control dsh-subagent-status-more",
+					"aria-expanded": expanded,
+					onClick: () => setExpanded((value) => !value),
+					children: expanded ? "收起" : `展开其余 ${remaining} 个`
+				})]
 			});
 		}
 		//#endregion

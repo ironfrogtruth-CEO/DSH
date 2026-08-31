@@ -23,6 +23,36 @@ export const FAILURE_FINGERPRINT_KEYS = Object.freeze([
   'artifact_checksums',
 ])
 
+// The three blades are independent reasoning axes. They are a compact
+// strategy signal for the model, not a second workflow or a Host verdict.
+export const THREE_BLADE_AXES = Object.freeze(['goalFirst', 'threeProvincesSixMinistries', 'planBeforeAction'])
+export const AXIS_DEPTHS = Object.freeze(['implicit', 'light', 'full'])
+
+function defaultAxisDepths() {
+  return { goalFirst: 'implicit', threeProvincesSixMinistries: 'implicit', planBeforeAction: 'implicit' }
+}
+
+function normalizeAxisDepths(value, { requireFormalPlanning = false } = {}) {
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const result = defaultAxisDepths()
+  const aliases = {
+    goalFirst: ['goalFirst', 'goal_first', 'goal-first', '以终为始'],
+    threeProvincesSixMinistries: ['threeProvincesSixMinistries', 'threeProvinces', 'three_provinces', '三省六部'],
+    planBeforeAction: ['planBeforeAction', 'plan_before_action', 'plan-before-action', '谋定后动'],
+  }
+  for (const axis of THREE_BLADE_AXES) {
+    const key = aliases[axis].find((candidate) => Object.hasOwn(input, candidate))
+    if (!key) continue
+    const depth = String(input[key] ?? '').trim().toLowerCase()
+    if (!AXIS_DEPTHS.includes(depth)) throw contractError('AXIS_DEPTH_INVALID', `${axis} must be implicit, light, or full`)
+    result[axis] = depth
+  }
+  if (requireFormalPlanning && result.planBeforeAction !== 'full') {
+    throw contractError('FORMAL_ACTIVATION_REQUIRES_FULL_PLANNING', 'activate_formal requires planBeforeAction=full')
+  }
+  return result
+}
+
 // Governance is an overlay on the existing seven-node state machine. Keep the
 // node ids stable: persisted schemaVersion=1 snapshots may not have a
 // governance field and must still render and resume safely.
@@ -79,8 +109,13 @@ function governanceForState(classification, node) {
 }
 
 const SIMPLE_WORDING = /(?:只给一句|只用一句话|仅用一句话|只(?:给|写|输出|回复)(?:出)?(?:改写后的)?(?:一|1)句|翻译成|改写(?:这|下列|以下)?(?:句子)?)/i
+// These patterns are only hints for the model's axis choice. They must not
+// turn ordinary repair, PPT, page-review, or coding requests into a formal
+// SOP by themselves.
 const COMPLEX_WORDING = /(?:复杂|多步骤|可回滚|状态机|工作流|流水线|方案|规划|架构|实施|验收|回归|部署|升级|迁移|重构|开发|实现|修复|调试|排查|审计|报告|PPT|HTML|PDF|插件|代码|仓库|项目|文件)/i
 const RISK_WORDING = /(?:真源|证据|来源|QA|质量|渲染|导出|发布|提交|权限|确认|回滚|恢复|失败|风险|约束)/i
+const FORMAL_WORKFLOW_WORDING = /(?:完整|正式|强制|严格|按|走|进入|启动)?\s*(?:七节点|七个节点|SOP|生产蓝图|工作合同|production\s*blueprint|cybermarcus_work_contract|正式流程|全流程)/i
+const FORMAL_WORKFLOW_NEGATED = /(?:不要|无需|不需要|不用|不必|先不)[^。！？!?；;，,、\n]{0,20}(?:七节点|七个节点|SOP|生产蓝图|工作合同|production\s*blueprint|cybermarcus_work_contract|正式流程|全流程)/i
 // A direct call to an already published shrimp is an executable request, not
 // a request to design or govern a workflow. Keep this narrow: only an
 // explicit shrimp_run(...) expression or an action verb at the beginning of
@@ -94,7 +129,6 @@ const DIRECT_SHRIMP_TOOL_RE = /\bshrimp_run\b[\s\S]{0,100}(?:运行|调用|启�
 const DIRECT_SHRIMP_NEGATED_RE = /(?:不要|别|禁止|不可|不能|无需|不需要|暂不|先别|先不要)[^。！？!?；;，,、\n]{0,24}(?:shrimp_run\s*(?:\(|\b)|(?:运行|调用|启动|执行|开跑|用|让|交给)\s*[^。！？!?；;，,、\n]{0,60}虾)/iu
 const DIRECT_SHRIMP_QUERY_PREFIX_RE = /^(?:请问|了解(?:一下)?|介绍(?:一下)?|推荐|匹配|看看|查看|检查|分析|帮我(?:看看|查看|检查|分析|了解)|怎么|如何|能否|是否|可以|能不能|可不可以|为什么)/u
 const DIRECT_SHRIMP_COMPLEX_PREFIX_RE = /^(?:请\s*)?(?:修复|升级|部署|迁移|重构|开发|实现|调试|排查|审计|测试|验收)/u
-const SHRIMP_MAINTENANCE_RE = /^(?:请\s*)?(?:修复|升级|调试)[\s\S]{0,100}文章@?虾/u
 const DIRECT_SHRIMP_INQUIRY_RE = /(?:吗|？|\?)\s*$/u
 const DIRECT_SHRIMP_PAST_RE = /^(?:刚才|之前|上次|此前|曾经|已经)[^。！？!?\n]{0,60}(?:运行|调用|启动|执行|开跑)[^。！？!?\n]{0,24}(?:过|了|失败|完成)(?:[。！？!?]|$)/u
 
@@ -166,25 +200,39 @@ export function classifyTask(text) {
   if (isDirectShrimpRunInstruction(source)) {
     return {
       classification: 'simple_direct',
+      routingMode: 'adaptive',
+      axisHints: { goalFirst: 'implicit', threeProvincesSixMinistries: 'implicit', planBeforeAction: 'light' },
       reasons: ['explicit published-shrimp run request; execute directly and preserve tool authorization checks'],
     }
   }
-  if (SHRIMP_MAINTENANCE_RE.test(source)) {
+  const outputContract = extractOutputContract(source)
+  const continuousExecution = outputContract.continuousUntilTerminal === true
+  const explicitFormalWorkflow = FORMAL_WORKFLOW_WORDING.test(source) && !FORMAL_WORKFLOW_NEGATED.test(source)
+  if (continuousExecution || explicitFormalWorkflow) {
     return {
       classification: 'sop_required',
-      reasons: ['shrimp repair, upgrade, or debugging requires the normal governed workflow'],
+      routingMode: 'formal',
+      axisHints: { goalFirst: 'light', threeProvincesSixMinistries: 'light', planBeforeAction: 'full' },
+      reasons: [continuousExecution ? 'user explicitly requires continuous execution until terminal' : 'user explicitly requests the formal SOP or production blueprint'],
     }
   }
   const numberedRequirements = (source.match(/(?:^|\n)\s*\d+[.)、]/g) || []).length
   const explicitSimple = SIMPLE_WORDING.test(source) && !/(?:代码|仓库|文件|插件|实现|修复|升级|部署|状态机)/i.test(source)
-  const continuousExecution = extractOutputContract(source).continuousUntilTerminal === true
-  const complexSignals = [COMPLEX_WORDING.test(source), RISK_WORDING.test(source), continuousExecution, numberedRequirements >= 2, source.length > 260].filter(Boolean).length
-  const classification = explicitSimple || complexSignals < 2 ? 'simple_direct' : 'sop_required'
+  const axisHints = {
+    goalFirst: explicitSimple ? 'implicit' : (source.length > 120 || numberedRequirements >= 2 ? 'light' : 'implicit'),
+    threeProvincesSixMinistries: RISK_WORDING.test(source) ? 'light' : 'implicit',
+    planBeforeAction: COMPLEX_WORDING.test(source) || source.length > 260 ? 'light' : 'implicit',
+  }
+  const classification = 'simple_direct'
   return {
     classification,
-    reasons: classification === 'sop_required'
-      ? ['multiple steps, durable artifacts, source/QA risk, or rollback are present'].filter(Boolean)
-      : ['one-step request with low durable-artifact and rollback risk'],
+    routingMode: 'adaptive',
+    axisHints,
+    reasons: [
+      explicitSimple
+        ? 'explicit short-form output request; keep the route direct'
+        : 'adaptive route; the model chooses each three-blade depth independently',
+    ],
   }
 }
 
@@ -196,13 +244,21 @@ function nodeMap(classification) {
 export function createInitialState({ sessionId, text, sourceEventSeq = 0, turn = 1 }) {
   const route = classifyTask(text)
   const currentNode = route.classification === 'simple_direct' ? 'direct' : 'route'
+  const routingMode = route.routingMode || (route.classification === 'sop_required' ? 'formal' : 'adaptive')
+  const axisHints = { ...defaultAxisDepths(), ...(route.axisHints || {}) }
+  const axisDepths = route.classification === 'sop_required' ? axisHints : defaultAxisDepths()
   return {
     schemaVersion: 1,
     sessionId,
     runId: `goal-first-${randomUUID()}`,
     taskFingerprint: fingerprint(text),
     classification: route.classification,
+    routingMode,
     classificationReasons: route.reasons,
+    axisHints,
+    axisDepths,
+    axisSelection: null,
+    formalActivation: null,
     phase: 'active',
     goalContract: null,
     workContract: null,
@@ -346,13 +402,71 @@ function appendReceipt(state, receipt) {
   return receipts.length > MAX_PRODUCTION_RECEIPTS ? receipts.slice(receipts.length - MAX_PRODUCTION_RECEIPTS) : receipts
 }
 
+function activateFormal(state, input, { turn, sourceEventSeq }) {
+  if (!state || state.classification !== 'simple_direct') throw new Error('activate_formal requires an adaptive simple_direct state')
+  if (state.phase !== 'active' || state.currentNode !== 'direct' || state.nodes?.direct !== 'in_progress') {
+    throw new Error('activate_formal requires an active direct node')
+  }
+  if (state.lastModelTransitionTurn === turn) throw new Error('only one goal-first state transition is allowed per turn unless continuousUntilTerminal is enabled')
+  const goalContract = normalizeGoalContract(input.goalContract)
+  const requestedAxes = input.axisDepths ?? input.axes ?? input.threeAxes
+  const axisSelection = requestedAxes === undefined
+    ? { ...defaultAxisDepths(), planBeforeAction: 'full' }
+    : normalizeAxisDepths(requestedAxes, { requireFormalPlanning: true })
+  const next = structuredClone(state)
+  next.classification = 'sop_required'
+  next.routingMode = 'formal'
+  next.classificationReasons = [...(state.classificationReasons || []), 'model explicitly activated the formal workflow']
+  next.axisDepths = axisSelection
+  next.axisSelection = { ...axisSelection, selectedBy: 'model', selectedAtTurn: turn }
+  next.formalActivation = {
+    action: 'activate_formal',
+    reason: boundedText(input.reason || input.activationReason || 'model judged formal planning necessary', 300),
+    selectedBy: 'model',
+    turn,
+  }
+  next.goalContract = goalContract
+  next.currentNode = 'parse'
+  next.nodes = nodeMap('sop_required')
+  next.nodes.route = 'completed'
+  next.nodes.parse = 'in_progress'
+  next.phase = 'active'
+  next.governance = governanceForState(next.classification, next.currentNode)
+  next.lastModelTransitionTurn = turn
+  next.repair = { turn, attempts: 0 }
+  next.sourceEventSeq = Math.max(Number(sourceEventSeq || 0), Number(state.sourceEventSeq || 0))
+  next.updatedAt = Date.now()
+  next.productionReceipts = appendReceipt(next, productionReceipt({
+    state,
+    node: 'route',
+    status: 'completed',
+    qaStatus: 'passed',
+    checks: ['formal workflow activated by model judgment'],
+    evidence: [goalContract.problem],
+    actualBindings: {
+      execution: 'host_state_machine_model_activation',
+      action: 'activate_formal',
+      axisDepths: axisSelection,
+    },
+    artifacts: [{ name: 'goal_contract', checksum: stableJsonChecksumV1(goalContract) }],
+  }))
+  return next
+}
+
 export function transitionState(state, input, { turn, sourceEventSeq }) {
-  if (!state || state.classification !== 'sop_required') throw new Error('state transition is available only for sop_required tasks')
+  const action = String(input?.action || '')
+  if (action === 'activate_formal' || action === 'activate_sop') return activateFormal(state, input, { turn, sourceEventSeq })
+  if (!state || state.classification !== 'sop_required') throw new Error('state transition is available only for sop_required tasks or adaptive activation')
   if (state.outputContract?.continuousUntilTerminal !== true && state.lastModelTransitionTurn === turn) {
     throw new Error('only one goal-first state transition is allowed per turn unless continuousUntilTerminal is enabled')
   }
-  const action = String(input?.action || '')
   const next = structuredClone(state)
+  // Additive fields keep snapshots written before adaptive routing readable.
+  next.routingMode = state.routingMode || (state.classification === 'sop_required' ? 'formal' : 'adaptive')
+  next.axisHints = { ...defaultAxisDepths(), ...(state.axisHints || {}) }
+  next.axisDepths = { ...defaultAxisDepths(), ...(state.axisDepths || {}) }
+  next.axisSelection = state.axisSelection ?? null
+  next.formalActivation = state.formalActivation ?? null
   // Historical schemaVersion=1 snapshots predate the production-contract
   // fields. Rehydrate the defaults in memory while leaving their append-only
   // records intact; index.js pre-step persists them once on resume.
@@ -373,6 +487,11 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
   if (action === 'record_goal') {
     if (state.phase !== 'active' || state.currentNode !== 'route') throw new Error('record_goal requires active route node')
     next.goalContract = normalizeGoalContract(input.goalContract)
+    const requestedAxes = input.axisDepths ?? input.axes ?? input.threeAxes
+    if (requestedAxes !== undefined) next.axisDepths = normalizeAxisDepths(requestedAxes)
+    next.axisSelection = requestedAxes === undefined
+      ? (next.axisSelection ?? null)
+      : { ...next.axisDepths, selectedBy: 'model', selectedAtTurn: turn }
     next.productionReceipts = appendReceipt(next, productionReceipt({
       state,
       node: 'route',
@@ -440,8 +559,16 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
       if (input.workContractRef !== undefined) {
         next.workContractRef = validateWorkContractRef(input.workContractRef)
       }
+      const hasWorkContract = Boolean(next.workContract || next.workContractRef)
+      const hasStructureContract = Boolean(next.structureContract)
+      if (!hasWorkContract || !hasStructureContract) {
+        throw contractError('STRUCTURE_CONTRACT_REQUIRED', 'formal structure completion requires a workContract and structureContract, or valid contract references')
+      }
       if (next.workContract && next.blueprintConfirmed !== true) {
-        throw contractError('WORK_CONTRACT_NOT_CONFIRMED', 'generate requires a confirmed work contract: complete structure with workContract and confirm=true')
+        throw contractError('WORK_CONTRACT_NOT_CONFIRMED', 'formal structure completion requires a confirmed work contract: set confirm=true')
+      }
+      if (!next.workContract && next.workContractRef && input.confirm !== true) {
+        throw contractError('WORK_CONTRACT_NOT_CONFIRMED', 'formal structure completion with workContractRef requires confirm=true')
       }
     }
     const versionRefs = { ...(input.versionRefs && typeof input.versionRefs === 'object' ? input.versionRefs : {}) }
@@ -536,7 +663,11 @@ export function transitionState(state, input, { turn, sourceEventSeq }) {
 
 export function renderStateContext(state, currentTurn = null) {
   const contract = JSON.stringify(state.outputContract)
-  if (state.classification === 'simple_direct') return `<goal_first_host_state version="1">route=simple_direct; implicit_checks=truth,action,terminal; output_contract=${contract}; answer directly and satisfy every populated output constraint.</goal_first_host_state>`
+  const axisHints = { ...defaultAxisDepths(), ...(state.axisHints || {}) }
+  const axisDepths = { ...defaultAxisDepths(), ...(state.axisDepths || {}) }
+  const axisSummary = THREE_BLADE_AXES.map((axis) => `${axis}=${axisDepths[axis]}`).join(',')
+  const axisHintSummary = THREE_BLADE_AXES.map((axis) => `${axis}=${axisHints[axis]}`).join(',')
+  if (state.classification === 'simple_direct') return `<goal_first_host_state version="1">route=simple_direct; routing_mode=adaptive; axis_depths=${axisSummary}; axis_hints=${axisHintSummary}; implicit_checks=truth,action,terminal; output_contract=${contract}; keep the route adaptive and satisfy every populated output constraint using the active preset's execution ownership. The three blades are independent thinking axes, not a mandatory ceremony. Choose implicit, light, or full per axis; axis_hints are only signals, not Host decisions. If and only if you judge planBeforeAction=full, call goal_first_state_transition with action=activate_formal, a complete goalContract, and the axisDepths selection; otherwise keep the route adaptive and use the active preset's execution ownership.</goal_first_host_state>`
   const governance = state.governance || governanceForState(state.classification, state.currentNode)
   const provinces = governance?.provinces?.join('+') || '未映射'
   const ministries = governance?.ministries?.join('+') || '未映射'
@@ -544,7 +675,7 @@ export function renderStateContext(state, currentTurn = null) {
   const workContractChecksum = state.workContractChecksum ? String(state.workContractChecksum).slice(0, 8) : 'none'
   const blueprint = state.blueprintConfirmed === true ? 'confirmed' : (state.blueprintConfirmed === false ? 'draft' : 'none')
   const receipts = Array.isArray(state.productionReceipts) ? state.productionReceipts.length : 0
-  const overlay = `province=${provinces}; ministry=${ministries}; gate=${gate}; work_contract=${workContractChecksum}; blueprint=${blueprint}; receipts=${receipts}`
+  const overlay = `routing_mode=formal; axis_depths=${axisSummary}; province=${provinces}; ministry=${ministries}; gate=${gate}; work_contract=${workContractChecksum}; blueprint=${blueprint}; receipts=${receipts}`
   const continuousUntilTerminal = state.outputContract?.continuousUntilTerminal === true
   const silentUntilTerminal = state.outputContract?.silentUntilTerminal === true
   if (Number.isSafeInteger(currentTurn) && state.lastModelTransitionTurn === currentTurn) {

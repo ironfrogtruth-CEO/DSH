@@ -37,7 +37,7 @@ function outputSchema() {
 export function transitionParameters() {
   return {
     expectedRevision: { type: 'integer', required: true },
-    action: { type: 'string', required: true, enum: ['record_goal', 'complete_node', 'pause', 'block', 'resume'] },
+    action: { type: 'string', required: true, enum: ['record_goal', 'complete_node', 'activate_formal', 'activate_sop', 'pause', 'block', 'resume'] },
     node: { type: 'string' },
     goalContract: { type: 'object', additionalProperties: true },
     qaStatus: { type: 'string', enum: ['passed', 'failed'] },
@@ -48,6 +48,10 @@ export function transitionParameters() {
     reason: { type: 'string' },
     workContract: { type: 'object', additionalProperties: true },
     structureContract: { type: 'object', additionalProperties: true },
+    axisDepths: { type: 'object', additionalProperties: true },
+    axes: { type: 'object', additionalProperties: true },
+    threeAxes: { type: 'object', additionalProperties: true },
+    activationReason: { type: 'string' },
     confirm: { type: 'boolean' },
     actualBindings: { type: 'object', additionalProperties: true },
     artifacts: { type: 'array' },
@@ -103,15 +107,18 @@ function goalContractText(goalContract) {
 }
 
 function rehydrateOutputContract(state, latestText, sourceEventSeq) {
-  if (!state || state.classification !== 'sop_required' || state.phase !== 'active') return null
+  if (!state || !['sop_required', 'simple_direct'].includes(state.classification) || state.phase !== 'active') return null
+  const formal = state.classification === 'sop_required'
   const current = state.outputContract && typeof state.outputContract === 'object' ? state.outputContract : {}
   const fields = ['continuousUntilTerminal', 'silentUntilTerminal']
-  const missing = fields.some((field) => typeof current[field] !== 'boolean')
+  const missing = formal && fields.some((field) => typeof current[field] !== 'boolean')
   const contractFields = ['workContract', 'workContractChecksum', 'blueprintConfirmed', 'structureContract', 'workContractRef', 'productionReceipts']
   const missingContract = contractFields.some((field) => state[field] === undefined)
+  const strategyFields = ['routingMode', 'axisHints', 'axisDepths', 'axisSelection', 'formalActivation']
+  const missingStrategy = strategyFields.some((field) => state[field] === undefined)
   const latest = latestText ? extractOutputContract(latestText) : null
-  const explicitUpgrade = latest?.continuousUntilTerminal === true || latest?.silentUntilTerminal === true
-  if (!missing && !explicitUpgrade && !missingContract) return null
+  const explicitUpgrade = formal && (latest?.continuousUntilTerminal === true || latest?.silentUntilTerminal === true)
+  if (!missing && !explicitUpgrade && !missingContract && !missingStrategy) return null
   const inferred = missing
     ? extractOutputContract([latestText, goalContractText(state.goalContract)].filter(Boolean).join('\n'))
     : latest
@@ -135,6 +142,11 @@ function rehydrateOutputContract(state, latestText, sourceEventSeq) {
       changed = true
     }
   }
+  if (next.routingMode === undefined) { next.routingMode = formal ? 'formal' : 'adaptive'; changed = true }
+  if (next.axisHints === undefined) { next.axisHints = { goalFirst: 'implicit', threeProvincesSixMinistries: 'implicit', planBeforeAction: 'implicit' }; changed = true }
+  if (next.axisDepths === undefined) { next.axisDepths = { goalFirst: 'implicit', threeProvincesSixMinistries: 'implicit', planBeforeAction: 'implicit' }; changed = true }
+  if (next.axisSelection === undefined) { next.axisSelection = null; changed = true }
+  if (next.formalActivation === undefined) { next.formalActivation = null; changed = true }
   return changed
     ? { ...next, sourceEventSeq: Math.max(Number(sourceEventSeq || 0), Number(state.sourceEventSeq || 0)), updatedAt: Date.now() }
     : null
@@ -207,7 +219,7 @@ export async function apply(ctx, config = {}) {
 
   register({
     name: 'goal_first_state_transition',
-    description: 'Advance or pause the Host-enforced goal-first state using revision CAS. Nodes are sequential; ordinary tasks allow one transition per turn, while continuousUntilTerminal tasks may continue with evidence-backed sequential transitions in the same turn. Failed QA blocks and export requires passed QA.',
+    description: 'Advance the formal Host state with revision CAS, or let an adaptive simple task activate the formal workflow when the model judges planBeforeAction=full. Ordinary tasks stay direct; formal nodes remain sequential, failed QA blocks, and export requires passed QA.',
     parameters: transitionParameters(),
     timeoutMs: 10_000,
     async execute(args) {

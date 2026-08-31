@@ -16,6 +16,7 @@ import {
   nextHeartbeatCronAt,
   normalizeHeartbeatCron,
   normalizeHeartbeatCatchUp,
+  normalizeHeartbeatRegistration,
   planHeartbeatTask,
   recordHeartbeatRunnerFailure,
   SCHEDULE_SCAN_BATCH_SIZE,
@@ -97,6 +98,38 @@ test('missing nextRunAt is initialized without firing immediately', () => {
   assert.equal(new Date(plan.nextRunAt).toISOString(), '2026-08-23T22:00:00.000Z')
 })
 
+test('heartbeat registration immediately restores the article 09:00 schedule and rejects carrier-less zombies', () => {
+  const articleCron = { time: '09:00', days: [1, 3, 5, 0], timezone: HEARTBEAT_TIMEZONE }
+  const registration = normalizeHeartbeatRegistration({
+    body: {
+      runner: 'gzh-multi-article',
+      pipelineSlug: 'shrimp-c433b57dac59419d',
+      enabled: true,
+      cron: articleCron,
+    },
+    previous: { enabled: false, nextRunAt: null },
+    nowMs: at('2026-08-31T23:00:00+08:00'),
+  })
+  assert.equal(registration.ok, true)
+  assert.equal(registration.nextRunAt, 1788310800000)
+  assert.equal(new Date(registration.nextRunAt).toISOString(), '2026-09-02T01:00:00.000Z')
+
+  const disabled = normalizeHeartbeatRegistration({
+    body: { runner: 'gzh-multi-article', enabled: false, cron: articleCron, nextRunAt: 1788310800000 },
+  })
+  assert.equal(disabled.ok, true)
+  assert.equal(disabled.nextRunAt, null)
+
+  const zombie = normalizeHeartbeatRegistration({ body: { enabled: true, cron: articleCron } })
+  assert.equal(zombie.ok, false)
+  assert.equal(zombie.code, 'HEARTBEAT_CARRIER_REQUIRED')
+})
+
+test('register route resets a repaired enabled heartbeat to scheduled state', async () => {
+  const implementation = (await import('node:fs')).readFileSync(new URL('./index.js', import.meta.url), 'utf8')
+  assert.match(implementation, /status: enabled && \(body\.enabled === true \|\| body\.runner !== undefined \|\| body\.cron !== undefined\)[\s\S]*\? 'scheduled'/)
+})
+
 test('runner is an immutable allowlist and cannot accept an arbitrary command', async () => {
   const spec = heartbeatRunnerSpec('gzh-multi-article')
   assert.equal(spec.command, '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3')
@@ -151,6 +184,36 @@ test('git daily commit runner uses the fixed local Node script and ignores paylo
   assert.equal(calls[0].options.cwd, '/Users/marcus/.dsh')
   assert.equal(calls[0].options.timeout, 5 * 60 * 1000)
   assert.deepEqual(JSON.parse(calls[0].options.env.DSH_HEARTBEAT_PAYLOAD_JSON), { command: 'rm -rf /', path: '/tmp/evil', args: ['--push'] })
+})
+
+test('weekly safe cleanup runner is fixed, bounded, and ignores payload command injection', async () => {
+  const spec = heartbeatRunnerSpec('weekly-safe-cleanup')
+  assert.deepEqual(spec, {
+    runner: 'weekly-safe-cleanup',
+    command: '/usr/local/bin/node',
+    args: ['/Users/marcus/.dsh/scripts/weekly-safe-cleanup.mjs', '--execute'],
+    cwd: '/Users/marcus/.dsh',
+    timeoutMs: 4 * 60 * 60 * 1000,
+  })
+  const calls = []
+  const fakeExecFile = (command, args, options, callback) => {
+    calls.push({ command, args, options })
+    callback(null, '{"status":"ok","summary":"本周无需清理"}\n', '')
+  }
+  await executeHeartbeatRunner({
+    runner: 'weekly-safe-cleanup',
+    payload: { command: 'rm -rf /', path: '/', retention_days: 0 },
+  }, { execFileImpl: fakeExecFile })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].command, '/usr/local/bin/node')
+  assert.deepEqual(calls[0].args, ['/Users/marcus/.dsh/scripts/weekly-safe-cleanup.mjs', '--execute'])
+  assert.equal(calls[0].options.cwd, '/Users/marcus/.dsh')
+})
+
+test('legacy browser cron skips disabled and Host-bound heartbeat tasks', async () => {
+  const implementation = (await import('node:fs')).readFileSync(new URL('./client.js', import.meta.url), 'utf8')
+  assert.match(implementation, /if \(!task \|\| task\.enabled === false\) continue/)
+  assert.match(implementation, /if \(String\(task\.runner \|\| ''\)\.trim\(\) \|\| String\(task\.pipelineSlug \|\| ''\)\.trim\(\)\) continue/)
 })
 
 test('runner passes only bounded JSON payload and supports one-shot tasks', async () => {

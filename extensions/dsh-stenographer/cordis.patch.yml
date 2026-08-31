@@ -1,0 +1,6 @@
+# Register the Host + web client as one independent local bundle. The parent
+# integration can place the bundle in the existing web composition without
+# changing profiles or the artifact panel implementation.
+- insert:
+    - id: dsh-stenographer
+      name: '@local/dsh-stenographer'

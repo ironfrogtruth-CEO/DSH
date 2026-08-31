@@ -17,6 +17,7 @@ const [composition, metadata, cyberComposition] = await Promise.all([
   readFile(join(root, 'preset.yml'), 'utf8'),
   readFile(join(cyberRoot, 'agent.cordis.yml'), 'utf8'),
 ])
+const systemAgents = await readFile(join(dshHome, 'AGENTS.md'), 'utf8')
 
 const yaml = createRequire(join(dshHome, 'install', 'package.json'))('yaml')
 const parsedComposition = yaml.parse(composition.replaceAll('!!js ', ''))
@@ -57,11 +58,17 @@ const governanceAnchors = [
   'evidence-first-recovery.md',
   'QA',
   'rollback',
+  'Adaptive three-axis compatibility',
+  'activate_formal',
+  'simple_direct',
 ]
 for (const anchor of governanceAnchors) {
   assert.ok(cyberComposition.includes(anchor), `CyberMarcus governance anchor missing: ${anchor}`)
   assert.ok(composition.includes(anchor), `Avengers governance anchor missing: ${anchor}`)
 }
+assert.match(systemAgents, /三板斧/)
+assert.match(systemAgents, /implicit.*light.*full/s)
+assert.match(systemAgents, /action=activate_formal/)
 
 for (const id of [
   'persona',
@@ -94,11 +101,7 @@ assert.equal(avengerRow.config.toolName, 'avenger')
 assert.equal(avengerRow.config.backgroundMode, 'continuable')
 assert.equal(avengerRow.config.enableRunInBackground, true)
 assert.equal(avengerRow.config.maxDepth, 1)
-assert.deepEqual(avengerRow.config.agentOptions, {
-  provider: 'zhipu-glm',
-  model: 'glm-5.3-flash',
-  maxTokens: 32768,
-})
+assert.equal(avengerRow.config.agentOptions, undefined, 'Avengers child route must inherit the resolved parent request')
 assert.deepEqual(avengerRow.config.toolFilter?.deny, ['avenger'])
 assert.equal(rows.filter(({ row }) => row.config?.toolName).length, 1, 'no alternate toolName route may be callable')
 assert.doesNotMatch(composition, /@deepseek-ai\/dsh-tool-workflow/)
@@ -115,9 +118,15 @@ assert.equal(
 assert.match(composition, /every user task,[\s\S]*must be assigned[\s\S]*before execution/i)
 assert.match(composition, /The parent does not carry out the task itself/i)
 assert.match(composition, /Before every avenger call,[\s\S]*exact full Marvel hero or antihero call sign/i)
-assert.match(composition, /parent route defaults to DeepSeek V4 Pro with High reasoning/i)
-assert.match(composition, /avenger child route is fixed to zhipu-glm\/glm-5\.3-flash with Medium reasoning/i)
-assert.match(composition, /Medium contract is enforced by Host route selection/i)
+assert.match(composition, /parent uses the model and reasoning effort currently selected by the user/i)
+assert.match(composition, /inherits the fully resolved parent request/i)
+assert.match(composition, /only reasoning effort by one level supported by that exact model/i)
+assert.match(composition, /provider, model, maxTokens/i)
+assert.match(composition, /simple_direct.*execution ownership/i)
+assert.doesNotMatch(composition, /answer directly/i)
+assert.doesNotMatch(composition, /parent route defaults to DeepSeek V4 Pro with High reasoning/i)
+assert.doesNotMatch(composition, /avenger child route is fixed to zhipu-glm\/glm-5\.3-flash with Medium reasoning/i)
+assert.doesNotMatch(composition, /Medium contract is enforced by Host route selection/i)
 assert.match(composition, /蜘蛛侠·检索-01/)
 assert.match(composition, /黑豹·结构-02/)
 assert.match(composition, /灭霸·执行-03/)
@@ -132,8 +141,13 @@ assert.match(childPersona, /Marvel hero or antihero call sign/)
 assert.match(childPersona, /exclusive files\/modules or responsibility boundary/)
 assert.match(childPersona, /objective, inputs, constraints, focused validation, and acceptance criteria/)
 assert.match(childPersona, /洛基.*死侍.*毒液.*灭霸/s)
-assert.match(childPersona, /zhipu-glm\/glm-5\.3-flash at Medium reasoning/)
+assert.match(childPersona, /Inherit the parent's fully resolved provider, model, maxTokens, and reasoning effort/i)
+assert.match(childPersona, /parent goal-first state is `sop_required`/i)
+assert.match(childPersona, /one actual level supported by the selected model/i)
+assert.doesNotMatch(childPersona, /child route is fixed to zhipu-glm\/glm-5\.3-flash at Medium reasoning/i)
 assert.match(childPersona, /never call avenger/)
+assert.match(systemAgents, /simple_direct.*不进入正式七节点.*执行所有权/s)
+assert.match(systemAgents, /Avengers.*parent.*委派.*Avenger child.*执行/s)
 
 // Isolation checks: the existing CyberMarcus preset remains its own identity
 // and does not gain the Avengers-only route as a side effect.

@@ -6,12 +6,54 @@
  * overwrite it.
  */
 import { createHash, randomUUID } from 'node:crypto'
-import { readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { access, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 export const BASELINE_VERSION = '0.1.1-rc.2'
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const execFileAsync = promisify(execFile)
+
+export const STUDIO_BRAND = Object.freeze({
+  script: 'custom-ui-patches/dsh-idesign-ippt-studio/replay-brand.sh',
+  template: Object.freeze({
+    source: 'custom-ui-patches/dsh-idesign-ippt-studio/templates/deepseek-ippt/shrimptank.pptx-pingan-health',
+    target: 'profiles/web/node_modules/deepseek-ippt/lib/templates/shrimptank.pptx-pingan-health',
+    files: Object.freeze([
+      'manifest.json',
+      'design-tokens.css',
+      'entry.html',
+      'cover.png',
+      'SOURCES.txt',
+      'assets/cover-pafc.jpeg',
+      'assets/service-mdt.jpg',
+      'assets/case-checkup.jpg',
+      'assets/service-online-doctor.jpg',
+      'assets/closing-professionals.jpg',
+    ]),
+  }),
+  catalog: Object.freeze({
+    path: 'profiles/web/node_modules/deepseek-ippt/lib/index.js',
+    marker: '"shrimptank.pptx-pingan-health"',
+    coverCacheMarker: '"cache-control": "no-store"',
+  }),
+  templateLogos: Object.freeze({
+    source: 'custom-ui-patches/dsh-idesign-ippt-studio/original/ipollowork-logo.svg',
+    roots: Object.freeze([
+      'profiles/web/node_modules/deepseek-idesign/lib/templates',
+      'profiles/web/node_modules/deepseek-ippt/lib/templates',
+      'custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-idesign',
+      'custom-ui-patches/dsh-idesign-ippt-studio/modified/templates/deepseek-ippt',
+    ]),
+    cacheToken: 'v=20260831-logo-fix-1',
+  }),
+  packages: Object.freeze([
+    Object.freeze({ packageName: 'deepseek-idesign', kind: 'design', title: 'HTML', previewRefreshMarker: 'setTimeout(()=>{const te=w.current;if(!te)return;const xe=te.getBoundingClientRect();E({width:xe.width,height:xe.height})},80)', coverVersionMarker: 'e.load(e.template.manifest.id,e.template.manifest.version)', coverRequestVersionMarker: 'templateId:s,version:r' }),
+    Object.freeze({ packageName: 'deepseek-ippt', kind: 'slides', title: '皮皮虾', previewRefreshMarker: 'setTimeout(()=>{const te=w.current;if(!te)return;const xe=te.getBoundingClientRect();E({width:xe.width,height:xe.height})},80)', coverVersionMarker: 'e.load(e.template.manifest.id,e.template.manifest.version)', coverRequestVersionMarker: 'templateId:s,version:r' }),
+  ]),
+})
 
 export const SUBAGENT_ARCHIVE_SNAPSHOT = Object.freeze({
   packageName: 'dsh-client-ui-subagent',
@@ -61,6 +103,114 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
 }
 
+async function exists(path) {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function inspectStudioBrand(root) {
+  const rows = []
+  for (const spec of STUDIO_BRAND.packages) {
+    const dist = join(root, 'profiles/web/node_modules', spec.packageName, 'studio/dist')
+    const htmlPath = join(dist, 'index.html')
+    if (!await exists(htmlPath)) return { available: false, ok: true, packages: [] }
+    const html = await readFile(htmlPath, 'utf8')
+    const match = html.match(/src="\.\/assets\/(index-[^"?]+\.js)/)
+    if (!match) {
+      rows.push({ ...spec, ok: false, code: 'STUDIO_BUNDLE_REFERENCE_MISSING', htmlPath })
+      continue
+    }
+    const bundlePath = join(dist, 'assets', match[1])
+    if (!await exists(bundlePath)) {
+      rows.push({ ...spec, ok: false, code: 'STUDIO_BUNDLE_MISSING', htmlPath, bundlePath })
+      continue
+    }
+    const bundle = await readFile(bundlePath, 'utf8')
+    const brandingOk = bundle.includes(`branding:{kind:"${spec.kind}",title:"${spec.title}",byline:"by ShrimpTank"`)
+    const previewRefreshOk = bundle.includes(spec.previewRefreshMarker)
+    const coverVersionOk = bundle.includes(spec.coverVersionMarker) && bundle.includes(spec.coverRequestVersionMarker)
+    let syntaxOk = true
+    let syntaxError = null
+    try {
+      await execFileAsync(process.execPath, ['--check', bundlePath], { maxBuffer: 2 * 1024 * 1024 })
+    } catch (error) {
+      syntaxOk = false
+      syntaxError = String(error?.stderr || error?.message || error)
+    }
+    rows.push({ ...spec, ok: brandingOk && previewRefreshOk && coverVersionOk && syntaxOk, brandingOk, previewRefreshOk, coverVersionOk, syntaxOk, syntaxError, htmlPath, bundlePath })
+  }
+  const templateFiles = []
+  for (const file of STUDIO_BRAND.template.files) {
+    const sourcePath = join(root, STUDIO_BRAND.template.source, file)
+    const targetPath = join(root, STUDIO_BRAND.template.target, file)
+    const sourceAvailable = await exists(sourcePath)
+    const targetAvailable = await exists(targetPath)
+    const source = sourceAvailable ? await readFile(sourcePath) : null
+    const target = targetAvailable ? await readFile(targetPath) : null
+    templateFiles.push({
+      file,
+      ok: Boolean(source && target && source.equals(target)),
+      sourceAvailable,
+      targetAvailable,
+      sourceSha256: source ? sha256(source) : null,
+      targetSha256: target ? sha256(target) : null,
+    })
+  }
+  const template = { ok: templateFiles.every((file) => file.ok), files: templateFiles }
+  const logoSourcePath = join(root, STUDIO_BRAND.templateLogos.source)
+  const logoSourceAvailable = await exists(logoSourcePath)
+  const logoSource = logoSourceAvailable ? await readFile(logoSourcePath) : null
+  const logoFiles = []
+  for (const relativeRoot of STUDIO_BRAND.templateLogos.roots) {
+    const templatesRoot = join(root, relativeRoot)
+    if (!await exists(templatesRoot)) continue
+    for (const entry of await readdir(templatesRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const logoPath = join(templatesRoot, entry.name, 'assets/ipollowork-logo.svg')
+      if (!await exists(logoPath)) continue
+      const entryPath = join(templatesRoot, entry.name, 'entry.html')
+      const logo = await readFile(logoPath)
+      const html = await exists(entryPath) ? await readFile(entryPath, 'utf8') : ''
+      logoFiles.push({
+        template: entry.name,
+        logoPath,
+        logoMatches: Boolean(logoSource && logo.equals(logoSource)),
+        cacheVersionOk: html.includes(`ipollowork-logo.svg?${STUDIO_BRAND.templateLogos.cacheToken}`),
+      })
+    }
+  }
+  const templateLogos = {
+    ok: logoSourceAvailable && logoFiles.length > 0 && logoFiles.every((file) => file.logoMatches && file.cacheVersionOk),
+    sourceAvailable: logoSourceAvailable,
+    sourcePath: logoSourcePath,
+    files: logoFiles,
+  }
+  const catalogPath = join(root, STUDIO_BRAND.catalog.path)
+  const catalogAvailable = await exists(catalogPath)
+  const catalogContent = catalogAvailable ? await readFile(catalogPath, 'utf8') : ''
+  const catalog = {
+    ok: catalogAvailable && catalogContent.includes(STUDIO_BRAND.catalog.marker) && catalogContent.includes(STUDIO_BRAND.catalog.coverCacheMarker),
+    available: catalogAvailable,
+    path: catalogPath,
+  }
+  return {
+    available: true,
+    ok: rows.length === STUDIO_BRAND.packages.length && rows.every((row) => row.ok) && template.ok && templateLogos.ok && catalog.ok,
+    packages: rows,
+    template,
+    templateLogos,
+    catalog,
+  }
+}
+
+async function replayStudioBrand(root) {
+  await execFileAsync('/bin/bash', [join(root, STUDIO_BRAND.script), root], { maxBuffer: 8 * 1024 * 1024 })
+}
+
 async function installedVersion(root) {
   const manifest = JSON.parse(await readFile(join(root, 'install/node_modules/@deepseek-ai/dsh/package.json'), 'utf8'))
   return String(manifest.version || '')
@@ -78,7 +228,7 @@ export async function atomicWrite(target, content) {
   }
 }
 
-export async function replayCustomUiPatches({ root = scriptRoot, apply = false, writer = atomicWrite } = {}) {
+export async function replayCustomUiPatches({ root = scriptRoot, apply = false, writer = atomicWrite, studioRunner = replayStudioBrand } = {}) {
   const normalizedRoot = resolve(root)
   const version = await installedVersion(normalizedRoot)
   if (version !== BASELINE_VERSION) {
@@ -163,10 +313,31 @@ export async function replayCustomUiPatches({ root = scriptRoot, apply = false, 
     sourceSha256: sha256(source),
     targetSha256: apply ? sha256(source) : sha256(target),
   }))
-  const clean = rows.every((row) => row.matches)
+  let studioBrand = await inspectStudioBrand(normalizedRoot)
+  let studioApplied = false
+  if (apply && studioBrand.available && !studioBrand.ok) {
+    try {
+      await studioRunner(normalizedRoot)
+      studioBrand = await inspectStudioBrand(normalizedRoot)
+      studioApplied = studioBrand.ok
+    } catch (error) {
+      return {
+        ok: false,
+        status: 'failed',
+        code: 'STUDIO_BRAND_REPLAY_FAILED',
+        error: String(error?.message || error),
+        baselineVersion: BASELINE_VERSION,
+        installedVersion: version,
+        apply: true,
+        patches: rows,
+        studioBrand,
+      }
+    }
+  }
+  const clean = rows.every((row) => row.matches) && studioBrand.ok
   return {
     ok: clean,
-    status: clean ? (rows.some((row) => row.applied) ? 'applied' : 'clean') : 'drift',
+    status: clean ? (rows.some((row) => row.applied) || studioApplied ? 'applied' : 'clean') : 'drift',
     baselineVersion: BASELINE_VERSION,
     installedVersion: version,
     apply,
@@ -177,7 +348,7 @@ export async function replayCustomUiPatches({ root = scriptRoot, apply = false, 
       missingMarkers: [],
       hashMatches: true,
     },
-    studioReplay: 'custom-ui-patches/dsh-idesign-ippt-studio/replay-brand.sh',
+    studioBrand,
   }
 }
 

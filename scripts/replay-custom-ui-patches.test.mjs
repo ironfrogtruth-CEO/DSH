@@ -7,8 +7,10 @@ import {
   atomicWrite,
   BASELINE_VERSION,
   PATCHES,
+  STUDIO_BRAND,
   SUBAGENT_ARCHIVE_MARKERS,
   SUBAGENT_ARCHIVE_SNAPSHOT,
+  inspectStudioBrand,
   replayCustomUiPatches,
   validateSubagentArchiveSnapshot,
 } from './replay-custom-ui-patches.mjs'
@@ -26,6 +28,18 @@ function fixture(version = BASELINE_VERSION) {
     cpSync(join(repoRoot, row.source), join(root, row.target))
   }
   return root
+}
+
+function seedStudioLogoContract(root) {
+  const source = join(root, STUDIO_BRAND.templateLogos.source)
+  mkdirSync(resolve(source, '..'), { recursive: true })
+  writeFileSync(source, '<svg width="281" height="298" viewBox="0 0 281 298"></svg>')
+  for (const relativeRoot of STUDIO_BRAND.templateLogos.roots) {
+    const template = join(root, relativeRoot, 'fixture-template')
+    mkdirSync(join(template, 'assets'), { recursive: true })
+    writeFileSync(join(template, 'assets/ipollowork-logo.svg'), readFileSync(source))
+    writeFileSync(join(template, 'entry.html'), `<img src="assets/ipollowork-logo.svg?${STUDIO_BRAND.templateLogos.cacheToken}">`)
+  }
 }
 
 test('locked baseline reports clean and atomically repairs reviewed drift', async () => {
@@ -52,6 +66,74 @@ test('shrimp-shell locked snapshot participates in startup replay', () => {
     source: 'custom-ui-patches/shrimp-shell/client.js.modified',
     target: 'extensions/shrimp-shell/client.js',
   })
+})
+
+test('Studio brand contract keeps the original icon and restores only the reviewed titles and byline', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-studio-brand-'))
+  try {
+    for (const spec of STUDIO_BRAND.packages) {
+      const dist = join(root, 'profiles/web/node_modules', spec.packageName, 'studio/dist')
+      mkdirSync(join(dist, 'assets'), { recursive: true })
+      writeFileSync(join(dist, 'index.html'), '<script type="module" src="./assets/index-test.js"></script>')
+      writeFileSync(join(dist, 'assets/index-test.js'), `const value={branding:{kind:"${spec.kind}",title:"${spec.title}",byline:"by ShrimpTank"}}; const marker="${spec.previewRefreshMarker}"; const cover="${spec.coverVersionMarker} ${spec.coverRequestVersionMarker}";`)
+    }
+    for (const file of STUDIO_BRAND.template.files) {
+      const source = join(root, STUDIO_BRAND.template.source, file)
+      const target = join(root, STUDIO_BRAND.template.target, file)
+      mkdirSync(resolve(source, '..'), { recursive: true })
+      mkdirSync(resolve(target, '..'), { recursive: true })
+      writeFileSync(source, `template fixture ${file}`)
+      writeFileSync(target, `template fixture ${file}`)
+    }
+    const catalog = join(root, STUDIO_BRAND.catalog.path)
+    mkdirSync(resolve(catalog, '..'), { recursive: true })
+    writeFileSync(catalog, `const ids=[${STUDIO_BRAND.catalog.marker}]; const headers={${STUDIO_BRAND.catalog.coverCacheMarker}};`)
+    seedStudioLogoContract(root)
+    const result = await inspectStudioBrand(root)
+    assert.equal(result.available, true)
+    assert.equal(result.ok, true)
+    assert.equal(result.packages.length, 2)
+    assert.equal(result.templateLogos.files.length, 4)
+    const firstLogo = result.templateLogos.files[0].logoPath
+    writeFileSync(firstLogo, '<svg width="963" height="984" viewBox="0 0 963 984"></svg>')
+    const drift = await inspectStudioBrand(root)
+    assert.equal(drift.ok, false)
+    assert.equal(drift.templateLogos.files.find((file) => file.logoPath === firstLogo).logoMatches, false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('Studio brand contract blocks a branded bundle that cannot be parsed', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-studio-syntax-'))
+  try {
+    for (const spec of STUDIO_BRAND.packages) {
+      const dist = join(root, 'profiles/web/node_modules', spec.packageName, 'studio/dist')
+      mkdirSync(join(dist, 'assets'), { recursive: true })
+      writeFileSync(join(dist, 'index.html'), '<script type="module" src="./assets/index-test.js"></script>')
+      writeFileSync(join(dist, 'assets/index-test.js'), `const value={branding:{kind:"${spec.kind}",title:"${spec.title}",byline:"by ShrimpTank"}}; const marker="${spec.previewRefreshMarker}"; const cover="${spec.coverVersionMarker} ${spec.coverRequestVersionMarker}";`)
+    }
+    const broken = join(root, 'profiles/web/node_modules/deepseek-ippt/studio/dist/assets/index-test.js')
+    const slidesSpec = STUDIO_BRAND.packages.find((spec) => spec.packageName === 'deepseek-ippt')
+    writeFileSync(broken, `const value={branding:{kind:"slides",title:"皮皮虾",byline:"by ShrimpTank"}}; const marker="${slidesSpec.previewRefreshMarker}"; const cover="${slidesSpec.coverVersionMarker} ${slidesSpec.coverRequestVersionMarker}"; const broken = true &&;`)
+    for (const file of STUDIO_BRAND.template.files) {
+      const source = join(root, STUDIO_BRAND.template.source, file)
+      const target = join(root, STUDIO_BRAND.template.target, file)
+      mkdirSync(resolve(source, '..'), { recursive: true })
+      mkdirSync(resolve(target, '..'), { recursive: true })
+      writeFileSync(source, `template fixture ${file}`)
+      writeFileSync(target, `template fixture ${file}`)
+    }
+    const catalog = join(root, STUDIO_BRAND.catalog.path)
+    mkdirSync(resolve(catalog, '..'), { recursive: true })
+    writeFileSync(catalog, `const ids=[${STUDIO_BRAND.catalog.marker}]; const headers={${STUDIO_BRAND.catalog.coverCacheMarker}};`)
+    seedStudioLogoContract(root)
+    const result = await inspectStudioBrand(root)
+    assert.equal(result.ok, false)
+    assert.equal(result.packages.find((row) => row.packageName === 'deepseek-ippt').syntaxOk, false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('apply rolls back earlier bundle writes when a later write fails', async () => {

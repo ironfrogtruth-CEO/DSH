@@ -70,12 +70,6 @@ $MODEL_RUNTIME"
   exit 1
 fi
 
-if ! /usr/local/bin/ollama show cybermarcus:latest >/dev/null 2>&1; then
-  say_err "未找到 CyberMarcus 本地模型别名，请打开终端重新运行本地配置：
-$CONFIG_SCRIPT"
-  exit 1
-fi
-
 /usr/bin/open -a Hermes
 
 sleep 3

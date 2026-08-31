@@ -12,6 +12,7 @@ import {
   createAvengersRequestListener,
   detachedBackgroundReason,
   effectiveAgentPreset,
+  nextAvengersReasoningEffort,
   shrimpRunApiBypassReason,
   ToolPolicy,
 } from './index.js'
@@ -151,18 +152,129 @@ test('Avengers parent can inspect policy and shrimp state but cannot execute bas
   assert.equal(avengersParentToolDecision({ agent: child, name: 'bash' }), undefined)
 })
 
-test('Avengers child requests are fixed to GLM Flash Medium without changing parent or CyberMarcus', async () => {
-  const listener = createAvengersRequestListener()
-  const inherited = { provider: 'deepseek-official', model: 'deepseek-v4-pro', reasoningEffort: 'high', maxTokens: 12_345 }
-  const child = await listener({ agent: agent('avengers', { origin: 'subagent', delegationDepth: 1 }) }, async () => inherited)
-  assert.deepEqual(child, {
-    provider: 'zhipu-glm',
-    model: 'glm-5.3-flash',
-    reasoningEffort: 'medium',
-    maxTokens: 12_345,
+function routeAgent({ preset = 'avengers', role = 'child', parentSession = 'parent-session' } = {}) {
+  const isChild = role === 'child'
+  return agent(
+    preset,
+    { origin: isChild ? 'subagent' : 'parent', delegationDepth: isChild ? 1 : 0 },
+    [],
+    { id: `${role}-session`, parentSession },
+  )
+}
+
+function goalStateStore(classification) {
+  return { async load(sessionId) { return { sessionId, classification } } }
+}
+
+function modelResolver(efforts, calls = []) {
+  return {
+    async resolveModelInfo(provider, model) {
+      calls.push({ provider, model })
+      return efforts === null ? {} : { reasoning: { efforts } }
+    },
+  }
+}
+
+test('Avengers simple child inherits the fully resolved parent request unchanged', async () => {
+  const calls = []
+  const listener = createAvengersRequestListener({
+    stateStore: goalStateStore('simple_direct'),
+    llm: modelResolver([{ id: 'off' }, { id: 'low' }, { id: 'medium' }, { id: 'high' }], calls),
   })
-  assert.equal(await listener({ agent: agent('avengers') }, async () => inherited), inherited)
-  assert.equal(await listener({ agent: agent('reliable-development') }, async () => inherited), inherited)
+  const inherited = { provider: 'ollama-local', model: 'cybermarcus:latest', reasoningEffort: 'low', maxTokens: 12_345, temperature: 0.2 }
+  const child = await listener({ agent: routeAgent() }, async () => inherited)
+  assert.deepEqual(child, inherited)
+  assert.deepEqual(calls, [])
+})
+
+test('Avengers complex child raises reasoning exactly one actual supported level', async () => {
+  const calls = []
+  const listener = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: modelResolver([{ id: 'off' }, { id: 'low' }, { id: 'medium' }, { id: 'high' }, { id: 'max' }], calls),
+  })
+  const inherited = { provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'medium', maxTokens: 12_345, temperature: 0.2 }
+  const child = await listener({ agent: routeAgent() }, async () => inherited)
+  assert.deepEqual(child, { ...inherited, reasoningEffort: 'high' })
+  assert.deepEqual(calls, [{ provider: inherited.provider, model: inherited.model }])
+  assert.equal(inherited.reasoningEffort, 'medium')
+})
+
+test('Avengers complex child can raise from the exact model default when parent omitted an effort', async () => {
+  const listener = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: {
+      async resolveModelInfo() {
+        return { reasoning: { defaultEffort: 'low', efforts: [{ id: 'low' }, { id: 'medium' }, { id: 'high' }] } }
+      },
+    },
+  })
+  const inherited = { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 12_345 }
+  assert.deepEqual(await listener({ agent: routeAgent() }, async () => inherited), { ...inherited, reasoningEffort: 'medium' })
+})
+
+test('Avengers complex child keeps max unchanged', async () => {
+  const listener = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: modelResolver([{ id: 'off' }, { id: 'low' }, { id: 'medium' }, { id: 'high' }, { id: 'max' }]),
+  })
+  const inherited = { provider: 'deepseek-official', model: 'deepseek-v4-pro', reasoningEffort: 'max', maxTokens: 32_768 }
+  assert.deepEqual(await listener({ agent: routeAgent() }, async () => inherited), inherited)
+})
+
+test('Avengers complex child skips unsupported intermediate levels', async () => {
+  assert.equal(nextAvengersReasoningEffort('low', [{ id: 'low' }, { id: 'max' }]), 'max')
+  const listener = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: modelResolver([{ id: 'low' }, { id: 'max' }]),
+  })
+  const inherited = { provider: 'zhipu-glm', model: 'glm-marcus:latest', reasoningEffort: 'low', maxTokens: 4_096 }
+  assert.deepEqual(await listener({ agent: routeAgent() }, async () => inherited), { ...inherited, reasoningEffort: 'max' })
+})
+
+test('Avengers complex child leaves requests unchanged without reasoning or on capability loader failure', async () => {
+  const noReasoning = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: modelResolver(null),
+  })
+  const inherited = { provider: 'deepseek-official', model: 'deepseek-chat', reasoningEffort: 'medium', maxTokens: 8_192 }
+  assert.deepEqual(await noReasoning({ agent: routeAgent() }, async () => inherited), inherited)
+
+  const loaderFailure = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: { async resolveModelInfo() { throw new Error('model loader unavailable') } },
+  })
+  assert.deepEqual(await loaderFailure({ agent: routeAgent() }, async () => inherited), inherited)
+
+  const noEffort = { provider: 'deepseek-official', model: 'deepseek-chat', maxTokens: 8_192 }
+  assert.deepEqual(await noReasoning({ agent: routeAgent() }, async () => noEffort), noEffort)
+})
+
+test('Avengers parent and CyberMarcus requests remain unchanged', async () => {
+  const listener = createAvengersRequestListener({
+    stateStore: goalStateStore('sop_required'),
+    llm: modelResolver([{ id: 'off' }, { id: 'low' }, { id: 'medium' }, { id: 'high' }]),
+  })
+  const inherited = { provider: 'deepseek-official', model: 'deepseek-v4-pro', reasoningEffort: 'medium', maxTokens: 12_345 }
+  assert.deepEqual(await listener({ agent: routeAgent({ role: 'parent' }) }, async () => inherited), inherited)
+  assert.deepEqual(await listener({ agent: routeAgent({ preset: 'reliable-development' }) }, async () => inherited), inherited)
+})
+
+test('apply wires the injected model resolver and shared goal-first store into the Avengers listener', async () => {
+  const listeners = new Map()
+  const ctx = {
+    llm: modelResolver([{ id: 'low' }, { id: 'medium' }, { id: 'high' }]),
+    dshGoalFirstStateMachine: { store: goalStateStore('sop_required') },
+    toolPolicyConfig: { mode: 'observe', operationMode: 'act' },
+    tools: { register() {} },
+    on(event, listener) { listeners.set(event, listener); return () => listeners.delete(event) },
+    effect(factory) { return factory() },
+    provide() {},
+  }
+  await apply(ctx)
+  const inherited = { provider: 'ollama-local', model: 'glm-marcus:latest', reasoningEffort: 'low', maxTokens: 4_096 }
+  const resolved = await listeners.get('agent/request')({ agent: routeAgent() }, async () => inherited)
+  assert.deepEqual(resolved, { ...inherited, reasoningEffort: 'medium' })
 })
 
 test('classifier recognizes built-ins, unknown shell, and ignores content fields', async () => {

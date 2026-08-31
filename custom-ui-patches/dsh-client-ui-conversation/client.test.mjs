@@ -72,6 +72,34 @@ test('conversation flow projects durable child lifecycle into clickable Marvel s
   assert.match(patched, /SubagentStatusRail, \{\n\s*sessionId,\n\s*useSessions,\n\s*openSubagent/)
 })
 
+test('subagent status rail caps at six, prioritizes live children, and supports expand/collapse', async () => {
+  const [patched, installed] = await Promise.all([
+    readFile(patchUrl, 'utf8'),
+    readFile(installedUrl, 'utf8'),
+  ])
+
+  assert.equal(installed, patched)
+  assert.match(patched, /const SUBAGENT_STATUS_RAIL_LIMIT = 6/)
+  assert.match(patched, /case "running": return 0;/)
+  assert.match(patched, /case "waiting": return 1;/)
+  assert.match(patched, /left\.index - right\.index/)
+  assert.match(patched, /const visibleChildren = expanded \? orderedChildren : orderedChildren\.slice\(0, SUBAGENT_STATUS_RAIL_LIMIT\)/)
+  assert.match(patched, /const remaining = Math\.max\(0, orderedChildren\.length - SUBAGENT_STATUS_RAIL_LIMIT\)/)
+  assert.match(patched, /remaining > 0 && .*dsh-subagent-status-more/s)
+  assert.match(patched, /children: expanded \? "收起" : `展开其余 \$\{remaining\} 个`/)
+  assert.match(patched, /onClick: \(\) => setExpanded\(\(value\) => !value\)/)
+	assert.match(patched, /const sessionRef = \(0, react\.useRef\)\(sessionId\)/)
+	assert.match(patched, /setExpanded\(false\)/)
+	assert.doesNotMatch(patched, /关闭子代理即时状态/)
+	assert.doesNotMatch(patched, /setClosed/)
+	assert.doesNotMatch(patched, /dsh-subagent-status-close/)
+  assert.match(patched, /className: "dsh-subagent-status-header"/)
+  assert.match(patched, /children: "子代理即时状态"/)
+  assert.match(patched, /children: `（\$\{orderedChildren\.length\}）`/)
+  assert.match(patched, /\.dsh-subagent-status-control:hover/)
+  assert.match(patched, /\.dsh-subagent-status-control:focus-visible/)
+})
+
 test('conversation exposes a formal session run-status seat above the active chat view', async () => {
   const [patched, installed] = await Promise.all([
     readFile(patchUrl, 'utf8'),

@@ -1,0 +1,34 @@
+大神 2.1.1 完整安装版
+
+一、安装
+1. 打开 DMG。
+2. 把“大神”拖入“应用程序”。
+3. 必须从“应用程序”启动大神，不要直接在 DMG 窗口里打开。
+
+二、首次打开
+本安装包没有 Apple Developer ID 签名。首次打开若被 macOS 阻止：
+1. 先尝试打开一次大神。
+2. 打开“系统设置 → 隐私与安全性”。
+3. 在安全性区域点击“仍要打开”，输入 Mac 登录密码。
+4. 以后可以正常双击启动。
+
+大神首次启动还会询问是否允许内置 Node/DSH 运行。选择“允许并继续”后，程序只会移除当前 `/Applications/大神.app` 的下载隔离标记，不会关闭系统安全功能。
+
+如果内置 Node 仍被拦截，可在终端执行：
+
+    xattr -dr com.apple.quarantine /Applications/大神.app
+
+三、API 配置
+首次启动会显示 API 配置窗口：
+- DeepSeek API Key：基础使用必填。
+- 智谱 API Key：图片、OCR 等扩展能力可选。
+
+密钥只保存在当前 Mac 用户的“应用程序支持/大神”目录，不包含在安装包中。
+
+四、运行时与用户数据
+- Node.js、DeepSeek Harness、预设、Skill、插件和前端资源已经预装。
+- 用户数据保存在“~/Library/Application Support/大神”。
+- 本地大模型权重、第三方账号登录状态和个人历史会话不在安装包内。
+
+五、Intel Mac
+同一安装包同时包含 Apple 芯片和 Intel 运行时。最低支持 macOS 11。
