@@ -54,14 +54,22 @@ Next(下一步):本周要落地的优化
 - **预设改进**(改 `~/.dsh/.agent-presets/reliable-development/preset.yml` 或 `agent.cordis.yml` 的指令/流程)
 - **技能改进**(改 `~/.dsh/skills/reliable-development/SKILL.md` 的流程/检查项)
 
-### 第 5 步:应用(真正落地)
+### 第 5 步:形成结构化提案
 
-1. 先备份要改的文件(`cp xx xx.bak-日期`)
-2. 用 edit 工具应用建议(逐条,每条一次编辑)
-3. 语法/结构检查:preset 用 YAML 校验,skill 检查 Markdown 结构
-4. 写 changelog:在 `~/.dsh/memories/` 记录本次改动
+1. 报告与 `proposal-<日期>.json` 写入 `/Users/marcus/Desktop/output/进无止尽/`。
+2. 每轮最多提出 5 条建议，但无人值守 runner 最多接纳 1 条低权限经验。
+3. headless 分析过程不得直接修改 Git 工作树、commit、push、restart 或注册心跳。
+4. preset、代码、runner、tool-policy、调度、模型、阈值和超时只能作为 `code_candidate` 留在提案，等待正常开发流程。
 
-### 第 6 步:记录周报
+### 第 6 步:runner 白名单回灌
+
+1. runner 在启动前要求仓库干净，并把基线、提示、提案和日志集中备份到 `backups/evolution/<run_id>/`。
+2. 只允许向 `skills/reliable-development/references/verified-weekly-learnings.md` 追加一条不超过 2KB 的经验；旧内容不可修改。
+3. 经验必须包含证据、规则、验证、来源和 commit/失败指纹锚点；降低或绕过真源、权限、QA、回滚门槛的建议一律拒绝。
+4. 回灌后运行 preset verifier、心跳专项和 `git diff --check`；失败恢复基线。
+5. 验证通过后只提交该经验文件，固定本地 commit、永不 push。
+
+### 第 7 步:记录周报
 
 用 `memory_save` 保存 key `reliable-evolution-weekly-<日期>`,内容包括:
 - 本周数据摘要(第 1 步)
@@ -80,6 +88,7 @@ Next(下一步):本周要落地的优化
 ## 注意事项
 
 - 只修改与"可靠开发模式"相关的文件,不触碰用户项目代码
-- 修改 preset/skill 前必须备份;用户不同意某条改进则不应用
-- 每周最多应用 5 条建议,保持改进可追溯
+- 无人值守运行不得直接修改 preset、核心 Skill、代码、权限或调度器
+- 每周最多自动追加 1 条已验证经验；没有合格经验时只记录报告，不制造改动
+- 不再在源文件旁生成 `.bak-日期`；统一使用 run-scoped 集中备份
 - 本技能本身也可以被进化:如发现流程冗余,提出简化建议

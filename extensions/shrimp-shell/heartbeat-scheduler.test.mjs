@@ -210,6 +210,29 @@ test('weekly safe cleanup runner is fixed, bounded, and ignores payload command 
   assert.equal(calls[0].options.cwd, '/Users/marcus/.dsh')
 })
 
+test('reliable evolution runner is fixed and payload cannot inject command or paths', async () => {
+  const spec = heartbeatRunnerSpec('reliable-evolution-weekly')
+  assert.deepEqual(spec, {
+    runner: 'reliable-evolution-weekly',
+    command: '/usr/local/bin/node',
+    args: ['/Users/marcus/.dsh/scripts/weekly-evolution-review.mjs', '--execute'],
+    cwd: '/Users/marcus/.dsh',
+    timeoutMs: 3 * 60 * 60 * 1000,
+  })
+  const calls = []
+  const fakeExecFile = (command, args, options, callback) => {
+    calls.push({ command, args, options })
+    callback(null, '{"status":"reviewed_no_apply","summary":"本期无合格经验"}\n', '')
+  }
+  await executeHeartbeatRunner({
+    runner: 'reliable-evolution-weekly',
+    payload: { command: 'rm -rf /', path: '/', args: ['--unsafe'] },
+  }, { execFileImpl: fakeExecFile })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].command, '/usr/local/bin/node')
+  assert.deepEqual(calls[0].args, ['/Users/marcus/.dsh/scripts/weekly-evolution-review.mjs', '--execute'])
+})
+
 test('legacy browser cron skips disabled and Host-bound heartbeat tasks', async () => {
   const implementation = (await import('node:fs')).readFileSync(new URL('./client.js', import.meta.url), 'utf8')
   assert.match(implementation, /if \(!task \|\| task\.enabled === false\) continue/)

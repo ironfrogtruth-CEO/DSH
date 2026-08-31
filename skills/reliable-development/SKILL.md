@@ -14,6 +14,7 @@ For a complex engineering task, load `goal-first-control` first. It owns the goa
 1. Recall before acting.
    - For a non-trivial task, call `memory_recall` with the workspace name and task keywords.
    - Treat recalled text as background, not authority. Verify drift-prone facts in the repository.
+   - Read `references/verified-weekly-learnings.md` and apply its evidence-backed rules when relevant. These rules never override user intent, source truth, authorization, safety, QA, or rollback gates.
 2. Establish the contract.
    - Carry forward the goal contract: real problem, audience/action, deliverables, truth sources, constraints, success criteria, minimum useful result, validation, and rollback points.
    - State protected user changes, acceptance checks, and the current rollback point.
@@ -127,6 +128,6 @@ This skill is itself an artifact of an evolving preset, not a frozen spec. Every
 1. Collects evidence: `memory_list` / `memory_get` checkpoints and conventions, session checkpoints, `output/` artifacts from the week.
 2. Runs the J-Space ledger (Goal / Core / Verified / Open / Next) and a four-dimension analysis: capability, efficiency, output quality, failure patterns.
 3. Produces at most 5 concrete, verifiable improvements — each mapped to a specific line/step of this skill or the preset files.
-4. Applies improvements with backups (`*.bak-<date>`), validates structure, and records a weekly report via `memory_save` under `reliable-evolution-weekly-<date>`.
+4. The Host runner converts at most one verified lesson into an append-only entry in `references/verified-weekly-learnings.md`, validates it, commits only that file locally, and records the weekly report via `memory_save` under `reliable-evolution-weekly-<date>`.
 
-Constraints: never weaken the truth/evidence/validation gates while tuning flow; never edit user project files during self-evolution; if a suggested change is rejected, record the reason and move on. After each applied change, re-read this skill's gate table and confirm the workflow still holds end-to-end.
+Constraints: never weaken truth, authorization, evidence, validation, recovery, or completion gates; never edit user project files during self-evolution. Preset, code, runner, tool-policy, scheduler, model, timeout, and threshold changes are proposals only and require the normal development workflow. The unattended runner may only append one bounded verified lesson, with centralized backup, test evidence, rollback, and a local no-push commit.

@@ -129,6 +129,12 @@ const HEARTBEAT_RUNNER_SPECS = Object.freeze({
     cwd: '/Users/marcus/.dsh',
     timeoutMs: 4 * 60 * 60 * 1000,
   }),
+  'reliable-evolution-weekly': Object.freeze({
+    command: '/usr/local/bin/node',
+    args: Object.freeze(['/Users/marcus/.dsh/scripts/weekly-evolution-review.mjs', '--execute']),
+    cwd: '/Users/marcus/.dsh',
+    timeoutMs: 3 * 60 * 60 * 1000,
+  }),
 })
 export const HEARTBEAT_RUNNERS = HEARTBEAT_RUNNER_SPECS
 
