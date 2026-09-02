@@ -6,12 +6,17 @@ import {
   createShrimpAuthorizationGate,
   explicitShrimpRunIntent,
   extractShrimpRunId,
+  apply,
   findShrimpPipeline,
   findShrimpTarget,
   normalizeShrimpRunInputs,
+  normalizeShrimpRunUsage,
   normalizeShrimpToolResponse,
   readShrimpRunStandingAuth,
+  resolveSubscriberAgentContext,
   SHRIMP_AUTH_RECEIPT_MAX_AUTH_USES,
+  subscriberRequestHeaders,
+  subscriberToolDenied,
   runShrimpWithReceipt,
   runShrimpWithDedupe,
   ShrimpRunRequestRegistry,
@@ -49,6 +54,173 @@ function assertNoHeartbeatWrites(calls) {
   assert.equal(calls.some((call) => /heartbeat/i.test(call.path)), false)
   assert.equal(calls.some((call) => call.method !== 'GET' && /\/api\/v1\/runs\//.test(call.path)), false)
 }
+
+function subscriberContextFixture() {
+  const assertionInputs = []
+  const service = {
+    resolveSubscriberForSession(sessionId) {
+      return sessionId === 'subscriber-session' ? 'subscriber-a' : null
+    },
+    resolveRuntimePolicy(subscriberId) {
+      return subscriberId === 'subscriber-a'
+        ? { role: 'subscriber', status: 'active', active: true }
+        : null
+    },
+    createSubscriberAssertionForSession(input) {
+      assertionInputs.push(input)
+      return {
+        'X-DSH-Subscriber-Assertion': `assertion-${assertionInputs.length}`,
+        'X-DSH-Subscriber-Signature': `signature-${assertionInputs.length}`,
+      }
+    },
+  }
+  return {
+    service,
+    assertionInputs,
+    ctx: { get: (name) => name === 'dingtalkSubscriptions' ? service : null },
+    subscriber: { id: 'subscriber-agent', session: { id: 'subscriber-session' } },
+    otherSession: { id: 'subscriber-agent', session: { id: 'other-session' } },
+    owner: { id: 'owner-agent', session: { id: 'owner-session' } },
+  }
+}
+
+test('subscriber assertion follows session lineage and never accepts exec argument identity', () => {
+  const fixture = subscriberContextFixture()
+  const resolved = resolveSubscriberAgentContext(fixture.ctx, fixture.subscriber)
+  assert.equal(resolved.subscriber, true)
+  assert.equal(resolved.subscriberId, 'subscriber-a')
+  assert.equal(resolved.sessionId, 'subscriber-session')
+
+  const headers = subscriberRequestHeaders(fixture.ctx, fixture.subscriber, ['pipeline:run'])
+  assert.deepEqual(headers.headers, {
+    'x-dsh-subscriber-assertion': 'assertion-1',
+    'x-dsh-subscriber-signature': 'signature-1',
+  })
+  assert.deepEqual(fixture.assertionInputs, [{ sessionId: 'subscriber-session', scopes: ['pipeline:run'] }])
+
+  const isolated = subscriberRequestHeaders(fixture.ctx, fixture.otherSession, ['pipeline:run'])
+  assert.equal(isolated.subscriber, false)
+  assert.deepEqual(isolated.headers, {})
+})
+
+test('只有 agentId 时先由 core session lineage 解析 sessionId，不从机器人列表猜账户', () => {
+  const fixture = subscriberContextFixture()
+  const resolvedSessions = []
+  fixture.service.resolveSessionForAgent = (agentId) => {
+    resolvedSessions.push(agentId)
+    return agentId === 'subscriber-agent' ? 'subscriber-session' : null
+  }
+  const agentOnly = { id: 'subscriber-agent', session: { events: [] } }
+  const headers = subscriberRequestHeaders(fixture.ctx, agentOnly, ['pipeline:run'])
+  assert.equal(headers.subscriber, true)
+  assert.equal(headers.sessionId, 'subscriber-session')
+  assert.deepEqual(resolvedSessions, ['subscriber-agent'])
+  assert.deepEqual(fixture.assertionInputs, [{ sessionId: 'subscriber-session', scopes: ['pipeline:run'] }])
+})
+
+test('owner path remains unchanged and subscriber discovery/creation tools are denied', () => {
+  const fixture = subscriberContextFixture()
+  assert.deepEqual(subscriberRequestHeaders(fixture.ctx, fixture.owner, ['pipeline:run']), { subscriber: false, headers: {} })
+  assert.equal(subscriberToolDenied(fixture.ctx, fixture.owner, 'shrimp_list'), null)
+  assert.equal(subscriberToolDenied(fixture.ctx, fixture.owner, 'shrimp_create_draft'), null)
+  assert.equal(subscriberToolDenied(fixture.ctx, fixture.subscriber, 'shrimp_list').code, 'SUBSCRIBER_TOOL_NOT_ALLOWED')
+  assert.equal(subscriberToolDenied(fixture.ctx, fixture.subscriber, 'shrimp_match').blocked, true)
+  assert.equal(subscriberToolDenied(fixture.ctx, fixture.subscriber, 'shrimp_knowledge_search').blocked, true)
+  assert.equal(subscriberToolDenied(fixture.ctx, fixture.subscriber, 'shrimp_create_draft').blocked, true)
+})
+
+test('shrimp_run 为 subscriber 注入 session assertion 并保持 owner 请求不带订阅身份', async () => {
+  const fixture = subscriberContextFixture()
+  const registered = new Map()
+  const calls = []
+  const context = {
+    get: fixture.ctx.get,
+    effect() {},
+    on() {},
+    inject() {},
+    webServer: { register() {} },
+    tools: {
+      register(definition) {
+        registered.set(definition.name, definition)
+        return () => {}
+      },
+    },
+  }
+  apply(context)
+  const runTool = registered.get('shrimp_run')
+  const listTool = registered.get('shrimp_list')
+  assert.ok(runTool)
+  assert.ok(listTool)
+
+  const originalFetch = globalThis.fetch
+  try {
+    globalThis.fetch = async (input, options = {}) => {
+      const url = new URL(String(input))
+      const headers = Object.fromEntries(Object.entries(options.headers || {}).map(([key, value]) => [String(key).toLowerCase(), String(value)]))
+      calls.push({ method: String(options.method || 'GET'), path: url.pathname, headers })
+      let payload
+      if (url.pathname.endsWith('/pipelines/subscriber-pipeline/runs')) {
+        payload = { ok: true, run_id: 'run-subscriber' }
+      } else if (url.pathname.endsWith('/runs/run-subscriber/summary')) {
+        payload = { ok: true, data: { id: 'run-subscriber', status: 'done', tokens_total: 17 } }
+      } else if (url.pathname.endsWith('/runs/run-subscriber/artifacts')) {
+        payload = { ok: true, data: { total: 0, items: [] } }
+      } else if (url.pathname.endsWith('/pipelines/owner-pipeline/runs')) {
+        payload = { ok: true, run_id: 'run-owner' }
+      } else if (url.pathname.endsWith('/runs/run-owner/summary')) {
+        payload = { ok: true, data: { id: 'run-owner', status: 'done', tokens_total: 19 } }
+      } else if (url.pathname.endsWith('/runs/run-owner/artifacts')) {
+        payload = { ok: true, data: { total: 0, items: [] } }
+      } else {
+        payload = { ok: true, data: { items: [] } }
+      }
+      return new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    const subscriberResult = await runTool.execute({
+      pipelineSlug: 'subscriber-pipeline',
+      payload: { topic: 'subscriber-only' },
+      confirm: true,
+    }, { agent: fixture.subscriber })
+    assert.equal(subscriberResult.run_id, 'run-subscriber')
+    assert.deepEqual(subscriberResult.usage, { total_tokens: 17 })
+    const subscriberCalls = calls.splice(0)
+    assert.deepEqual(subscriberCalls.map((call) => [call.method, call.path]), [
+      ['POST', '/api/v1/pipelines/subscriber-pipeline/runs'],
+      ['GET', '/api/v1/runs/run-subscriber/summary'],
+      ['GET', '/api/v1/runs/run-subscriber/artifacts'],
+    ])
+    for (const call of subscriberCalls) {
+      assert.equal(call.headers['x-dsh-subscriber-assertion'].startsWith('assertion-'), true)
+      assert.equal(call.headers['x-dsh-subscriber-signature'].startsWith('signature-'), true)
+    }
+    assert.deepEqual(fixture.assertionInputs, [
+      { sessionId: 'subscriber-session', scopes: ['pipeline:run'] },
+      { sessionId: 'subscriber-session', scopes: ['run:read'] },
+      { sessionId: 'subscriber-session', scopes: ['run:read', 'artifact:read'] },
+    ])
+
+    const denied = await listTool.execute({ group: 'all' }, { agent: fixture.subscriber })
+    assert.equal(denied.code, 'SUBSCRIBER_TOOL_NOT_ALLOWED')
+    assert.equal(calls.length, 0, 'subscriber discovery must be denied before tank fetch')
+
+    const ownerResult = await runTool.execute({
+      pipelineSlug: 'owner-pipeline',
+      payload: { topic: 'owner-only' },
+      confirm: true,
+    }, { agent: fixture.owner })
+    assert.equal(ownerResult.run_id, 'run-owner')
+    assert.deepEqual(calls.map((call) => [call.method, call.path]), [
+      ['POST', '/api/v1/pipelines/owner-pipeline/runs'],
+      ['GET', '/api/v1/runs/run-owner/summary'],
+      ['GET', '/api/v1/runs/run-owner/artifacts'],
+    ])
+    assert.equal(calls.some((call) => call.headers['x-dsh-subscriber-assertion']), false)
+    assert.equal(calls.some((call) => call.headers['x-dsh-subscriber-signature']), false)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
 
 test('tank tool normalizes structured API errors without losing details or transport status', async () => {
   const envelope = normalizeShrimpToolResponse({
@@ -250,6 +422,21 @@ test('0 秒查询仍立即读取一次；已是终态正常返回，运行中则
   assert.equal(running.still_running, true)
   assert.equal(runningCalls.filter((call) => call.path.endsWith('/summary')).length, 1)
   assertNoHeartbeatWrites([...terminalCalls, ...runningCalls])
+})
+
+test('终态回执把虾缸 tokens_total/total_tokens 归一为 DSH usage.total_tokens', async () => {
+  assert.deepEqual(normalizeShrimpRunUsage({ data: { tokens_total: '123' } }), { total_tokens: 123 })
+  assert.deepEqual(normalizeShrimpRunUsage({ data: { usage: { total_tokens: 0 } } }), { total_tokens: 0 })
+  assert.equal(normalizeShrimpRunUsage({ data: { tokens_total: -1 } }), null)
+  assert.equal(normalizeShrimpRunUsage({ data: {} }), null)
+
+  const receipt = await runShrimpWithReceipt({
+    launch: async () => ({ ok: true, run_id: 'run-usage-normalized' }),
+    readSummary: async () => ({ ok: true, data: { id: 'run-usage-normalized', status: 'done', tokens_total: 321 } }),
+    readArtifacts: async () => ({ ok: true, data: { total: 0, items: [] } }),
+    timeoutMs: 0,
+  })
+  assert.deepEqual(receipt.usage, { total_tokens: 321 })
 })
 
 test('shrimp_run 工具合同要求回执且不提供裸 curl 或心跳写入口', () => {

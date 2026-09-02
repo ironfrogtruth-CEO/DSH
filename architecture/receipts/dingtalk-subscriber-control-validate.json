@@ -1,0 +1,34 @@
+{
+  "schema": "production_receipt.v1",
+  "node": "validate",
+  "status": "in_progress",
+  "inputs": ["generated DSH and ShrimpTank artifacts"],
+  "outputs": {
+    "dsh_focused_tests": "74/74 passed",
+    "dsh_regression": "60 test files passed",
+    "shrimptank_subscriber_and_recovery_tests": "12/12 passed",
+    "shrimptank_full_unit_first_pass": "656 passed; 9 failed; one subscription-caused compatibility failure fixed, two timing failures passed on isolated rerun, six unrelated pre-existing UI/run-compaction failures remain",
+    "host_status": "sqlite wal, native admin required, one pending subscriber, zero subscriber robot accounts, owner Stream connected",
+    "shrimptank_status": "health.v1 ok",
+    "calendar_outbox": "completed",
+    "ui_acceptance": [
+      "sidebar has only one DingTalk entry",
+      "DingTalk dialog contains native-only subscription entry",
+      "subscription dialog has five sections and back navigation",
+      "subscriber page reports missing robot credentials instead of false binding success",
+      "catalog exposes modes, safe workspaces, four metered models, five reasoning levels and four shrimps",
+      "authorization and default selection share one panel",
+      "quota is displayed as 1 万 Token with raw-token accounting",
+      "no invalid_native_admin_request",
+      "no visible overflow in the real native app"
+    ]
+  },
+  "validation": ["real Host restart", "real ShrimpTank restart", "real native WebKit interaction"],
+  "limits": [
+    "A real subscriber QR was scanned before the persistence repair; DingTalk created a default DeepSeek 助手 robot but DSH received no durable credentials, so it is not bound and cannot reply.",
+    "The repaired registration path still needs one real rescan, brand setup, private-chat confirmation and message round-trip before external acceptance.",
+    "The official Device Registration Flow returns credentials but no unifiedAppId or brand fields; brand setup is therefore an explicit blocking step."
+  ],
+  "recovery": "Keep the existing subscriber pending; do not activate or grant production access until the repaired rescan and private-chat acceptance pass.",
+  "lineage": "dingtalk-subscriber-control.v1"
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "production_receipt.v1",
+  "node": "structure",
+  "status": "completed",
+  "inputs": ["dingtalk-subscriber-control-parse.json"],
+  "outputs": {
+    "contract": "/Users/marcus/.dsh/architecture/dingtalk-subscriber-control.v1.json",
+    "sha256": "b3c7b6f4236bb1713579f724ebc4c96c4ae775fb003826405b0d4fa5403ed569",
+    "nodes": 7
+  },
+  "validation": ["contract validator passed"],
+  "recovery": "Preserve the confirmed contract and regenerate only affected downstream nodes.",
+  "lineage": "dingtalk-subscriber-control.v1"
+}

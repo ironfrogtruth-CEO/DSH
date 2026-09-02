@@ -18,6 +18,9 @@ let ENSURE_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/en
 let STOP_SCRIPT = (("~" as NSString).expandingTildeInPath) + "/.dsh/scripts/disable-host"
 let BACKGROUND_LAUNCH_SENTINEL = NSHomeDirectory() + "/.dsh/private/background-launch"
 let BACKGROUND_LAUNCH_MAX_AGE: TimeInterval = 5 * 60
+let DINGTALK_SUBSCRIPTION_ADMIN_TOKEN = NSHomeDirectory() + "/.dsh/private/dingtalk-subscriptions/native-admin-token"
+let DINGTALK_SUBSCRIPTION_ADMIN_PATH = "/api/dsh-dingtalk/subscriptions/admin"
+let DINGTALK_SUBSCRIPTION_ADMIN_MAX_RESPONSE_BYTES = 1_048_576
 
 // 速记员的桥接合同固定输出 16 kHz / mono / signed little-endian PCM16。
 let STENOGRAPHER_SAMPLE_RATE: Double = 16_000
@@ -943,7 +946,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let config = WKWebViewConfiguration()
         // 只在原生客户端标记 macOS 窗口安全区；普通浏览器不改动布局。
         let desktopMarker = WKUserScript(
-            source: "document.documentElement.dataset.shrimpDesktop = 'true'",
+            source: "document.documentElement.dataset.shrimpDesktop = 'true'; document.documentElement.dataset.dashenNativeAdmin = 'true'; window.__dshNativeAdminAvailable = true",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )
@@ -956,6 +959,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         webView.configuration.userContentController.add(self, name: "shrimpVoice")
         // 原生↔Web 速记员桥: start/pause/resume/stop JSON
         webView.configuration.userContentController.add(self, name: "stenographer")
+        // 钉钉订阅管理桥：只有大神.app拥有；普通浏览器没有这个message handler。
+        // Native读取私有token并代发本机请求，token绝不进入JavaScript。
+        webView.configuration.userContentController.add(self, name: "dingtalkSubscriptionAdmin")
         stenographerController = StenographerController { [weak self] payload in
             self?.notifyStenographerEvent(payload)
         }
@@ -1149,8 +1155,128 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             micPressed()
         case "stenographer":
             stenographerController?.handleMessage(message.body)
+        case "dingtalkSubscriptionAdmin":
+            handleDingTalkSubscriptionAdmin(message)
         default:
             return
+        }
+    }
+
+    private let dingtalkSubscriptionAdminActions: Set<String> = [
+        "subscriber.list", "subscriber.create", "subscriber.update", "subscriber.suspend", "subscriber.resume", "subscriber.revoke",
+        "robot.register", "robot.list", "robot.brand",
+        "workspace.create", "workspace.host-create", "workspace.list", "workspace.share", "workspace.grant", "workspace.revoke",
+        "entitlement.grant", "entitlement.revoke", "entitlement.list",
+        "selection.set", "selection.list",
+        "binding.begin", "binding.complete", "binding.consume",
+        "quota.status", "quota.reset",
+        "registration.begin", "registration.status", "registration.cancel",
+        "catalog.list",
+        "holiday.get", "holiday.upsert", "audit.list", "outbox.list"
+    ]
+
+    /// Receive one native-only subscription administration action.  The Web
+    /// payload is deliberately small and untrusted; the Host remains the owner
+    /// of schema validation, authorization, state and audit receipts.
+    func handleDingTalkSubscriptionAdmin(_ message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame,
+              let currentURL = webView?.url,
+              isInternalURL(currentURL),
+              let body = parseNativeAdminDictionary(message.body),
+              let requestId = body["requestId"] as? String,
+              requestId.range(of: #"^[A-Za-z0-9._:-]{1,128}$"#, options: .regularExpression) != nil,
+              let action = body["action"] as? String,
+              dingtalkSubscriptionAdminActions.contains(action) else {
+            notifyDingTalkSubscriptionAdmin([
+                "requestId": (parseNativeAdminDictionary(message.body)?["requestId"] as? String) ?? "",
+                "ok": false,
+                "error": "invalid_native_admin_request"
+            ])
+            return
+        }
+        let payload = body["payload"] as? [String: Any] ?? [:]
+        guard JSONSerialization.isValidJSONObject(payload),
+              let token = try? String(contentsOfFile: DINGTALK_SUBSCRIPTION_ADMIN_TOKEN, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+              (32...512).contains(token.count),
+              let endpoint = URL(string: UI_URL + DINGTALK_SUBSCRIPTION_ADMIN_PATH) else {
+            notifyDingTalkSubscriptionAdmin([
+                "requestId": requestId,
+                "ok": false,
+                "error": "native_admin_capability_unavailable"
+            ])
+            return
+        }
+        let envelope: [String: Any] = [
+            "requestId": requestId,
+            "action": action,
+            "payload": payload
+        ]
+        guard let requestBody = try? JSONSerialization.data(withJSONObject: envelope) else {
+            notifyDingTalkSubscriptionAdmin([
+                "requestId": requestId,
+                "ok": false,
+                "error": "invalid_native_admin_payload"
+            ])
+            return
+        }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(token, forHTTPHeaderField: "X-Dashen-Native-Admin")
+        request.httpBody = requestBody
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 20
+        configuration.timeoutIntervalForResource = 30
+        URLSession(configuration: configuration).dataTask(with: request) { [weak self] data, response, error in
+            var result: [String: Any] = ["requestId": requestId, "ok": false]
+            if let error = error {
+                result["error"] = "native_admin_transport_error"
+                result["message"] = String(error.localizedDescription.prefix(400))
+            } else if let http = response as? HTTPURLResponse {
+                result["status"] = http.statusCode
+                if let data = data, data.count <= DINGTALK_SUBSCRIPTION_ADMIN_MAX_RESPONSE_BYTES,
+                   let decoded = try? JSONSerialization.jsonObject(with: data),
+                   let dictionary = decoded as? [String: Any] {
+                    let succeeded = (200..<300).contains(http.statusCode) && (dictionary["ok"] as? Bool ?? true)
+                    result["ok"] = succeeded
+                    if succeeded {
+                        result["data"] = dictionary["data"] ?? dictionary
+                    } else {
+                        result["code"] = dictionary["code"] ?? "NATIVE_ADMIN_FAILED"
+                        result["error"] = dictionary["error"] ?? "大神原生管理操作失败"
+                    }
+                } else {
+                    result["error"] = data?.count ?? 0 > DINGTALK_SUBSCRIPTION_ADMIN_MAX_RESPONSE_BYTES
+                        ? "native_admin_response_too_large"
+                        : "native_admin_invalid_response"
+                }
+            } else {
+                result["error"] = "native_admin_no_response"
+            }
+            self?.notifyDingTalkSubscriptionAdmin(result)
+        }.resume()
+    }
+
+    private func parseNativeAdminDictionary(_ body: Any) -> [String: Any]? {
+        if let dictionary = body as? [String: Any] { return dictionary }
+        if let string = body as? String,
+           let data = string.data(using: .utf8),
+           data.count <= 262_144,
+           let value = try? JSONSerialization.jsonObject(with: data),
+           let dictionary = value as? [String: Any] { return dictionary }
+        return nil
+    }
+
+    func notifyDingTalkSubscriptionAdmin(_ payload: [String: Any]) {
+        guard JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let js = "window.__dshDingTalkSubscriptionAdminResult && window.__dshDingTalkSubscriptionAdminResult(\(json))"
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript(js) { _, _ in }
         }
     }
 

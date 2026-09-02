@@ -1,0 +1,187 @@
+{
+  "schema": "cybermarcus_work_contract.v1",
+  "contract_id": "dingtalk-subscriber-control.v1",
+  "status": "confirmed",
+  "goal_contract": {
+    "problem": "把大神钉钉连接器升级为由唯一管理员控制、每名订阅者拥有独立机器人且权限和额度硬隔离的生产系统。",
+    "audience_action": "管理员在原生大神.app内创建和管理订阅者；订阅者仅在自己的钉钉私聊中使用获授权能力。",
+    "deliverables": [
+      "独立订阅控制服务与原生管理面板",
+      "可热加载的多机器人钉钉运行时",
+      "逐订阅者工作区、模式、模型、推理强度、虾和Token权限",
+      "虾缸订阅身份与逐虾运行授权",
+      "自动化、集成、真实UI与运行验收证据"
+    ],
+    "minimum_deliverable": "不影响当前管理员机器人前提下，完成一个测试订阅者的独立机器人、私聊绑定、专属工作区、权限、工作日日历和Token硬门禁。"
+  },
+  "source_contract": {
+    "truth_sources": [
+      "本合同所对应的用户确认实施计划",
+      "/Users/marcus/.dsh/profiles/web/patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch",
+      "/Users/marcus/.dsh/extensions/dsh-dingtalk-status",
+      "/Users/marcus/.dsh/extensions/dsh-tool-policy",
+      "/Users/marcus/Desktop/虾缸/backend/domain/identity.py",
+      "/Users/marcus/Desktop/虾缸/backend/api/routers/v2.py",
+      "国务院办公厅2026年部分节假日安排的通知"
+    ],
+    "derived_outputs": [
+      "订阅数据库",
+      "机器人账户状态",
+      "授权映射",
+      "额度回执",
+      "QA与交付清单"
+    ],
+    "debug_notes": [],
+    "pollution_risks": [
+      "把现有allowedSenders误当订阅系统",
+      "把钉钉机器人owner误当大神system_owner",
+      "把工作区UI范围误当文件系统安全边界",
+      "把本地测试通过误报为真实钉钉交付",
+      "把周末一律禁用而忽略调休工作日",
+      "把虾别名匹配误用于订阅者精确授权"
+    ],
+    "knowledge_versions": [
+      "@dingtalk-real-ai/dsh-dingtalk@0.6.2",
+      "dingtalk-subscriber-control.v1",
+      "国务院办公厅2026节假日通知"
+    ]
+  },
+  "output_contract": {
+    "language": "zh-CN",
+    "admin_surface": "大神.app only",
+    "subscriber_surface": "DingTalk direct chat only",
+    "robot_tenancy": "one subscriber, one robot",
+    "robot_brand": {
+      "applies_to": "future subscriber robots only",
+      "name": "大神",
+      "description": "大神｜Visible Workflow. Reliable Intelligence.",
+      "logo": "transparent borderless ShrimpTank mark with orange dot"
+    },
+    "forbidden": [
+      "订阅者读取或修改大神本体",
+      "订阅者读取模式、配置、Skill、插件或虾定义",
+      "订阅者创建或安装新能力",
+      "群聊使用",
+      "虾清单、搜索、推荐、别名或slug调用",
+      "非工作日任务执行",
+      "钉钉端额度重置"
+    ]
+  },
+  "production_blueprint": {
+    "task_mode": "one_off_complex",
+    "nodes": [
+      {
+        "node_id": "route",
+        "goal": "冻结目标、授权、现有运行态和回退边界。",
+        "dependencies": [],
+        "inputs": ["用户确认计划", "双仓状态", "3080/7843运行态"],
+        "outputs": ["工作合同", "基线清单"],
+        "source_refs": ["goal-first-control", "three-provinces-six-ministries"],
+        "ability_bindings": {"skills": ["goal-first-control", "three-provinces-six-ministries", "plan-before-action", "sop-orchestrator"]},
+        "artifact_contract": {"schema": "cybermarcus_work_contract.v1"},
+        "qa_gate": {"checks": ["双仓无未识别脏改", "管理员机器人与现有监听已记录"]},
+        "rollback_to": null
+      },
+      {
+        "node_id": "parse",
+        "goal": "核对连接器、工作区、沙箱、Token和虾缸权限真源。",
+        "dependencies": ["route"],
+        "inputs": ["现有源码和运行配置"],
+        "outputs": ["source_map", "interface_map"],
+        "source_refs": [".dsh", "ShrimpTank"],
+        "ability_bindings": {"tools": ["rg", "node", "python"]},
+        "artifact_contract": {"type": "process_artifact"},
+        "qa_gate": {"checks": ["真源与派生状态分离", "跨仓接口责任明确"]},
+        "rollback_to": "route"
+      },
+      {
+        "node_id": "structure",
+        "goal": "锁定订阅状态机、数据结构、接口、额度和安全策略。",
+        "dependencies": ["parse"],
+        "inputs": ["工作合同", "source_map"],
+        "outputs": ["schema_contract", "runtime_contract", "security_contract"],
+        "source_refs": ["用户确认计划"],
+        "ability_bindings": {"model": "gpt-5.6-sol", "workers": "luna_worker"},
+        "artifact_contract": {"type": "implementation_contract"},
+        "qa_gate": {"checks": ["实现者无需补产品决策", "管理员和订阅者职责不混淆"]},
+        "rollback_to": "parse"
+      },
+      {
+        "node_id": "generate",
+        "goal": "实现大神、连接器、原生面板和虾缸跨仓功能。",
+        "dependencies": ["structure"],
+        "inputs": ["schema_contract", "runtime_contract", "security_contract"],
+        "outputs": ["runnable_code", "focused_tests", "brand_asset"],
+        "source_refs": [".dsh", "ShrimpTank"],
+        "ability_bindings": {"model": "gpt-5.6-luna", "role": "luna_worker"},
+        "artifact_contract": {"type": "source_and_tests"},
+        "qa_gate": {"checks": ["限定文件范围", "现有能力保持", "失败闭合"]},
+        "rollback_to": "structure"
+      },
+      {
+        "node_id": "validate",
+        "goal": "验证权限、额度、日历、隔离、回归和真实界面。",
+        "dependencies": ["generate"],
+        "inputs": ["runnable_code", "focused_tests"],
+        "outputs": ["qa_report", "ui_evidence", "runtime_evidence"],
+        "source_refs": ["test suites", "Host", "ShrimpTank", "DingTalk"],
+        "ability_bindings": {"tools": ["node --test", "python unittest", "browser", "real runtime"]},
+        "artifact_contract": {"type": "qa_evidence"},
+        "qa_gate": {"checks": ["专项通过", "双仓回归通过", "管理员机器人无回归", "真实UI无错误"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "export",
+        "goal": "安装或同步正式运行代码并生成交付清单。",
+        "dependencies": ["validate"],
+        "inputs": ["qa_report", "runnable_code"],
+        "outputs": ["delivery_manifest", "rollback_manifest"],
+        "source_refs": ["verified artifacts"],
+        "ability_bindings": {"tools": ["profile install", "Host reload"]},
+        "artifact_contract": {"type": "delivery_manifest"},
+        "qa_gate": {"checks": ["只导出QA通过版本", "回退不删除订阅数据"]},
+        "rollback_to": "generate"
+      },
+      {
+        "node_id": "review",
+        "goal": "逐条回读完成标准并区分本地、真实钉钉和生产就绪。",
+        "dependencies": ["export"],
+        "inputs": ["delivery_manifest", "qa_report"],
+        "outputs": ["completion_report"],
+        "source_refs": ["goal_contract", "output_contract"],
+        "ability_bindings": {"skills": ["native-chinese-expression"]},
+        "artifact_contract": {"type": "final_report"},
+        "qa_gate": {"checks": ["不夸大未完成真实验收", "限制和恢复入口明确"]},
+        "rollback_to": "validate"
+      }
+    ]
+  },
+  "qa_contract": {
+    "node_gates": ["truth", "schema", "security", "focused", "regression", "runtime", "ui", "delivery"],
+    "final_acceptance": [
+      "两个订阅者、两个机器人隔离",
+      "扫码、绑定、工作区和品牌Gate",
+      "调休日历和每周Token并发门禁",
+      "逐虾精确授权",
+      "订阅者无法读取或修改大神和虾定义",
+      "管理员机器人无回归"
+    ],
+    "release_conditions": [
+      "专项和双仓回归通过",
+      "正式Host和虾缸健康",
+      "真实大神.app面板通过",
+      "真实钉钉测试订阅者验收后才声明外部交付"
+    ]
+  },
+  "recovery_contract": {
+    "rollback_points": ["route", "structure", "generate", "validate", "export"],
+    "max_retries": 1,
+    "failure_fingerprint_fields": ["subsystem", "node", "contract_checksum", "version", "error_code", "artifact_checksum"]
+  },
+  "lineage": {
+    "dsh_repo": "/Users/marcus/.dsh",
+    "shrimptank_repo": "/Users/marcus/Desktop/虾缸",
+    "protected_runtime_ports": [3080, 7843],
+    "work_contract_path": "/Users/marcus/.dsh/architecture/dingtalk-subscriber-control.v1.json"
+  }
+}

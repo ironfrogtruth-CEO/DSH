@@ -131,7 +131,8 @@ const HEARTBEAT_RUNNER_SPECS = Object.freeze({
   }),
   'reliable-evolution-weekly': Object.freeze({
     command: '/usr/local/bin/node',
-    args: Object.freeze(['/Users/marcus/.dsh/scripts/weekly-evolution-review.mjs', '--execute']),
+    // 2026-09-02 合并：先本地快照提交（原 git-daily-commit 职责），再评审。
+    args: Object.freeze(['/Users/marcus/.dsh/scripts/never-stop-thursday.mjs', '--execute']),
     cwd: '/Users/marcus/.dsh',
     timeoutMs: 3 * 60 * 60 * 1000,
   }),
@@ -575,6 +576,7 @@ let shrimpTankAutostartPromise = null
 const SHRIMP_TANK_ALLOWED_HEADERS = new Set([
   'authorization', 'cookie', 'x-account-id', 'x-user-id', 'x-tenant-id',
   'x-request-id', 'idempotency-key', 'if-match', 'content-type', 'accept',
+  'x-dsh-subscriber-assertion', 'x-dsh-subscriber-signature',
 ])
 const SHRIMP_TANK_PATH_RULES = [
   ['GET', /^\/api\/v1\/health$/],
@@ -834,14 +836,55 @@ function normalizedRunError(value) {
   return apiErrorText({ error }) || null
 }
 
+function normalizedTokenCount(value) {
+  if (typeof value === 'number') {
+    return Number.isSafeInteger(value) && value >= 0 ? value : null
+  }
+  if (typeof value !== 'string' || !value.trim()) return null
+  const number = Number(value.trim())
+  if (!Number.isSafeInteger(number) || number < 0) return null
+  return number
+}
+
+/**
+ * Normalize the tank's run accounting names for the DSH connector contract.
+ * The tank currently exposes `tokens_total`; newer endpoints may expose
+ * `total_tokens` under `usage`.  Never synthesize zero when the source did
+ * not provide a reliable count: the connector must not settle a DSH lease
+ * from an invented usage value.
+ */
+export function normalizeShrimpRunUsage(value) {
+  const data = apiData(value)
+  const usage = data.usage && typeof data.usage === 'object' && !Array.isArray(data.usage)
+    ? data.usage
+    : {}
+  const candidates = [
+    usage.total_tokens,
+    usage.totalTokens,
+    usage.tokens_total,
+    usage.tokensTotal,
+    data.total_tokens,
+    data.totalTokens,
+    data.tokens_total,
+    data.tokensTotal,
+  ]
+  for (const candidate of candidates) {
+    const total = normalizedTokenCount(candidate)
+    if (total !== null) return { total_tokens: total }
+  }
+  return null
+}
+
 function runSnapshot(value, runId) {
   const data = apiData(value)
+  const usage = normalizeShrimpRunUsage(value)
   return {
     run_id: String(data.id || data.run_id || data.runId || runId || '').trim() || runId,
     status: normalizedRunStatus(value),
     progress: normalizedProgress(value),
     current_node: normalizedCurrentNode(value),
     error_summary: normalizedRunError(value),
+    ...(usage ? { usage } : {}),
   }
 }
 
@@ -886,6 +929,7 @@ function terminalRunResult(snapshot, artifacts, { stillRunning = false } = {}) {
     current_node: snapshot.current_node,
     error_summary: snapshot.error_summary,
     artifacts,
+    ...(snapshot.usage ? { usage: snapshot.usage } : {}),
     ...(stillRunning ? {
       still_running: true,
       next_action: {
@@ -1260,6 +1304,156 @@ export function shrimpAgentIdentity(agent) {
     // root object.
     agentId: receiptPart(agent?.id || metadata.id),
     sessionId: receiptPart(metadata.id),
+  }
+}
+
+const SUBSCRIBER_PIPELINE_RUN_SCOPES = Object.freeze(['pipeline:run'])
+const SUBSCRIBER_RUN_READ_SCOPES = Object.freeze(['run:read'])
+const SUBSCRIBER_ARTIFACT_READ_SCOPES = Object.freeze(['run:read', 'artifact:read'])
+const SUBSCRIBER_TOOL_DENIAL_CODE = 'SUBSCRIBER_TOOL_NOT_ALLOWED'
+const SUBSCRIBER_ASSERTION_ERROR_CODE = 'SUBSCRIBER_ASSERTION_UNAVAILABLE'
+
+function dingtalkSubscriptionsFromContext(ctx) {
+  try {
+    const service = ctx?.get?.('dingtalkSubscriptions')
+    if (service) return service
+  } catch { /* fail closed in the caller */ }
+  return null
+}
+
+function directSessionIdFromAgent(agent) {
+  const session = agent?.session && typeof agent.session === 'object' ? agent.session : {}
+  const header = session.header && typeof session.header === 'object' ? session.header : {}
+  const values = [
+    session.id,
+    session.sessionId,
+    session.session_id,
+    header.id,
+    header.sessionId,
+    header.session_id,
+    agent?.sessionId,
+    agent?.session_id,
+  ]
+  const value = values.find((candidate) => candidate !== null && candidate !== undefined && String(candidate).trim())
+  return value === undefined ? null : String(value).trim()
+}
+
+function subscriptionSessionId(service, identity, agent) {
+  if (!service || !identity) return null
+  // `shrimpAgentIdentity` intentionally falls back to agent.id for legacy
+  // idempotency keys.  That fallback is not a session lineage record, so do
+  // not hand it to the assertion service as if it were one.  Resolve an
+  // agent-only callback through the core session lineage resolver instead.
+  const directSessionId = directSessionIdFromAgent(agent)
+  if (directSessionId) return directSessionId
+  if (identity.sessionId && identity.sessionId !== identity.agentId) return identity.sessionId
+  if (!identity.agentId) return null
+  for (const methodName of ['resolveSessionForAgent', 'sessionForAgent', 'getSessionForAgent', 'getSessionLineageForAgent']) {
+    if (typeof service[methodName] !== 'function') continue
+    try {
+      const value = service[methodName](identity.agentId)
+      const sessionId = typeof value === 'string' ? value : value?.sessionId || value?.session_id || value?.id
+      if (sessionId) return String(sessionId).trim() || null
+    } catch { /* try the next core resolver */ }
+  }
+  return null
+}
+
+function subscriptionSubscriberId(service, identity, sessionId) {
+  if (!service || !identity) return null
+  try {
+    if (sessionId && typeof service.resolveSubscriberForSession === 'function') {
+      const value = service.resolveSubscriberForSession(sessionId)
+      if (value) return String(value).trim() || null
+    }
+    if (!sessionId) return null
+    if (typeof service.resolveSubscriberForAgentOrSession === 'function') {
+      const value = service.resolveSubscriberForAgentOrSession({
+        agentId: identity.agentId || null,
+        sessionId,
+      })
+      if (value) return String(value).trim() || null
+    }
+  } catch { /* malformed/unknown lineage is not a subscriber */ }
+  return null
+}
+
+/**
+ * Resolve a subscriber exclusively from the live DSH subscription service and
+ * the agent's session lineage.  No account/user IDs are accepted from tool
+ * arguments; the service assertion writer supplies those from synced metadata.
+ */
+export function resolveSubscriberAgentContext(ctx, agent) {
+  const service = dingtalkSubscriptionsFromContext(ctx)
+  if (!service || !agent) return null
+  const identity = shrimpAgentIdentity(agent)
+  const sessionId = subscriptionSessionId(service, identity, agent)
+  const subscriberId = subscriptionSubscriberId(service, identity, sessionId)
+  if (!subscriberId) return null
+  let policy = null
+  try { policy = typeof service.resolveRuntimePolicy === 'function' ? service.resolveRuntimePolicy(subscriberId) : null } catch { policy = null }
+  if (!policy || String(policy.role || '').toLowerCase() !== 'subscriber' || policy.active === false || String(policy.status || 'active').toLowerCase() !== 'active') {
+    return { subscriber: true, blocked: true, code: 'SUBSCRIBER_NOT_ACTIVE', subscriberId, identity, sessionId }
+  }
+  return {
+    subscriber: true,
+    blocked: false,
+    service,
+    subscriberId,
+    sessionId,
+    policy,
+    identity,
+  }
+}
+
+/** Create one short-lived assertion header pair for one subscriber request. */
+export function subscriberRequestHeaders(ctx, agent, scopes = SUBSCRIBER_RUN_READ_SCOPES) {
+  const resolved = resolveSubscriberAgentContext(ctx, agent)
+  if (!resolved) return { subscriber: false, headers: {} }
+  if (resolved.blocked) return { ...resolved, headers: {} }
+  const normalizedScopes = [...new Set((Array.isArray(scopes) ? scopes : [scopes]).map((item) => String(item || '').trim()).filter(Boolean))]
+  if (!normalizedScopes.length) return { ...resolved, blocked: true, code: SUBSCRIBER_ASSERTION_ERROR_CODE, headers: {} }
+  try {
+    const create = typeof resolved.service.createSubscriberAssertionForSession === 'function'
+      ? resolved.service.createSubscriberAssertionForSession.bind(resolved.service)
+      : null
+    if (!create) return { ...resolved, blocked: true, code: SUBSCRIBER_ASSERTION_ERROR_CODE, headers: {} }
+    const created = create({
+      sessionId: resolved.sessionId,
+      scopes: normalizedScopes,
+    })
+    const headers = created?.headers || created
+    const assertion = headers?.['X-DSH-Subscriber-Assertion'] || headers?.['x-dsh-subscriber-assertion']
+    const signature = headers?.['X-DSH-Subscriber-Signature'] || headers?.['x-dsh-subscriber-signature']
+    if (!assertion || !signature) return { ...resolved, blocked: true, code: SUBSCRIBER_ASSERTION_ERROR_CODE, headers: {} }
+    return {
+      ...resolved,
+      headers: {
+        'x-dsh-subscriber-assertion': String(assertion),
+        'x-dsh-subscriber-signature': String(signature),
+      },
+    }
+  } catch {
+    return { ...resolved, blocked: true, code: SUBSCRIBER_ASSERTION_ERROR_CODE, headers: {} }
+  }
+}
+
+export function subscriberToolDenied(ctx, agent, toolName) {
+  const resolved = resolveSubscriberAgentContext(ctx, agent)
+  if (!resolved) return null
+  if (resolved.blocked) return {
+    ok: false,
+    blocked: true,
+    code: resolved.code || SUBSCRIBER_ASSERTION_ERROR_CODE,
+    error: '订阅账户尚未完成安全绑定，不能调用该工具。',
+  }
+  const name = String(toolName || '').trim().toLowerCase()
+  if (!new Set(['shrimp_list', 'shrimp_match', 'shrimp_search', 'shrimp_knowledge_list', 'shrimp_knowledge_search', 'shrimp_create_draft']).has(name)) return null
+  return {
+    ok: false,
+    blocked: true,
+    code: SUBSCRIBER_TOOL_DENIAL_CODE,
+    error: '订阅者只能运行已授权虾，不能列出、匹配、检索知识库、创建或发布虾。',
   }
 }
 
@@ -2262,9 +2456,24 @@ export function apply(ctx, config = {}) {
   }), 'shrimp-shell: tank proxy')
 
   const toolResult = (value) => [{ type: 'text', text: JSON.stringify(value || {}, null, 2).slice(0, 16_000) }]
-  const toolCall = async ({ path, method = 'GET', body, headers = {}, timeoutMs = SHRIMP_TANK_TIMEOUT_MS }) => {
+  const toolCall = async ({ path, method = 'GET', body, headers = {}, timeoutMs = SHRIMP_TANK_TIMEOUT_MS, subscriberAgent = null, subscriberScopes = [] }) => {
+    let outgoingHeaders = { ...headers }
+    if (subscriberAgent) {
+      const subscriberAuth = subscriberRequestHeaders(ctx, subscriberAgent, subscriberScopes)
+      if (subscriberAuth.subscriber) {
+        if (subscriberAuth.blocked) {
+          return {
+            ok: false,
+            blocked: true,
+            code: subscriberAuth.code || SUBSCRIBER_ASSERTION_ERROR_CODE,
+            error: '订阅账户当前未获得可用的安全身份断言。',
+          }
+        }
+        outgoingHeaders = { ...outgoingHeaders, ...subscriberAuth.headers }
+      }
+    }
     try {
-      const result = await tankFetchWithRecovery({ path, method, body, headers, timeoutMs })
+      const result = await tankFetchWithRecovery({ path, method, body, headers: outgoingHeaders, timeoutMs })
       return normalizeShrimpToolResponse(result)
     } catch (error) {
       return { ok: false, offline: true, error: '虾缸当前不可用，请确认本机服务已启动' }
@@ -2293,7 +2502,9 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: 20_000,
-      async execute(args) {
+      async execute(args, exec) {
+        const denied = subscriberToolDenied(ctx, exec?.agent, 'shrimp_list')
+        if (denied) return denied
         const query = args.query ? `?query=${encodeURIComponent(String(args.query))}` : ''
         return toolCall({ path: `/api/v1/dsh/shrimps${query}` })
       },
@@ -2309,7 +2520,9 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: 20_000,
-      async execute(args) {
+      async execute(args, exec) {
+        const denied = subscriberToolDenied(ctx, exec?.agent, 'shrimp_match')
+        if (denied) return denied
         const terms = [args.goal, args.institution].filter(Boolean).join(' ')
         const result = await toolCall({ path: '/api/v1/dsh/shrimps:match', method: 'POST', body: { text: terms, limit: 10 } })
         return { ...result, recommendationOnly: true, nextStep: '请用户明确点名一只虾并确认完整输入后再运行' }
@@ -2329,7 +2542,9 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: 20_000,
-      async execute(args) {
+      async execute(args, exec) {
+        const denied = subscriberToolDenied(ctx, exec?.agent, 'shrimp_create_draft')
+        if (denied) return denied
         const product = String(args.product || '').trim()
         const institution = String(args.institution || '').trim()
         const workContract = args.work_contract && typeof args.work_contract === 'object' && !Array.isArray(args.work_contract)
@@ -2377,7 +2592,9 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: 20_000,
-      async execute(args) {
+      async execute(args, exec) {
+        const denied = subscriberToolDenied(ctx, exec?.agent, 'shrimp_knowledge_list')
+        if (denied) return denied
         const kbId = String(args.kbId || '').trim()
         if (!kbId) return toolCall({ path: '/api/v1/knowledge-bases' })
         if (!/^[A-Za-z0-9_.:-]+$/.test(kbId)) return { ok: false, error: 'kbId 格式无效' }
@@ -2398,7 +2615,9 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: 30_000,
-      async execute(args) {
+      async execute(args, exec) {
+        const denied = subscriberToolDenied(ctx, exec?.agent, 'shrimp_knowledge_search')
+        if (denied) return denied
         const kbId = String(args.kbId || '').trim()
         const query = String(args.query || '').trim()
         if (!/^[A-Za-z0-9_.:-]+$/.test(kbId)) return { ok: false, error: 'kbId 格式无效' }
@@ -2454,15 +2673,20 @@ export function apply(ctx, config = {}) {
           payload: args.payload,
           idempotencyKey,
         }
+        const subscriberAgent = exec?.agent || null
         const readSummary = (runId) => toolCall({
             path: `/api/v1/runs/${encodeURIComponent(runId)}/summary`,
             method: 'GET',
             timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+            subscriberAgent,
+            subscriberScopes: SUBSCRIBER_RUN_READ_SCOPES,
           })
         const readArtifacts = (runId) => toolCall({
             path: `/api/v1/runs/${encodeURIComponent(runId)}/artifacts`,
             method: 'GET',
             timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+            subscriberAgent,
+            subscriberScopes: SUBSCRIBER_ARTIFACT_READ_SCOPES,
           })
         return runShrimpWithDedupe({
           registry: shrimpRunRegistry,
@@ -2472,6 +2696,8 @@ export function apply(ctx, config = {}) {
             method: 'POST',
             body: buildRunBody(args.payload, { workContractChecksum: args.work_contract_checksum, pipelineVersionId: args.pipeline_version_id }),
             headers: { 'idempotency-key': launchKey || idempotencyKey },
+            subscriberAgent,
+            subscriberScopes: SUBSCRIBER_PIPELINE_RUN_SCOPES,
           }),
           readSummary,
           readArtifacts,
@@ -2489,13 +2715,14 @@ export function apply(ctx, config = {}) {
       },
       output: toolOutput,
       timeoutMs: 140_000,
-      async execute(args) {
+      async execute(args, exec) {
         const runId = String(args.runId || '').trim()
         if (!runId) return { ok: false, error: 'runId 不能为空' }
         const requestedSeconds = Number(args.waitSeconds)
         const waitSeconds = Number.isFinite(requestedSeconds)
           ? Math.max(0, Math.min(120, requestedSeconds))
           : 30
+        const subscriberAgent = exec?.agent || null
         const receipt = await waitForShrimpRunTerminal({
           runId,
           timeoutMs: waitSeconds * 1000,
@@ -2503,11 +2730,15 @@ export function apply(ctx, config = {}) {
             path: `/api/v1/runs/${encodeURIComponent(id)}/summary`,
             method: 'GET',
             timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+            subscriberAgent,
+            subscriberScopes: SUBSCRIBER_RUN_READ_SCOPES,
           }),
           readArtifacts: (id) => toolCall({
             path: `/api/v1/runs/${encodeURIComponent(id)}/artifacts`,
             method: 'GET',
             timeoutMs: SHRIMP_RUN_READ_TIMEOUT_MS,
+            subscriberAgent,
+            subscriberScopes: SUBSCRIBER_ARTIFACT_READ_SCOPES,
           }),
         })
         shrimpRunRegistry.updateByRunId(runId, receipt.final_status)

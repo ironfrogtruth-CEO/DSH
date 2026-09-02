@@ -1,3 +1,585 @@
+diff --git a/lib/account-manager.d.ts b/lib/account-manager.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8c0583bef0afdc96bcb0bc44b3cc94286229eac3
+--- /dev/null
++++ b/lib/account-manager.d.ts
+@@ -0,0 +1,36 @@
++import type { RegistrationBegin } from './onboard.js';
++export declare const SUBSCRIBER_BRAND: Readonly<{
++    name: string;
++    description: string;
++}>;
++export declare function runtimeAccountStateId(value: string): string;
++export interface AccountManagerOptions {
++    staticSpecs?: readonly Record<string, unknown>[];
++    subscriptionService?: Record<string, any>;
++    subscriptionServiceResolver?(): Record<string, any> | undefined;
++    resolveRuntimeAccounts(specs: readonly Record<string, unknown>[]): Promise<{ accounts: readonly Record<string, unknown>[] }>;
++    startAccount(spec: Record<string, unknown>): Promise<(() => Promise<void>) | { dispose(): Promise<void> } | undefined>;
++    log?(line: string): void;
++    disposeTimeoutMs?: number;
++    pollIntervalMs?: number;
++    beginRegistration?(): Promise<RegistrationBegin>;
++    waitForCredentials?(begin: RegistrationBegin): Promise<{ clientId: string; clientSecret: string }>;
++    persistCredentials?(credentialRef: string, credentials: { clientId: string; clientSecret: string }): Promise<void>;
++}
++export declare class AccountManager {
++    constructor(options?: AccountManagerOptions);
++    start(): Promise<this>;
++    reload(): Promise<void>;
++    stop(accountId: string): Promise<boolean>;
++    stopSubscriber(accountId: string): Promise<boolean>;
++    startSubscriberAccount(spec: Record<string, unknown>): Promise<boolean>;
++    stopSubscriberAccount(accountId: string): Promise<boolean>;
++    reloadAccount(accountId: string): Promise<void>;
++    reloadSubscriberAccount(accountId: string): Promise<void>;
++    list(): readonly { id: string; profile: string; subscriberId?: string }[];
++    dispose(): Promise<void>;
++    beginRegistration(options?: Record<string, unknown>): Promise<Record<string, unknown>>;
++    registrationStatus(input?: Record<string, unknown>): Record<string, unknown>;
++    cancelRegistration(input?: Record<string, unknown>): Record<string, unknown>;
++    waitForCredentials(registration: string | Record<string, unknown>, options?: Record<string, unknown>): Promise<Record<string, unknown>>;
++}
+diff --git a/lib/account-manager.js b/lib/account-manager.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..35eb9f3e5c09f7520d0ed676615970bcfe1f2327
+--- /dev/null
++++ b/lib/account-manager.js
+@@ -0,0 +1,520 @@
++/**
++ * Runtime account supervisor for the DingTalk channel.
++ *
++ * The published connector starts every configured account in one Promise.all.
++ * That is fine for a static, single-owner deployment but it makes subscriber
++ * accounts impossible to add/remove without restarting the Host and lets one
++ * bad credential reject the whole startup.  AccountManager deliberately keeps
++ * the account lifecycle outside the account implementation: each account owns
++ * its Stream, state directory, queue and bindings, while this class only
++ * reconciles immutable account specs and disposes them with a bound.
++ */
++import { createHash } from 'node:crypto';
++import { beginRegistration as onboardBeginRegistration, waitForCredentials as onboardWaitForCredentials } from './onboard.js';
++
++export const SUBSCRIBER_BRAND = Object.freeze({
++    name: '大神',
++    description: '大神｜Visible Workflow. Reliable Intelligence.',
++});
++
++/** Convert service-owned account ids into safe, bounded state-directory keys. */
++export function runtimeAccountStateId(value) {
++    const raw = String(value ?? '').trim().toLowerCase();
++    if (/^[a-z][a-z0-9-]{0,31}$/u.test(raw))
++        return raw;
++    const digest = createHash('sha256').update(raw || 'account', 'utf8').digest('hex').slice(0, 16);
++    return `acct-${digest}`;
++}
++
++const DEFAULT_DISPOSE_TIMEOUT_MS = 5_000;
++const DEFAULT_POLL_INTERVAL_MS = 30_000;
++
++function isObject(value) {
++    return value !== null && typeof value === 'object';
++}
++
++function accountProfile(spec) {
++    const value = String(spec?.profile ?? spec?.accessProfile ?? spec?.role ?? '').trim().toLowerCase();
++    return value === 'subscriber' || value === '订阅者' || Boolean(spec?.subscriberId || spec?.subscriptionId)
++        ? 'subscriber'
++        : 'system_owner';
++}
++
++function accountId(spec, index = 0) {
++    const value = String(spec?.id ?? spec?.accountId ?? spec?.robotId ?? spec?.subscriberId ?? '').trim();
++    if (value)
++        return value;
++    return accountProfile(spec) === 'subscriber' ? `subscriber-${index + 1}` : 'default';
++}
++
++function asArray(value) {
++    if (Array.isArray(value))
++        return value;
++    if (isObject(value)) {
++        for (const key of ['accounts', 'robots', 'robotAccounts', 'items', 'data']) {
++            if (Array.isArray(value[key]))
++                return value[key];
++        }
++    }
++    return [];
++}
++
++function normalizeSpec(raw, index = 0) {
++    if (!isObject(raw))
++        return undefined;
++    const profile = accountProfile(raw);
++    const id = accountId(raw, index);
++    const credentialRef = String(raw.credentialRef ?? raw.credentialsRef ?? '').trim();
++    const credentialPrefix = credentialRef.endsWith('_CLIENT_ID') || credentialRef.endsWith('_CLIENT_SECRET')
++        ? credentialRef.replace(/_(?:CLIENT_ID|CLIENT_SECRET)$/u, '')
++        : credentialRef;
++    return {
++        ...raw,
++        id,
++        ...(raw.clientId || raw.credentials?.clientId || raw.robot?.clientId
++            ? { clientId: String(raw.clientId ?? raw.credentials?.clientId ?? raw.robot?.clientId).trim() }
++            : {}),
++        ...(raw.clientSecret || raw.credentials?.clientSecret || raw.robot?.clientSecret
++            ? { clientSecret: String(raw.clientSecret ?? raw.credentials?.clientSecret ?? raw.robot?.clientSecret).trim() }
++            : {}),
++        enabled: raw.enabled !== false,
++        profile,
++        ...(profile === 'subscriber'
++            ? {
++                subscriberId: String(raw.subscriberId ?? raw.subscriptionId ?? raw.userId ?? id).trim(),
++                ...(raw.clientIdRef || credentialPrefix
++                    ? { clientIdRef: String(raw.clientIdRef ?? `${credentialPrefix}_CLIENT_ID`).trim() }
++                    : {}),
++                ...(raw.clientSecretRef || credentialPrefix
++                    ? { clientSecretRef: String(raw.clientSecretRef ?? `${credentialPrefix}_CLIENT_SECRET`).trim() }
++                    : {}),
++                // A subscriber must never accidentally inherit an owner file or
++                // the static account's sender policy.
++                senderAccess: 'subscriber',
++                groupAccess: 'none',
++            }
++            : {}),
++    };
++}
++
++function publicSpec(spec) {
++    if (!spec)
++        return undefined;
++    const { clientSecret, secret, token, ...safe } = spec;
++    return safe;
++}
++
++function specFingerprint(spec) {
++    // Include all lifecycle-affecting public fields.  Secret material itself is
++    // never logged/returned, but its digest must trigger a restart after a
++    // credential rotation.
++    const safe = publicSpec(spec);
++    return JSON.stringify({
++        ...safe,
++        clientSecretSha256: spec?.clientSecret
++            ? createHash('sha256').update(String(spec.clientSecret), 'utf8').digest('hex')
++            : '',
++    }, Object.keys(safe).sort().concat('clientSecretSha256'));
++}
++
++function bounded(promise, timeoutMs, fallback) {
++    const ms = Number.isFinite(Number(timeoutMs)) && Number(timeoutMs) > 0
++        ? Math.max(1, Math.floor(Number(timeoutMs)))
++        : DEFAULT_DISPOSE_TIMEOUT_MS;
++    return Promise.race([
++        Promise.resolve(promise),
++        new Promise((resolve) => {
++            const timer = setTimeout(() => resolve(fallback), ms);
++            timer.unref?.();
++        }),
++    ]);
++}
++
++async function callList(service) {
++    if (!service)
++        return [];
++    for (const method of ['listActiveRobotSpecs', 'listActiveRobotAccounts', 'listRobotAccounts', 'getActiveRobotSpecs']) {
++        if (typeof service[method] !== 'function')
++            continue;
++        try {
++            const rows = asArray(await service[method]());
++            return method === 'listRobotAccounts'
++                ? rows.map((item) => ({ ...item, profile: 'subscriber' }))
++                : rows;
++        }
++        catch {
++            return [];
++        }
++    }
++    return [];
++}
++
++/**
++ * Owns independently stoppable DingTalk accounts.  `startAccount` must return
++ * either a disposer function or `{ dispose() }`; failures are isolated to that
++ * account and never escape the reconciliation loop.
++ */
++export class AccountManager {
++    opts;
++    running = new Map();
++    pendingRegistrations = new Map();
++    started = false;
++    disposed = false;
++    reloadTail = Promise.resolve();
++    unsubscribe = undefined;
++    pollTimer = undefined;
++    constructor(opts = {}) {
++        this.opts = opts;
++        this.log = typeof opts.log === 'function' ? opts.log : () => {};
++        this.staticSpecs = (Array.isArray(opts.staticSpecs) ? opts.staticSpecs : Array.isArray(opts.staticAccounts) ? opts.staticAccounts : Array.isArray(opts.accounts) ? opts.accounts : [])
++            .map(normalizeSpec)
++            .filter(Boolean);
++        this.subscriptionService = opts.subscriptionService;
++        this.subscriptionServiceResolver = typeof opts.subscriptionServiceResolver === 'function' ? opts.subscriptionServiceResolver : undefined;
++        this.disposeTimeoutMs = opts.disposeTimeoutMs ?? DEFAULT_DISPOSE_TIMEOUT_MS;
++        this.pollIntervalMs = opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
++    }
++    log;
++    staticSpecs;
++    subscriptionService;
++    subscriptionServiceResolver;
++    disposeTimeoutMs;
++    pollIntervalMs;
++    currentSubscriptionService() {
++        try {
++            return this.subscriptionServiceResolver?.() ?? this.subscriptionService;
++        }
++        catch {
++            return this.subscriptionService;
++        }
++    }
++    /** Start static accounts and any active subscriber robot specs. */
++    async start() {
++        if (this.started)
++            return this;
++        this.started = true;
++        await this.reload();
++        const service = this.currentSubscriptionService();
++        if (typeof service?.onRobotAccountsChanged === 'function') {
++            try {
++                const unsubscribe = service.onRobotAccountsChanged(() => this.reload());
++                if (typeof unsubscribe === 'function')
++                    this.unsubscribe = unsubscribe;
++            }
++            catch (error) {
++                this.log(`subscriber account event registration failed (${error instanceof Error ? error.message : 'unknown error'})`);
++            }
++        }
++        // Keep a low-frequency reconciliation even when event subscription is
++        // available. It closes startup races where the service is registered
++        // after the connector's initial read and no account-change event fires.
++        if (this.pollIntervalMs > 0) {
++            this.pollTimer = setInterval(() => void this.reload(), this.pollIntervalMs);
++            this.pollTimer.unref?.();
++        }
++        return this;
++    }
++    /** Reconcile static owner specs with current active subscriber specs. */
++    async reload() {
++        this.reloadTail = this.reloadTail
++            .catch(() => undefined)
++            .then(() => this.reconcile());
++        return this.reloadTail;
++    }
++    async activeSpecs() {
++        const dynamic = (await callList(this.currentSubscriptionService()))
++            .map((item, index) => normalizeSpec(item, index))
++            .filter(Boolean)
++            .filter((item) => item.profile === 'subscriber' && (item.status === undefined || item.status === 'active'));
++        const result = [];
++        const ids = new Set();
++        for (const spec of [...this.staticSpecs, ...dynamic]) {
++            if (!spec.enabled)
++                continue;
++            if (ids.has(spec.id)) {
++                this.log(`robot ${spec.id}: duplicate accountId rejected`);
++                continue;
++            }
++            ids.add(spec.id);
++            result.push(spec);
++        }
++        return result;
++    }
++    async resolveSpecs(specs) {
++        const hydrated = [];
++        for (const spec of specs) {
++            if (spec.clientId && spec.clientSecret) {
++                hydrated.push(spec);
++                continue;
++            }
++            const service = this.currentSubscriptionService();
++            let credentials;
++            for (const method of ['resolveRobotCredentials', 'getRobotCredentials', 'credentialsForRobot']) {
++                if (typeof service?.[method] !== 'function') continue;
++                try { credentials = await service[method](spec); } catch { credentials = undefined; }
++                if (credentials) break;
++            }
++            hydrated.push(credentials?.clientId && credentials?.clientSecret
++                ? { ...spec, clientId: credentials.clientId, clientSecret: credentials.clientSecret }
++                : spec);
++        }
++        if (typeof this.opts.resolveRuntimeAccounts === 'function') {
++            try {
++                const result = await this.opts.resolveRuntimeAccounts(hydrated);
++                return Array.isArray(result?.accounts) ? result.accounts : [];
++            }
++            catch (error) {
++                this.log(`robot credential resolution failed (${error instanceof Error ? error.message : 'unknown error'})`);
++                return [];
++            }
++        }
++        const resolved = [];
++        for (const spec of hydrated) {
++            if (spec.clientId && spec.clientSecret) {
++                resolved.push(spec);
++                continue;
++            }
++            // No usable credential material was supplied by the configured
++            // credential store or the subscription service.
++        }
++        return resolved;
++    }
++    async reconcile() {
++        if (this.disposed)
++            return;
++        const specs = await this.activeSpecs();
++        const resolved = await this.resolveSpecs(specs);
++        const desired = new Map();
++        const clientIds = new Set();
++        for (const raw of resolved) {
++            const spec = normalizeSpec(raw);
++            if (!spec)
++                continue;
++            if (desired.has(spec.id)) {
++                this.log(`robot ${spec.id}: duplicate accountId rejected`);
++                continue;
++            }
++            const clientId = String(spec.clientId ?? '').trim();
++            if (!clientId) {
++                this.log(`robot ${spec.id}: missing credentials — skipped`);
++                continue;
++            }
++            if (clientIds.has(clientId)) {
++                this.log(`robot ${spec.id}: clientId already used by another robot — skipped`);
++                continue;
++            }
++            clientIds.add(clientId);
++            desired.set(spec.id, spec);
++        }
++        for (const [id, current] of [...this.running.entries()]) {
++            const wanted = desired.get(id);
++            if (!wanted || current.fingerprint !== specFingerprint(wanted))
++                await this.stop(id);
++        }
++        const starts = [];
++        for (const spec of desired.values()) {
++            if (this.running.has(spec.id))
++                continue;
++            starts.push(this.startOne(spec));
++        }
++        await Promise.allSettled(starts);
++    }
++    async startOne(spec) {
++        if (this.disposed || this.running.has(spec.id))
++            return;
++        if (spec.profile === 'subscriber') {
++            const brand = spec.brand;
++            const brandShapeOk = !brand || (brand.name === SUBSCRIBER_BRAND.name && brand.description === SUBSCRIBER_BRAND.description);
++            const brandVerified = spec.brandVerified === true
++                || spec.brandStatus === 'verified'
++                || spec.brandGate === 'passed'
++                || spec.brandCheck?.ok === true
++                || spec.brand?.verified === true;
++            if (!brandShapeOk || !brandVerified) {
++                this.log(`robot ${spec.id}: brand-pending — subscriber account not started`);
++                return;
++            }
++        }
++        try {
++            const handle = await this.opts.startAccount(spec);
++            if (!handle)
++                return;
++            const dispose = typeof handle === 'function' ? handle : handle.dispose;
++            this.running.set(spec.id, {
++                id: spec.id,
++                spec,
++                fingerprint: specFingerprint(spec),
++                handle,
++                dispose: typeof dispose === 'function' ? dispose : async () => {},
++            });
++            this.log(`robot ${spec.id}: account started (${spec.profile})`);
++        }
++        catch (error) {
++            this.log(`robot ${spec.id}: failed to start (${error instanceof Error ? error.message : 'unknown error'})`);
++        }
++    }
++    async stop(id) {
++        const current = this.running.get(id);
++        if (!current)
++            return false;
++        this.running.delete(id);
++        try {
++            await bounded(current.dispose(), this.disposeTimeoutMs, undefined);
++        }
++        catch (error) {
++            this.log(`robot ${id}: dispose failed (${error instanceof Error ? error.message : 'unknown error'})`);
++        }
++        this.log(`robot ${id}: account stopped`);
++        return true;
++    }
++    /** Stop one subscriber without touching other accounts. */
++    async stopSubscriber(accountId) {
++        const current = this.running.get(String(accountId));
++        if (!current || current.spec.profile !== 'subscriber')
++            return false;
++        return this.stop(String(accountId));
++    }
++    async startSubscriberAccount(spec) {
++        const normalized = normalizeSpec(spec);
++        if (!normalized || normalized.profile !== 'subscriber')
++            return false;
++        await this.startOne(normalized);
++        return this.running.has(normalized.id);
++    }
++    async stopSubscriberAccount(accountId) {
++        return this.stopSubscriber(accountId);
++    }
++    /** Force a single account to be re-read and restarted on the next reload. */
++    async reloadAccount(accountId) {
++        await this.stop(String(accountId));
++        await this.reload();
++    }
++    async reloadSubscriberAccount(accountId) {
++        return this.reloadAccount(accountId);
++    }
++    list() {
++        return [...this.running.values()].map((item) => ({ id: item.id, profile: item.spec.profile, subscriberId: item.spec.subscriberId }));
++    }
++    /** Bounded, idempotent teardown for Host disposal and tests. */
++    async dispose() {
++        if (this.disposed)
++            return;
++        this.disposed = true;
++        if (this.pollTimer)
++            clearInterval(this.pollTimer);
++        this.pollTimer = undefined;
++        try {
++            this.unsubscribe?.();
++        }
++        catch {
++            // Event subscription cleanup is best effort.
++        }
++        this.unsubscribe = undefined;
++        await Promise.allSettled([...this.running.keys()].map((id) => this.stop(id)));
++    }
++    /** Start the official scan-to-create flow for a future subscriber robot. */
++    async beginRegistration(options = {}) {
++        const begin = await (this.opts.beginRegistration ?? onboardBeginRegistration)();
++        const registrationId = String(options.registrationId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
++        const record = {
++            ...begin,
++            registrationId,
++            ...(options.subscriberId ? { subscriberId: String(options.subscriberId).trim() } : {}),
++            ...(options.accountId ? { accountId: String(options.accountId).trim() } : {}),
++            brand: SUBSCRIBER_BRAND,
++            createdAt: Date.now(),
++        };
++        this.pendingRegistrations.set(registrationId, record);
++        return this.registrationStatus({ registrationId });
++    }
++    registrationStatus(input = {}) {
++        const registrationId = String(input.registrationId ?? input.id ?? '').trim();
++        const record = this.pendingRegistrations.get(registrationId);
++        if (!record)
++            return { registrationId, status: 'not-found', brandStatus: 'brand-pending' };
++        // Device codes are polling credentials and must remain inside the
++        // connector; the native panel only needs the QR URI and expiry.
++        return {
++            registrationId,
++            status: 'pending',
++            verificationUriComplete: record.verificationUriComplete,
++            expiresInSeconds: record.expiresInSeconds,
++            intervalSeconds: record.intervalSeconds,
++            expiresAt: record.expiresAt,
++            brand: SUBSCRIBER_BRAND,
++            brandStatus: 'brand-pending',
++        };
++    }
++    cancelRegistration(input = {}) {
++        const registrationId = String(input.registrationId ?? input.id ?? '').trim();
++        const existed = this.pendingRegistrations.delete(registrationId);
++        return { registrationId, ok: existed, status: existed ? 'cancelled' : 'not-found' };
++    }
++    /**
++     * Wait for the QR result and hand credentials to the subscription service.
++     * Secrets never appear in the returned object or connector messages.  A
++     * service that cannot persist/verify the branded robot leaves it pending.
++     */
++    async waitForCredentials(registration, options = {}) {
++        const key = typeof registration === 'string' ? registration : registration?.registrationId;
++        const begin = this.pendingRegistrations.get(key) ?? (typeof registration === 'object' ? registration : undefined);
++        if (!begin || !key)
++            throw new Error('unknown subscriber registration');
++        // Methods with a defaulted second argument have Function.length === 1.
++        // The subscription service therefore calls this manager with a single
++        // object envelope. Preserve that envelope as persistence context.
++        const context = {
++            ...(typeof registration === 'object' ? registration : {}),
++            ...begin,
++            ...options,
++        };
++        const credentials = await (this.opts.waitForCredentials ?? onboardWaitForCredentials)(begin);
++        const service = this.currentSubscriptionService();
++        let persisted = false;
++        const accountIdValue = String(context.accountId ?? '').trim();
++        const credentialRef = String(context.credentialRef ?? context.credentialsRef ?? (accountIdValue ? `DINGTALK_ACCOUNT_${accountIdValue.toUpperCase().replace(/[^A-Z0-9]+/gu, '_')}` : '')).trim();
++        // Secret material belongs in the host credential service, never in the
++        // subscriber-control SQLite row or an account spec.  The callback is
++        // injected by the native panel/credential bridge and is intentionally
++        // not user-facing.
++        if (typeof this.opts.persistCredentials === 'function' && credentialRef) {
++            try {
++                await this.opts.persistCredentials(credentialRef, credentials);
++                persisted = true;
++            }
++            catch (error) {
++                this.log(`subscriber robot ${key}: credential persistence failed (${error instanceof Error ? error.message : 'unknown error'})`);
++                return { registrationId: key, status: 'brand-pending', persisted: false };
++            }
++        }
++        for (const method of ['registerRobotAccount', 'saveRobotAccountCredentials', 'persistRobotCredentials']) {
++            if (typeof service?.[method] !== 'function')
++                continue;
++            try {
++                const payload = {
++                    ...context,
++                    registrationId: key,
++                    ...(credentialRef ? { credentialRef } : {}),
++                    brand: SUBSCRIBER_BRAND,
++                    brandStatus: 'brand-pending',
++                };
++                if (method === 'registerRobotAccount' && !credentialRef)
++                    continue;
++                if (method !== 'registerRobotAccount') {
++                    payload.clientId = credentials.clientId;
++                    payload.clientSecret = credentials.clientSecret;
++                }
++                await service[method](payload);
++                persisted = true;
++                break;
++            }
++            catch (error) {
++                this.log(`subscriber robot ${key}: credential persistence failed (${error instanceof Error ? error.message : 'unknown error'})`);
++                return { registrationId: key, status: 'brand-pending', persisted: false };
++            }
++        }
++        this.pendingRegistrations.delete(key);
++        await this.reload();
++        return { registrationId: key, status: 'brand-pending', persisted };
++    }
++}
+diff --git a/lib/accounts.d.ts b/lib/accounts.d.ts
+index d5ecdfc67ac985ec17c1d378737bee7a9e95deb6..eb5c41068d6c74ac76bebaf4bda23bdbcd9b68b1 100644
+--- a/lib/accounts.d.ts
++++ b/lib/accounts.d.ts
+@@ -21,6 +21,9 @@ export interface ConfiguredAccountSpec extends AccountCredentialRefs {
+ export interface RuntimeAccount extends ConfiguredAccountSpec {
+     clientId: string;
+     clientSecret: string;
++    /** Runtime access profile; static accounts default to system_owner. */
++    profile?: 'system_owner' | 'subscriber';
++    subscriberId?: string;
+ }
+ export interface RuntimeAccountResolution {
+     accounts: RuntimeAccount[];
 diff --git a/lib/aicard.d.ts b/lib/aicard.d.ts
 index d3a6243fc6847a6438788e46c9a90db37d71d861..60978fd5bb3af07e0fdd8471cf8b3c503d4712bb 100644
 --- a/lib/aicard.d.ts
@@ -38,9 +620,7 @@ index d3a6243fc6847a6438788e46c9a90db37d71d861..60978fd5bb3af07e0fdd8471cf8b3c50
 +        existing?: boolean;
      }): Promise<AICard | null>;
  }
--//# sourceMappingURL=aicard.d.ts.map
-\ No newline at end of file
-+//# sourceMappingURL=aicard.d.ts.map
+ //# sourceMappingURL=aicard.d.ts.map
 diff --git a/lib/aicard.js b/lib/aicard.js
 index c118c6118158e9632add06844092d3da9018b4bb..e59d1ba77a85afdab22cd763d36fbaf19403c81f 100644
 --- a/lib/aicard.js
@@ -258,7 +838,7 @@ index c118c6118158e9632add06844092d3da9018b4bb..e59d1ba77a85afdab22cd763d36fbaf1
          const deliverBody = opts.target.type === 'group'
              ? {
                  outTrackId,
-@@ -223,9 +299,13 @@ export class AICard {
+@@ -223,7 +299,11 @@ export class AICard {
              return card;
          }
          catch (err) {
@@ -271,15 +851,11 @@ index c118c6118158e9632add06844092d3da9018b4bb..e59d1ba77a85afdab22cd763d36fbaf1
              return null;
          }
      }
- }
--//# sourceMappingURL=aicard.js.map
-\ No newline at end of file
-+//# sourceMappingURL=aicard.js.map
 diff --git a/lib/bridge.d.ts b/lib/bridge.d.ts
-index b20642a481a870c455d95f447ef656cbdd38fd1d..5732234bf2f7880ff8ffcc4ca656a54f8c373779 100644
+index b20642a481a870c455d95f447ef656cbdd38fd1d..42a444e8401c6e61526cca88fdf34ba03c432bec 100644
 --- a/lib/bridge.d.ts
 +++ b/lib/bridge.d.ts
-@@ -12,13 +12,22 @@ export interface BridgeOptions {
+@@ -12,16 +12,41 @@ export interface BridgeOptions {
      modelOverrides: JsonStore<ModelOverride>;
      /** Per-conversation workspace override store (set via /cd). */
      workspaceOverrides: JsonStore<string>;
@@ -303,24 +879,182 @@ index b20642a481a870c455d95f447ef656cbdd38fd1d..5732234bf2f7880ff8ffcc4ca656a54f
          agentPreset?: string;
          setup?: (agentCtx: HostAgentContext) => Promise<void>;
      }>;
++    /** Optional account profile; subscriber accounts are fail-closed. */
++    accessProfile?: 'system_owner' | 'subscriber';
++    accountId?: string;
++    subscriberId?: string;
++    /** Resolve the current subscription workspace/preset/model and readiness gates. */
++    resolveRuntimePolicy?(input: Record<string, unknown>): Promise<any>;
++    /** Reserve a quota unit before an agent/tool/shrimp operation. */
++    quotaGate?(input: Record<string, unknown>): Promise<any> | any;
++    /** Finalize a turn lease on denial, cancellation, or turn/end. */
++    finalizeQuotaLease?(input: Record<string, unknown>): Promise<any> | any;
++    /** Register the subscriber's main session lineage. */
++    registerSession?(input: Record<string, unknown>): Promise<any> | any;
++    /** Decorate a newly created/resumed agent context with subscriber tool gates. */
++    decorateAgentContext?(agentCtx: HostAgentContext, identity: Record<string, unknown>): HostAgentContext;
++    /** Generic subscriber-safe denial callback; must not include internal details. */
++    onRuntimeDenied?(msg: InboundMessage, reason: string): Promise<void> | void;
+     /** Refresh transport context for tools that wait on channel input. */
+     onAgentMessage(agent: HostAgent, msg: InboundMessage): void;
+     /** Resolve one inbound picture into a stored attachment block; null = degrade to text note. */
 diff --git a/lib/bridge.js b/lib/bridge.js
-index c177704034ef311410587bf7b1012bebdc59c47b..154bce59910f1cb05861934ad7b74969aade0217 100644
+index c177704034ef311410587bf7b1012bebdc59c47b..6c71c12ff7e4f24e039192a3dd2cce329563b307 100644
 --- a/lib/bridge.js
 +++ b/lib/bridge.js
-@@ -55,14 +55,31 @@ export class Bridge {
+@@ -19,7 +19,33 @@ export class Bridge {
+     }
+     /** Drive one message through its agent; resolves when the turn settles. */
+     async process(msg, scopeKey) {
+-        const agent = await this.agentFor(scopeKey);
++        if (this.opts.accessProfile === 'subscriber') {
++            const allowed = await this.authorizeRequest(msg, scopeKey, 'agent');
++            if (!allowed) {
++                await this.opts.finalizeQuotaLease?.({
++                    profile: 'subscriber', subscriberId: this.opts.subscriberId, accountId: this.opts.accountId,
++                    requestId: msg?.msgId, conversationId: msg?.conversationId ?? scopeKey, reason: 'gate-denied',
++                });
++                await this.opts.onRuntimeDenied?.(msg, 'quota-or-runtime-gate');
++                return;
++            }
++        }
++        let agent;
++        try {
++            agent = await this.agentFor(scopeKey, msg);
++        }
++        catch (error) {
++            if (this.opts.accessProfile === 'subscriber') {
++                this.opts.log(`subscriber runtime gate denied (${error instanceof Error ? error.message : 'unknown'})`);
++                await this.opts.finalizeQuotaLease?.({
++                    profile: 'subscriber', subscriberId: this.opts.subscriberId, accountId: this.opts.accountId,
++                    requestId: msg?.msgId, conversationId: msg?.conversationId ?? scopeKey, reason: 'runtime-policy',
++                });
++                await this.opts.onRuntimeDenied?.(msg, 'runtime-policy', error);
++                return;
++            }
++            throw error;
++        }
+         this.opts.onAgentMessage(agent, msg);
+         const settled = this.renderer.onInbound(agent.id, msg);
+         const content = [];
+@@ -51,32 +77,187 @@ export class Bridge {
+         });
+         await settled;
+     }
+-    async agentFor(conversationId) {
++    /** Apply the subscriber quota/runtime gate without exposing its decision data. */
++    async authorizeRequest(msg, scopeKey, operation = 'agent') {
++        if (this.opts.accessProfile !== 'subscriber')
++            return true;
++        const gate = this.opts.quotaGate;
++        if (typeof gate !== 'function')
++            return false;
++        try {
++            const result = await gate({
++                operation,
++                profile: 'subscriber',
++                subscriberId: this.opts.subscriberId,
++                accountId: this.opts.accountId,
++                conversationId: msg?.conversationId ?? scopeKey,
++                scopeKey,
++                requestId: msg?.msgId ?? `${scopeKey}:${msg?.createAt ?? Date.now()}`,
++                senderStaffId: msg?.senderStaffId,
++                text: msg?.text,
++            });
++            if (result === false || result?.ok === false || result?.allowed === false || result?.granted === false || result?.reserved === false || result?.status === 'denied' || result?.status === 'blocked')
++                return false;
++            return true;
++        }
++        catch (error) {
++            this.opts.log(`subscriber ${operation} gate failed (${error instanceof Error ? error.message : 'unknown'})`);
++            return false;
++        }
++    }
++    async resolveSubscriberPolicy(conversationId, msg) {
++        const resolvePolicy = this.opts.resolveRuntimePolicy;
++        if (typeof resolvePolicy !== 'function')
++            throw new Error('subscriber runtime policy service unavailable');
++        const policy = await resolvePolicy({
++            profile: 'subscriber',
++            subscriberId: this.opts.subscriberId,
++            accountId: this.opts.accountId,
++            conversationId: msg?.conversationId ?? conversationId,
++            scopeKey: conversationId,
++            senderStaffId: msg?.senderStaffId,
++        });
++        if (!policy || policy.ok === false || policy.allowed === false || policy.canStart === false || policy.ready === false)
++            throw new Error('subscriber runtime policy gate denied');
++        const gates = policy.gates ?? policy.readyGates;
++        if (gates && Object.values(gates).some((value) => value === false))
++            throw new Error('subscriber runtime policy gate denied');
++        const cwd = policy.workspace ?? policy.workspacePath ?? policy.cwd ?? policy.currentWorkspace;
++        if (typeof cwd !== 'string' || !cwd.trim())
++            throw new Error('subscriber workspace gate missing');
++        const preset = policy.presetId ?? policy.preset ?? policy.agentPreset ?? policy.mode;
++        if (typeof preset !== 'string' || !preset.trim())
++            throw new Error('subscriber preset gate missing');
++        const route = policy.model ?? policy.route ?? policy.agentOptions ?? {};
++        const provider = route?.provider;
++        const model = route?.model;
++        if (!provider || !model)
++            throw new Error('subscriber model gate missing');
++        return {
++            ...policy,
++            workspace: cwd,
++            agentPreset: typeof preset === 'string' && preset.trim() ? preset.trim() : undefined,
++            route: {
++                provider: String(provider),
++                model: String(model),
++                ...(route.reasoningEffort ? { reasoningEffort: String(route.reasoningEffort) } : {}),
++            },
++        };
++    }
++    async registerSubscriberSession(sessionValue, policy, conversationId, scopeKey, requestId) {
++        if (this.opts.accessProfile !== 'subscriber' || typeof this.opts.registerSession !== 'function')
++            return;
++        const result = await this.opts.registerSession({
++            profile: 'subscriber',
++            subscriberId: this.opts.subscriberId,
++            accountId: this.opts.accountId,
++            sessionId: String(sessionValue),
++            conversationId,
++            scopeKey,
++            requestId,
++            workspace: policy.workspace,
++            workspaceId: policy.workspaceId,
++            preset: policy.agentPreset,
++            model: policy.route,
++        });
++        if (result === false || result?.ok === false || result?.allowed === false)
++            throw new Error('subscriber session registration denied');
++    }
++    async agentFor(conversationId, msg) {
          // Entry-point-created agents carry no session-local model selection, so the
          // route must be supplied here or prompt assembly fails ({{model}} unset).
          // Likewise the preset must be composed via setup, or the agent has no tools.
 -        const agentOptions = this.opts.modelOverrides.get(conversationId) ?? this.opts.modelSelection();
-+        const route = this.opts.modelOverrides.get(conversationId) ?? this.opts.modelSelection();
-+        const agentOptions = route;
-         const cwd = this.opts.workspaceOverrides.get(conversationId) ?? this.opts.cwd;
+-        const cwd = this.opts.workspaceOverrides.get(conversationId) ?? this.opts.cwd;
 -        const composition = await this.opts.compose();
++        const subscriber = this.opts.accessProfile === 'subscriber';
++        const policy = subscriber
++            ? await this.resolveSubscriberPolicy(conversationId, msg)
++            : undefined;
++        const route = subscriber
++            ? policy.route
++            : this.opts.modelOverrides.get(conversationId) ?? this.opts.modelSelection();
++        const agentOptions = route;
++        const cwd = subscriber
++            ? policy.workspace
++            : this.opts.workspaceOverrides.get(conversationId) ?? this.opts.cwd;
          const bound = this.bindings.get(conversationId);
          if (bound) {
              const running = this.agents.get(sessionId(bound));
-             if (running)
+-            if (running)
++            if (running) {
++                if (subscriber)
++                    await this.registerSubscriberSession(bound, policy, conversationId, conversationId, msg?.msgId);
                  return running;
++            }
 +            // A resumed session must be composed from its own durable header.
 +            // Otherwise changing the host's current preset (for example to
 +            // Avengers) would silently resume an older CyberMarcus session with
@@ -337,24 +1071,98 @@ index c177704034ef311410587bf7b1012bebdc59c47b..154bce59910f1cb05861934ad7b74969
 +                    this.opts.log(`session header lookup failed for ${bound}: ${err instanceof Error ? err.message : err}`);
 +                }
 +            }
-+            const composition = await this.opts.compose(targetPreset);
++            const composition = await this.opts.compose(subscriber ? policy.agentPreset : targetPreset);
++            const setup = this.opts.decorateAgentContext
++                ? async (agentCtx) => composition.setup?.(this.opts.decorateAgentContext(agentCtx, {
++                    profile: 'subscriber',
++                    subscriberId: this.opts.subscriberId,
++                    accountId: this.opts.accountId,
++                    conversationId,
++                        workspace: policy.workspace,
++                        sessionId: String(bound),
++                }))
++                : composition.setup;
++            let handle;
              try {
-                 const handle = await this.agents.resume({
+-                const handle = await this.agents.resume({
++                handle = await this.agents.resume({
                      resumeSessionId: sessionId(bound),
-@@ -76,6 +93,8 @@ export class Bridge {
+                     agentOptions,
+-                    setup: composition.setup,
++                    setup,
+                 });
+-                this.opts.log(`resumed session ${bound} for conversation ${conversationId}`);
+-                return handle.agent;
+             }
+             catch (err) {
                  this.opts.log(`resume ${bound} failed (${err instanceof Error ? err.message : err}); creating fresh`);
              }
++            if (handle) {
++                if (subscriber) {
++                    try {
++                        await this.registerSubscriberSession(bound, policy, conversationId, conversationId, msg?.msgId);
++                    }
++                    catch (error) {
++                        try {
++                            await handle.dispose?.();
++                        }
++                        catch {
++                            // A failed registration must not leave a usable unregistered agent.
++                        }
++                        throw error;
++                    }
++                }
++                this.opts.log(`resumed session ${bound} for conversation ${conversationId}`);
++                return handle.agent;
++            }
          }
-+        const preferredPreset = this.opts.presetOverrides?.get(conversationId) || this.opts.defaultPresetId;
++        const preferredPreset = subscriber
++            ? policy.agentPreset
++            : this.opts.presetOverrides?.get(conversationId) || this.opts.defaultPresetId;
 +        const composition = await this.opts.compose(preferredPreset);
          const id = sessionId(randomUUID());
++        const setup = this.opts.decorateAgentContext
++            ? async (agentCtx) => composition.setup?.(this.opts.decorateAgentContext(agentCtx, {
++                profile: 'subscriber',
++                subscriberId: this.opts.subscriberId,
++                accountId: this.opts.accountId,
++                conversationId,
++                workspace: policy.workspace,
++                sessionId: String(id),
++            }))
++            : composition.setup;
          const handle = await this.agents.create({
              sessionId: id,
+             meta: {
+@@ -84,8 +264,22 @@ export class Bridge {
+                 ...(composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset }),
+             },
+             agentOptions,
+-            setup: composition.setup,
++            setup,
+         });
++        if (subscriber) {
++            try {
++                await this.registerSubscriberSession(id, policy, conversationId, conversationId, msg?.msgId);
++            }
++            catch (error) {
++                try {
++                    await handle.dispose?.();
++                }
++                catch {
++                    // A failed registration must not leave a usable unregistered agent.
++                }
++                throw error;
++            }
++        }
+         this.bindings.set(conversationId, id);
+         this.opts.log(`created session ${id} for conversation ${conversationId} (preset=${composition.agentPreset ?? 'none'})`);
+         return handle.agent;
 diff --git a/lib/commands.d.ts b/lib/commands.d.ts
-index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..aa92851635719d9459dae11b7c82ac90ac289a3f 100644
+index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..8fa0d8a695e22fbe1ad65dd401b2964193da2089 100644
 --- a/lib/commands.d.ts
 +++ b/lib/commands.d.ts
-@@ -4,19 +4,69 @@ import type { Outbound } from './outbound.js';
+@@ -4,19 +4,76 @@ import type { Outbound } from './outbound.js';
  import type { Bindings } from './bridge.js';
  import type { JsonStore } from './jsonstore.js';
  import type { Queue } from './queue.js';
@@ -413,6 +1221,13 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..aa92851635719d9459dae11b7c82ac90
 +    };
 +    /** Management and artifact commands are fail-closed to the bound owner. */
 +    isOwner(msg: InboundMessage): boolean;
++    /** Subscriber profile; all selections and quota decisions come from this service. */
++    accessProfile?: 'system_owner' | 'subscriber';
++    accountId?: string;
++    subscriberId?: string | (() => string);
++    dingtalkSubscriptions?: Record<string, any>;
++    subscriptionService?: Record<string, any>;
++    onSubscriberCancel?(input: Record<string, unknown>): Promise<any> | any;
 +    /** Optional interactive console opener; false means caller must use Markdown. */
 +    console?: {
 +        open(msg: InboundMessage, scopeKey: string): Promise<boolean>;
@@ -424,7 +1239,7 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..aa92851635719d9459dae11b7c82ac90
      } | undefined;
      /** Human-readable connector security/capability lines appended to /status. */
      connectorStatus(): string[];
-@@ -58,6 +108,29 @@ export declare class Commands {
+@@ -58,6 +115,31 @@ export declare class Commands {
      /** Interactive busy cards: outTrackId → conversationId (buttons and text answers share one pending state). */
      private busyCards;
      constructor(deps: CommandDeps);
@@ -451,21 +1266,16 @@ index 9da3c6db12b84722586e1f43c1077c21a0eda3a2..aa92851635719d9459dae11b7c82ac90
 +        text: string;
 +        textChecksum: string;
 +    }[] | undefined>;
++    subscriberOptions(kind: string, scopeKey: string): Promise<readonly unknown[]>;
++    handleSubscriber(msg: InboundMessage, scopeKey: string, text: string, reply: (text: string) => Promise<void>): Promise<boolean>;
      markBusyNotice(conversationId: string, ctx: BusyContext): void;
      registerBusyCard(outTrackId: string, conversationId: string): void;
      /**
-@@ -76,4 +149,4 @@ export declare class Commands {
-     private steerQueued;
-     private stop;
- }
--//# sourceMappingURL=commands.d.ts.map
-\ No newline at end of file
-+//# sourceMappingURL=commands.d.ts.map
 diff --git a/lib/commands.js b/lib/commands.js
-index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0ce5b70d7 100644
+index b186308646d5c7098ee739918f885ee0907b0ade..e5e3ab144635b5309f87e75b642ba3360f24923b 100644
 --- a/lib/commands.js
 +++ b/lib/commands.js
-@@ -1,22 +1,464 @@
+@@ -1,22 +1,532 @@
  /**
   * Slash commands — handled locally, never sent to the model:
 - * /status /new /stop /model /help, plus the queue-busy numeric choice
@@ -529,6 +1339,74 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
 +// must never become a side channel for credentials, sessions, logs or tokens.
 +const SENSITIVE_SEGMENT = /^(?:credentials?|secrets?|sessions?|logs?|db|keys?|tokens?|env|passwords?|passwds?|api[-_]?keys?|access[-_]?tokens?)(?:[._-].*)?$/i;
 +const OWNER_COMMANDS = new Set(['/model', '/models', '/effort', '/sessions', '/session', '/artifacts', '/send', '/replies', '/resend']);
++const SUBSCRIBER_COMMANDS = new Set(['/status', '/quota', '/mode', '/workspace', '/model', '/effort', '/new', '/stop', '/resume', '/help']);
++const SUBSCRIBER_SELECTION_TTL_MS = 10 * 60_000;
++const SUBSCRIBER_HELP = [
++    '**订阅账户可用命令**',
++    '- `/status` 查看当前账户状态',
++    '- `/quota` 查看本周额度',
++    '- `/mode`、`/workspace`、`/model`、`/effort` 查看本人获授权选项',
++    '- `/mode <序号>`、`/workspace <序号>`、`/model <序号>`、`/effort <序号>` 切换选项',
++    '- `/new` 清除当前会话，下一条消息建立新会话',
++    '- `/stop` 停止当前任务；`/resume` 恢复可用账户',
++    '- 只能在工作日使用；周末调休工作日按工作日处理。',
++].join('\n');
++const SUBSCRIBER_GENERIC_DENIAL = '订阅账户当前不可执行该操作。';
++
++function subscriberService(deps) {
++    return deps.dingtalkSubscriptions ?? deps.subscriptionService;
++}
++
++function subscriberId(deps) {
++    return typeof deps.subscriberId === 'function' ? deps.subscriberId() : deps.subscriberId;
++}
++
++function optionDisplayName(row, kind = '') {
++    const raw = typeof row === 'string'
++        ? row
++        : row?.displayName ?? row?.name ?? row?.title ?? row?.label ?? row?.modeName ?? row?.modelName ?? row?.workspaceName ?? row?.workspaceDisplayName ?? '';
++    // A subscriber may select a workspace/model but may not learn its absolute
++    // filesystem path, provider URL, or internal route id.
++    if (kind === 'workspace' && /^(?:[A-Za-z]:[\\/]|[\\/]{1,2})/u.test(String(raw))) return '已授权工作区';
++    if (/^https?:\/\//iu.test(String(raw))) return '已授权选项';
++    return cleanInline(raw, 120);
++}
++
++function optionValue(row) {
++    if (typeof row === 'string') return row;
++    return row?.value ?? row?.resourceId ?? row?.workspaceId ?? row?.modelId ?? row?.modeId ?? row?.effortId ?? row?.id ?? row?.key ?? row?.slug ?? row?.name ?? row?.title ?? '';
++}
++
++function optionList(value) {
++    if (Array.isArray(value)) return value;
++    if (value && typeof value === 'object') {
++        for (const key of ['items', 'options', 'values', 'authorized', 'allowed', 'data']) {
++            if (Array.isArray(value[key])) return value[key];
++        }
++    }
++    return [];
++}
++
++async function callSubscriberMethod(service, names, payload) {
++    for (const name of names) {
++        if (typeof service?.[name] !== 'function') continue;
++        try {
++            return { called: true, value: await service[name](payload) };
++        } catch (error) {
++            return { called: true, error };
++        }
++    }
++    return { called: false };
++}
++
++function subscriberOptionField(kind) {
++    return {
++        mode: ['authorizedModes', 'modes', 'allowedModes'],
++        workspace: ['authorizedWorkspaces', 'workspaces', 'allowedWorkspaces'],
++        model: ['authorizedModels', 'models', 'allowedModels'],
++        effort: ['authorizedEfforts', 'efforts', 'allowedEfforts'],
++    }[kind] ?? [];
++}
 +
 +function cleanInline(value, max = 160) {
 +    return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/`/g, "'").trim().slice(0, max);
@@ -935,7 +1813,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
  /** Commands that must win over a pending human-interaction answer. */
  export function isSessionControl(text) {
      const command = text.trim().split(/\s+/, 1)[0];
-@@ -28,6 +470,10 @@ export class Commands {
+@@ -28,15 +538,387 @@ export class Commands {
      pendingBusyChoice = new Map();
      /** Interactive busy cards: outTrackId → conversationId (buttons and text answers share one pending state). */
      busyCards = new Map();
@@ -943,10 +1821,224 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
 +    artifactSnapshots = new Map();
 +    /** Short-lived `/replies` numbering; `/resend` re-reads before sending. */
 +    replySnapshots = new Map();
++    /** Subscriber option numbering; values are never sent back to the user. */
++    subscriberOptionSnapshots = new Map();
      constructor(deps) {
          this.deps = deps;
      }
-@@ -37,6 +483,162 @@ export class Commands {
++    isSubscriber() {
++        return this.deps.accessProfile === 'subscriber';
++    }
++    async subscriberOptions(kind, scopeKey) {
++        const service = subscriberService(this.deps);
++        const id = subscriberId(this.deps);
++        const payload = { subscriberId: id, accountId: this.deps.accountId, kind, scopeKey };
++        const methodNames = {
++            mode: ['listAuthorizedModes', 'listSubscriberModes', 'listModes'],
++            workspace: ['listAuthorizedWorkspaces', 'listSubscriberWorkspaces', 'listWorkspacesForSubscriber'],
++            model: ['listAuthorizedModels', 'listSubscriberModels', 'listModelsForSubscriber'],
++            effort: ['listAuthorizedEfforts', 'listSubscriberEfforts', 'listEffortsForSubscriber'],
++        }[kind] ?? [];
++        const direct = await callSubscriberMethod(service, methodNames, payload);
++        let rows = direct.called && !direct.error ? optionList(direct.value) : [];
++        if (!rows.length && typeof service?.resolveRuntimePolicy === 'function') {
++            try {
++                let policy;
++                try {
++                    policy = await service.resolveRuntimePolicy(id, payload);
++                } catch {
++                    policy = await service.resolveRuntimePolicy(payload);
++                }
++                for (const field of subscriberOptionField(kind)) {
++                    rows = optionList(policy?.[field]);
++                    if (rows.length) break;
++                }
++            } catch {
++                rows = [];
++            }
++        }
++        return rows.map((row, index) => ({
++            number: index + 1,
++            name: optionDisplayName(row, kind),
++            value: String(optionValue(row) ?? '').trim(),
++        })).filter((row) => row.name && row.value).slice(0, 20);
++    }
++    async rememberSubscriberOptions(kind, scopeKey) {
++        const rows = await this.subscriberOptions(kind, scopeKey);
++        this.subscriberOptionSnapshots.set(`${scopeKey}:${kind}`, { at: Date.now(), rows });
++        return rows;
++    }
++    async subscriberWorkingDay(scopeKey, command) {
++        const service = subscriberService(this.deps);
++        const id = subscriberId(this.deps);
++        const payload = { subscriberId: id, accountId: this.deps.accountId, scopeKey, command };
++        const result = await callSubscriberMethod(service, ['isWorkingDay', 'isOperationalNow', 'canUseNow'], payload);
++        if (!result.called && typeof service?.workdayStatus === 'function') {
++            try { const day = service.workdayStatus(); return day?.known === true && day?.allowed === true; } catch { return false; }
++        }
++        if (!result.called && typeof service?.isAllowedWorkday === 'function') {
++            try { return service.isAllowedWorkday() === true; } catch { return false; }
++        }
++        if (!result.called) return true;
++        if (result.error) return false;
++        const value = result.value;
++        return value !== false && value?.ok !== false && value?.allowed !== false && value?.workingDay !== false && value?.status !== 'blocked' && value?.status !== 'denied';
++    }
++    async subscriberStatus(scopeKey) {
++        const service = subscriberService(this.deps);
++        const id = subscriberId(this.deps);
++        const payload = { subscriberId: id, accountId: this.deps.accountId, scopeKey };
++        const result = await callSubscriberMethod(service, ['status', 'getSubscriberStatus', 'resolveStatus'], payload);
++        if (result.called && !result.error && result.value) return result.value;
++        try {
++            if (typeof service?.resolveRuntimePolicy !== 'function') return {};
++            try {
++                return await service.resolveRuntimePolicy(id, payload);
++            } catch {
++                return await service.resolveRuntimePolicy(payload);
++            }
++        } catch {
++            return {};
++        }
++    }
++    async subscriberQuota(scopeKey) {
++        const service = subscriberService(this.deps);
++        const id = subscriberId(this.deps);
++        const payload = { subscriberId: id, accountId: this.deps.accountId, scopeKey };
++        let result = await callSubscriberMethod(service, ['getQuotaStatus', 'resolveQuota'], payload);
++        if (!result.called && typeof service?.quotaStatus === 'function') {
++            try {
++                result = { called: true, value: await service.quotaStatus(id, payload) };
++            } catch (error) {
++                result = { called: true, error };
++            }
++        }
++        return result.called && !result.error ? result.value : {};
++    }
++    async applySubscriberSelection(kind, scopeKey, target) {
++        const rows = await this.subscriberOptions(kind, scopeKey); // always re-resolve before applying
++        const number = Number(String(target ?? '').trim());
++        if (!Number.isSafeInteger(number) || number < 1 || number > rows.length)
++            return { ok: false, reason: 'not-found' };
++        const picked = rows[number - 1];
++        const service = subscriberService(this.deps);
++        const payload = {
++            subscriberId: subscriberId(this.deps),
++            accountId: this.deps.accountId,
++            scopeKey,
++            kind,
++            value: picked.value,
++            displayName: picked.name,
++        };
++        const names = {
++            mode: ['selectMode', 'setMode'],
++            workspace: ['selectWorkspace', 'setWorkspace'],
++            model: ['selectModel', 'setModel'],
++            effort: ['selectEffort', 'setEffort'],
++        }[kind] ?? [];
++        let result = await callSubscriberMethod(service, names, payload);
++        if (!result.called) result = await callSubscriberMethod(service, ['setSubscriberSelection', 'selectSubscriberOption'], payload);
++        if (!result.called) result = await callSubscriberMethod(service, ['setSelection', 'select'], payload);
++        if (!result.called || result.error || result.value === false || result.value?.ok === false || result.value?.allowed === false)
++            return { ok: false, reason: 'denied' };
++        this.deps.bindings.delete(scopeKey);
++        this.deps.workspaceOverrides?.delete?.(scopeKey);
++        this.subscriberOptionSnapshots.delete(`${scopeKey}:${kind}`);
++        return { ok: true, row: picked };
++    }
++    async handleSubscriber(msg, key, text, reply) {
++        const cmd = text.split(/\s+/, 1)[0];
++        if (!SUBSCRIBER_COMMANDS.has(cmd)) {
++            if (text.startsWith('/')) await reply(SUBSCRIBER_GENERIC_DENIAL);
++            return text.startsWith('/');
++        }
++        if (cmd !== '/help' && cmd !== '/status' && cmd !== '/quota' && !(await this.subscriberWorkingDay(key, cmd))) {
++            await reply('当前不是可用工作日；周末调休工作日按工作日处理。');
++            return true;
++        }
++        const [, sub, ...rest] = text.split(/\s+/);
++        if (cmd === '/help') {
++            await reply(SUBSCRIBER_HELP);
++            return true;
++        }
++        if (cmd === '/status') {
++            const status = await this.subscriberStatus(key);
++            const workspace = status?.workspaceName ?? status?.workspaceDisplayName ?? status?.workspace?.name ?? (status?.workspace ? '已配置' : '未创建');
++            const mode = status?.modeName ?? status?.presetName ?? status?.mode?.name ?? '未配置';
++            const model = status?.modelName ?? status?.modelDisplayName ?? status?.model?.name ?? '未配置';
++            const effort = status?.effortName ?? status?.reasoningEffort ?? status?.effort ?? '默认';
++            const state = status?.state ?? status?.status ?? (status?.ready === true ? '可使用' : '待配置');
++            await reply(['**订阅账户状态**', `- 状态：${cleanInline(state)}`, `- 工作区：${cleanInline(workspace)}`, `- 工作模式：${cleanInline(mode)}`, `- 模型：${cleanInline(model)}`, `- 推理强度：${cleanInline(effort)}`].join('\n'));
++            return true;
++        }
++        if (cmd === '/quota') {
++            const quota = await this.subscriberQuota(key);
++            const cycle = cleanInline(quota?.cycleLabel ?? quota?.period ?? '本周');
++            const used = quota?.used ?? quota?.usedTokens ?? 0;
++            const limit = quota?.limit ?? quota?.quota ?? quota?.weeklyLimit ?? '未配置';
++            const remaining = quota?.remaining ?? quota?.remainingTokens ?? (typeof limit === 'number' && typeof used === 'number' ? Math.max(0, limit - used) : '未知');
++            const next = cleanInline(quota?.nextAvailableAt ?? quota?.nextCycleStart ?? quota?.resetAt ?? '下个可用工作日');
++            await reply(['**Token 额度**', `- 周期：${cycle}`, `- 已用：${cleanInline(used)}`, `- 上限：${cleanInline(limit)}`, `- 剩余：${cleanInline(remaining)}`, `- 下次可用：${next}`].join('\n'));
++            return true;
++        }
++        if (cmd === '/new') {
++            this.resetSession(key);
++            const result = await callSubscriberMethod(subscriberService(this.deps), ['prepareNewSession', 'newSession', 'resetSession'], { subscriberId: subscriberId(this.deps), accountId: this.deps.accountId, scopeKey: key });
++            if (result.error || result.value?.ok === false) {
++                await reply(SUBSCRIBER_GENERIC_DENIAL);
++                return true;
++            }
++            await reply('✅ 当前会话已清除，下一条消息将建立新会话。');
++            return true;
++        }
++        if (cmd === '/stop') {
++            await this.stop(msg, reply, '✅ 已停止当前任务。', key);
++            return true;
++        }
++        if (cmd === '/resume') {
++            const service = subscriberService(this.deps);
++            const id = subscriberId(this.deps);
++            const status = await this.subscriberStatus(key);
++            const quota = await this.subscriberQuota(key);
++            const workspace = status?.workspaceRoot ?? status?.workspace ?? status?.workspaceId;
++            const active = status?.active === true || status?.ready === true || status?.status === 'active';
++            const quotaAllowed = quota?.allowed === true || quota?.ready === true || quota?.status === 'active';
++            if (!active || !workspace || !quotaAllowed) {
++                await reply(SUBSCRIBER_GENERIC_DENIAL);
++                return true;
++            }
++            const payload = { subscriberId: id, accountId: this.deps.accountId, scopeKey: key };
++            let result = await callSubscriberMethod(service, ['resumeRuntime', 'resumePausedRuntime', 'canResume'], payload);
++            if (!result.called) {
++                await reply('✅ 当前账户条件已满足；下一条消息将继续（没有暂停任务时会按新消息处理）。');
++                return true;
++            }
++            if (result.error || result.value === false || result.value?.ok === false || result.value?.allowed === false) await reply(SUBSCRIBER_GENERIC_DENIAL);
++            else await reply(result.value?.resumed === false
++                ? '✅ 当前账户条件已满足；没有暂停任务，下一条消息会按新消息处理。'
++                : '✅ 已准备恢复；下一条消息即可继续。');
++            return true;
++        }
++        const kind = cmd === '/workspace' ? 'workspace' : cmd.slice(1);
++        if (!['mode', 'workspace', 'model', 'effort'].includes(kind)) {
++            await reply(SUBSCRIBER_GENERIC_DENIAL);
++            return true;
++        }
++        const rows = await this.rememberSubscriberOptions(kind, key);
++        if (!sub) {
++            await reply(rows.length
++                ? [`**可用${kind === 'mode' ? '工作模式' : kind === 'workspace' ? '工作区' : kind === 'model' ? '模型' : '推理强度'}**`, ...rows.map((row) => `${row.number}. ${cleanInline(row.name)}`), '', `切换：\`${cmd} <序号>\``].join('\n')
++                : '当前没有可用选项，未执行任何切换。');
++            return true;
++        }
++        const applied = await this.applySubscriberSelection(kind, key, sub);
++        if (!applied.ok) await reply('当前选项已失效或未获授权，未执行切换。');
++        else await reply(`✅ 已切换${kind === 'mode' ? '工作模式' : kind === 'workspace' ? '工作区' : kind === 'model' ? '模型' : '推理强度'}：${cleanInline(applied.row.name)}，当前会话已重开。`);
++        return true;
++    }
+     markBusyNotice(conversationId, ctx) {
+         this.pendingBusyChoice.set(conversationId, { at: Date.now(), ctx });
+     }
      registerBusyCard(outTrackId, conversationId) {
          this.busyCards.set(outTrackId, conversationId);
      }
@@ -1109,10 +2201,12 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
      /**
       * Consume a busy-card button press: approve = interrupt, reject = steer.
       * Only the queued message's own sender may decide.
-@@ -122,10 +724,25 @@ export class Commands {
+@@ -122,10 +1004,27 @@ export class Commands {
          if (!text.startsWith('/'))
              return false;
          const [cmd, sub, ...rest] = text.split(/\s+/);
++        if (this.isSubscriber())
++            return this.handleSubscriber(msg, key, text, reply);
 +        if (OWNER_COMMANDS.has(cmd) && (!this.deps.isOwner || !this.deps.isOwner(msg))) {
 +            await reply('当前入口仅管理员可用。');
 +            return true;
@@ -1135,7 +2229,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
              case '/status': {
                  const bound = this.deps.bindings.get(key);
                  const agent = bound ? this.deps.agents.get(sessionId(bound)) : undefined;
-@@ -135,7 +752,8 @@ export class Commands {
+@@ -135,7 +1034,8 @@ export class Commands {
                  await reply([
                      '**状态**',
                      `- 会话：${bound ? `\`${bound.slice(0, 8)}…\`${agent ? `（${agent.status === 'running' ? '执行中' : '空闲'}）` : '（未加载，下条消息恢复）'}` : '尚未建立'}`,
@@ -1145,7 +2239,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
                      `- 排队：${this.deps.queue.depth(key)} 条在途`,
                      ...(this.deps.defaultWorkspace
                          ? [`- 工作区：${ws ?? this.deps.defaultWorkspace}${ws ? '（本会话覆盖）' : '（默认）'}`]
-@@ -145,25 +763,16 @@ export class Commands {
+@@ -145,25 +1045,16 @@ export class Commands {
                  ].join('\n'));
                  return true;
              }
@@ -1179,7 +2273,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
              case '/stop':
                  await this.stop(msg, reply, '✅ 已停止当前任务。', key);
                  return true;
-@@ -171,7 +780,7 @@ export class Commands {
+@@ -171,7 +1062,7 @@ export class Commands {
                  if (!sub) {
                      const override = this.deps.modelOverrides.get(key);
                      const model = override ?? this.deps.defaultModel();
@@ -1188,7 +2282,7 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
                      return true;
                  }
                  if (sub === 'reset') {
-@@ -181,21 +790,324 @@ export class Commands {
+@@ -181,21 +1072,324 @@ export class Commands {
                      return true;
                  }
                  if (sub === 'use') {
@@ -1518,13 +2612,22 @@ index b186308646d5c7098ee739918f885ee0907b0ade..8800a954cb1b5ae0669702223b74f3b0
              case '/ws': {
                  if (!this.deps.listWorkspaces || !this.deps.workspaceOverrides) {
                      await reply('工作区模块未装配。');
-@@ -284,4 +1196,4 @@ export class Commands {
-         }
-     }
- }
--//# sourceMappingURL=commands.js.map
-\ No newline at end of file
-+//# sourceMappingURL=commands.js.map
+@@ -273,6 +1467,15 @@ export class Commands {
+         if (agent && agent.status === 'running') {
+             try {
+                 agent.cancel({ kind: 'user' });
++                if (this.isSubscriber()) {
++                    await this.deps.onSubscriberCancel?.({
++                        subscriberId: subscriberId(this.deps),
++                        accountId: this.deps.accountId,
++                        sessionId: String(bound),
++                        scopeKey: scopeKey ?? msg.conversationId,
++                        reason: 'cancelled',
++                    });
++                }
+                 await reply(okText);
+             }
+             catch (err) {
 diff --git a/lib/config.d.ts b/lib/config.d.ts
 index db2d69918ef076488d316794a27b6b1ca8947c1f..7f039f5f06d5f8ef47936d7afb8d1c0b1e56bf1b 100644
 --- a/lib/config.d.ts
@@ -2504,8 +3607,21 @@ index 0000000000000000000000000000000000000000..dbf907f8b48da32bda4ab8ede722071e
 +}
 +
 +//# sourceMappingURL=delivery-store.js.map
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+index 5025c03f56f26df7508679426f8e800c2b4b9604..2ba8e00896fbd85b65d9f95be00c2b843795f8d6 100644
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -3,5 +3,8 @@ import { Config } from './config.js';
+ export declare const name = "dingtalk-channel";
+ export declare const inject: string[];
+ export { Config };
++export { AccountManager, SUBSCRIBER_BRAND, runtimeAccountStateId } from './account-manager.js';
++export { SubscriberQuotaLease } from './quota-lease.js';
++export declare function decorateSubscriberAgentContext(agentCtx: any, identity: Record<string, unknown>, gate: (input: Record<string, unknown>) => Promise<any> | any, settle: (input: Record<string, unknown>) => Promise<any> | any): any;
+ export declare function apply(ctx: Context, config: Config): Promise<void>;
+ //# sourceMappingURL=index.d.ts.map
 diff --git a/lib/index.js b/lib/index.js
-index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d33e69eb5 100644
+index dd24fdc083454f222cf5a320536705929f676dee..fdff5371f30dc020bc325cddb82ba2adebeae1a7 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -22,6 +22,7 @@ import { Commands, isSessionControl } from './commands.js';
@@ -2516,19 +3632,141 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
  import { OwnerBinding } from './owner.js';
  import { DwsTools } from './tools.js';
  import { downloadImageByCode } from './media.js';
-@@ -29,8 +30,9 @@ import { modelAcceptsImages } from './image-mode.js';
+@@ -29,9 +30,119 @@ import { modelAcceptsImages } from './image-mode.js';
  import { exactPackageSpec } from './package-info.js';
  import { resolveStateDir } from './paths.js';
  import { cardTarget } from './targets.js';
 +import { DeliveryStore } from './delivery-store.js';
++import { AccountManager, SUBSCRIBER_BRAND, runtimeAccountStateId } from './account-manager.js';
++import { SubscriberQuotaLease } from './quota-lease.js';
  export const name = 'dingtalk-channel';
 -export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm'];
 +export const inject = ['agents', 'agentDefaultModel', 'credentials', 'llm', 'sessionQuery', 'agentPresets'];
  export { Config };
++export { AccountManager, SUBSCRIBER_BRAND, runtimeAccountStateId };
++export { SubscriberQuotaLease };
++
++function serviceCall(service, names, payload) {
++    for (const name of names) {
++        if (typeof service?.[name] === 'function') {
++            return Promise.resolve()
++                .then(() => service[name](payload))
++                .then((value) => ({ called: true, value }))
++                .catch((error) => ({ called: true, error }));
++        }
++    }
++    return Promise.resolve({ called: false });
++}
++
++function subscriberDeniedText(reason) {
++    if (reason === 'binding')
++        return '请先完成绑定确认后再开始对话。';
++    if (reason === 'workspace')
++        return '管理员尚未为你创建可用工作区，暂时不能开始对话。';
++    if (reason === 'calendar')
++        return '当前不是可用工作日；周末调休工作日按工作日处理。';
++    if (reason === 'quota')
++        return '本周 Token 额度已用完或暂时无法确认，当前请求未执行。';
++    if (reason === 'brand')
++        return '机器人尚在配置中，暂时不能开始对话。';
++    if (reason === 'runtime')
++        return '订阅运行环境暂时不可用，请联系管理员检查当前组合。';
++    return '订阅账户当前不可开始对话。';
++}
++
++function protectedSubscriberRequest(text) {
++    const value = String(text ?? '').normalize('NFKC').replace(/\p{Cf}/gu, '');
++    return /(?:系统提示词|system\s*prompt|配置文件|工作模式(?:内容|定义)?|虾(?:缸)?(?:定义|源码|文件|内容)|skill(?:文件|内容)?|插件(?:文件|内容)?|大神本体|绝对路径|provider\s*https?:\/\/|https?:\/\/[^\s]+(?:api|provider|model))/iu.test(value);
++}
++
++function usageFromValue(value) {
++    if (!value || typeof value !== 'object')
++        return undefined;
++    const tokenShape = value && typeof value === 'object' && Object.keys(value).some((key) => /^(?:total|input|output|prompt|completion|cache|reasoning|delta)(?:_|[A-Z]|$)/u.test(key));
++    const candidate = value.usage ?? value.tokenUsage ?? value.tokens ?? value.meta?.usage ?? value.result?.usage ?? value.message?.usage ?? (tokenShape ? value : undefined);
++    if (!candidate || typeof candidate !== 'object')
++        return undefined;
++    const tokenKeys = new Set([
++        'totalTokens', 'total_tokens', 'totalTokenCount', 'total_token_count', 'inputTokens', 'input_tokens', 'inputTokenCount', 'input_token_count', 'promptTokens', 'prompt_tokens',
++        'promptTokenCount', 'prompt_token_count', 'outputTokens', 'output_tokens', 'outputTokenCount', 'output_token_count', 'completionTokens', 'completion_tokens',
++        'completionTokenCount', 'completion_token_count', 'cacheReadTokens',
++        'cache_read_tokens', 'cachedInputTokens', 'cached_input_tokens', 'cacheWriteTokens', 'cache_write_tokens', 'reasoningTokens', 'reasoning_tokens',
++        'input', 'output', 'prompt', 'completion', 'cacheRead', 'cacheWrite', 'reasoning', 'delta', 'deltaTokens',
++    ]);
++    const numbers = {};
++    for (const [key, raw] of Object.entries(candidate)) {
++        if (tokenKeys.has(key) && Number.isFinite(Number(raw)) && Number(raw) >= 0)
++            numbers[key] = Number(raw);
++    }
++    return Object.keys(numbers).length ? numbers : undefined;
++}
++
++function tokenUsageRequired(definition, gateResult, value) {
++    return definition?.usageRequired === true
++        || definition?.tokenUsageRequired === true
++        || definition?.billing === 'tokens'
++        || definition?.kind === 'model'
++        || gateResult?.usageRequired === true
++        || value?.usageRequired === true
++        || /(?:^|[_:-])(model|llm|completion|chat|generate)(?:$|[_:-])/iu.test(String(definition?.name ?? ''));
++}
++
++export function decorateSubscriberAgentContext(agentCtx, identity, gate, settle) {
++    if (!agentCtx?.tools?.register)
++        return agentCtx;
++    const marker = Symbol.for('dsh.dingtalk.subscriber-tools-wrapped');
++    if (agentCtx.tools[marker])
++        return agentCtx;
++    const originalRegister = agentCtx.tools.register.bind(agentCtx.tools);
++    Object.defineProperty(agentCtx.tools, marker, { value: true, configurable: false, enumerable: false });
++    agentCtx.tools.register = (definition) => {
++        if (!definition || typeof definition.execute !== 'function')
++            return originalRegister(definition);
++        const wrapped = {
++            ...definition,
++            execute: async (args, execution) => {
++                const gateResult = await gate({
++                    ...identity,
++                    operation: 'tool',
++                    toolName: definition.name,
++                    args,
++                });
++                if (gateResult === false || gateResult?.ok === false || gateResult?.allowed === false || gateResult?.granted === false || gateResult?.reserved === false)
++                    throw new Error('subscriber tool gate denied');
++                const value = await definition.execute(args, execution);
++                const usage = usageFromValue(value);
++                if (!usage) {
++                    if (tokenUsageRequired(definition, gateResult, value))
++                        throw new Error('subscriber token usage unavailable');
++                    return value;
++                }
++                const settled = await settle({ ...identity, operation: 'tool', toolName: definition.name, usage });
++                if ((settled === false || settled === undefined || settled?.ok === false) && tokenUsageRequired(definition, gateResult, value))
++                    throw new Error('subscriber token usage could not be recorded');
++                return value;
++            },
++        };
++        return originalRegister(wrapped);
++    };
++    return agentCtx;
++}
  export async function apply(ctx, config) {
      const log = (line) => console.log(`[dsh-dingtalk ${new Date().toTimeString().slice(0, 8)}] ${line}`);
-@@ -55,12 +57,8 @@ export async function apply(ctx, config) {
-     }
+     const credentialProvider = ctx.credentials;
+@@ -44,43 +154,70 @@ export async function apply(ctx, config) {
+             return '';
+         }
+     };
+-    const resolution = await resolveRuntimeAccounts(configuredAccountSpecs(config), resolveCredential, process.env);
+-    for (const id of resolution.missingCredentialAccountIds)
+-        log(`robot ${id}: missing credentials — skipped`);
+-    for (const id of resolution.duplicateAccountIds)
+-        log(`robot ${id}: clientId already used by an earlier robot — skipped`);
+-    if (!resolution.accounts.length) {
+-        log('no configured DingTalk robots could start');
+-        return;
+-    }
++    const staticSpecs = configuredAccountSpecs(config);
      const cwd = config.workspace || path.join(os.homedir(), 'dsh-dingtalk-workspace');
      fs.mkdirSync(cwd, { recursive: true });
 -    const primary = resolution.accounts[0];
@@ -2540,28 +3778,299 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
          log,
      });
      if (config.tools.enabled)
-@@ -78,6 +76,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+         void dwsTools.enable();
+-    await Promise.all(resolution.accounts.map(async (account) => {
+-        try {
+-            await startAccount(ctx, config, account, cwd, dwsTools);
+-        }
+-        catch (error) {
+-            log(`robot ${account.id}: failed to start (${error instanceof Error ? error.message : error})`);
+-        }
+-    }));
++    const resolveSubscriptionService = () => ctx.get?.('dingtalkSubscriptions')
++        ?? ctx.get?.('dshDingtalkSubscriptions')
++        ?? ctx.get?.('dshDingtalkSubscriptionService');
++    const subscriptionService = resolveSubscriptionService();
++    const manager = new AccountManager({
++        staticSpecs,
++        subscriptionService,
++        subscriptionServiceResolver: resolveSubscriptionService,
++        log,
++        resolveRuntimeAccounts: async (specs) => {
++            // Dynamic subscriber specs are resolved through the same credential
++            // store as the default account.  A service may instead return the
++            // secret-bearing fields directly; they are consumed only here and
++            // never reach connector replies or status lines.
++            const result = await resolveRuntimeAccounts(specs, resolveCredential, process.env);
++            for (const id of result.missingCredentialAccountIds)
++                log(`robot ${id}: missing credentials — skipped`);
++            for (const id of result.duplicateAccountIds)
++                log(`robot ${id}: clientId already used by an earlier robot — skipped`);
++            return result;
++        },
++        startAccount: (account) => startAccount(ctx, config, account, cwd, dwsTools, resolveSubscriptionService()),
++    });
++    await manager.start();
++    try {
++        // The native panel consumes this capability through Cordis; no secrets
++        // are exposed in the Connector's user-facing status/replies.
++        ctx.provide?.('dingtalkAccountManager', manager);
++    }
++    catch (error) {
++        log(`account manager service exposure unavailable (${error instanceof Error ? error.message : 'unknown error'})`);
++    }
++    ctx.on('dispose', async () => {
++        await manager.dispose();
++    });
+ }
+-async function startAccount(ctx, config, account, cwd, dwsTools) {
++async function startAccount(ctx, config, account, cwd, dwsTools, subscriptionService) {
      const { clientId, clientSecret } = account;
      const log = (line) => console.log(`[dsh-dingtalk:${account.id} ${new Date().toTimeString().slice(0, 8)}] ${line}`);
++    const accessProfile = account.profile === 'subscriber' || account.accessProfile === 'subscriber' || account.role === 'subscriber'
++        ? 'subscriber'
++        : 'system_owner';
++    const subscriberId = accessProfile === 'subscriber'
++        ? String(account.subscriberId ?? account.subscriptionId ?? account.id).trim()
++        : undefined;
++    const isSubscriber = accessProfile === 'subscriber';
      const interactionCardTemplateId = config.interactionCardTemplateId || process.env.DINGTALK_INTERACTION_CARD_TEMPLATE_ID || '';
+-    const stateDir = accountStateDir(resolveStateDir(), account.id);
 +    const consoleCardTemplateId = config.consoleCardTemplateId || process.env.DINGTALK_CONSOLE_CARD_TEMPLATE_ID || '';
 +    const defaultPresetId = config.defaultDingTalkPresetId || 'reliable-development';
-     const stateDir = accountStateDir(resolveStateDir(), account.id);
++    const stateDir = accountStateDir(resolveStateDir(), runtimeAccountStateId(account.id));
      let streamStatus = 'connecting';
-     const owner = new OwnerBinding({
-@@ -113,6 +113,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
-     void workspace.start();
+-    const owner = new OwnerBinding({
++    // Subscriber accounts have no owner.json and never enter the legacy owner
++    // binding flow.  Only the static default account keeps the old owner
++    // semantics, including setup-generated owner challenges.
++    const owner = isSubscriber ? undefined : new OwnerBinding({
+         file: path.join(stateDir, 'owner.json'),
+         configuredOwner: account.ownerStaffId || (account.id === DEFAULT_ACCOUNT_ID ? process.env.DINGTALK_OWNER_STAFF_ID || '' : ''),
+         legacyAllowedSenders: account.senderAccess === 'owner' ? account.allowedSenders : [],
+@@ -91,7 +228,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     });
+     // Onboarding gap guard: an unbound connector silently rejects everyone, so
+     // say at boot HOW to claim it (the code itself never goes into logs).
+-    {
++    if (owner) {
+         const s = owner.status();
+         if (!s.bound) {
+             log(s.challengeReady
+@@ -104,15 +241,21 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     }
+     // DSH workspaces require explicit session membership in addition to cwd.
+     // The services start asynchronously after this plugin, so resolve lazily.
++    // Never give a subscriber a fallback to the deployment workspace.  The
++    // subscription service must return a ready, dedicated workspace before an
++    // Agent is created or resumed.
++    const accountWorkspace = isSubscriber ? path.join(stateDir, 'subscriber-workspace-unavailable') : cwd;
+     const workspace = new WorkspaceLinker({
+-        cwd,
++        cwd: accountWorkspace,
+         resolveRegistry: () => ctx.get?.('workspaceRegistry'),
+         resolvePersistence: () => ctx.get?.('sessionPersistence'),
+         log,
+     });
+-    void workspace.start();
++    if (!isSubscriber)
++        void workspace.start();
      // Host services are typed structurally (see host.ts); inject guarantees presence.
      const agents = ctx.agents;
 +    const agentPresets = ctx.agentPresets;
      const defaultModel = ctx.agentDefaultModel;
      const currentDefault = () => {
          try {
-@@ -123,11 +124,18 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -123,11 +266,203 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              return undefined;
          }
      };
 -    const outbound = new Outbound({ clientId, clientSecret }, log);
++    const subscriberPayload = (extra = {}) => ({
++        profile: accessProfile,
++        subscriberId,
++        accountId: account.id,
++        ...extra,
++    });
++    const authorizeSubscriberInbound = async (msg) => {
++        if (!isSubscriber)
++            return { kind: 'allowed' };
++        const result = await serviceCall(subscriptionService, ['authorizeInbound'], subscriberPayload({ message: msg, ...msg }));
++        if (!result.called || result.error)
++            return { kind: 'denied', reason: 'subscription-service-unavailable' };
++        const value = result.value;
++        if (value === true || value?.allowed === true || value?.kind === 'allowed' || value?.status === 'allowed')
++            return { kind: 'allowed' };
++        if (value?.kind === 'pending-binding' || value?.status === 'pending-binding' || value?.pendingBinding === true || value?.pendingBinding?.challengeId || value?.needsBinding === true || value?.code === 'BINDING_PENDING' || value?.code === 'SUBSCRIBER_BINDING_PENDING')
++            return { kind: 'pending-binding', challengeId: value.challengeId ?? value.challenge ?? value.pendingBinding?.challengeId ?? '' };
++        if (value?.code === 'SUBSCRIBER_NOT_BOUND' && (account.bindingChallengeId || account.challengeId || account.bindingPending === true))
++            return { kind: 'pending-binding', challengeId: account.bindingChallengeId ?? account.challengeId ?? '' };
++        return { kind: 'denied', reason: value?.reason ?? 'subscriber-not-authorized' };
++    };
++    const confirmSubscriberBinding = async (msg, access) => {
++        const result = await serviceCall(subscriptionService, ['confirmPendingBinding', 'consumeBindingChallenge', 'confirmBinding', 'consumeBinding'], subscriberPayload({
++            message: msg,
++            challengeId: access?.challengeId,
++            staffId: msg.senderStaffId,
++            conversationId: msg.conversationId,
++        }));
++        if (!result.called || result.error || result.value === undefined)
++            return false;
++        return result.value === true || (result.value?.ok !== false && result.value?.allowed !== false && (result.value?.activated === true || result.value?.status === 'active' || result.value?.kind === 'bound'));
++    };
++    const resolveSubscriberRuntimePolicy = async (input = {}) => {
++        if (typeof subscriptionService?.resolveRuntimePolicy !== 'function')
++            return { ok: false };
++        let value;
++        try {
++            // The shipped control-plane service takes subscriberId positionally;
++            // newer service revisions accept the full identity object.  Try the
++            // positional contract first and only fall back on a thrown error.
++            value = await subscriptionService.resolveRuntimePolicy(subscriberId, input);
++        }
++        catch {
++            try {
++                value = await subscriptionService.resolveRuntimePolicy(subscriberPayload(input));
++            }
++            catch {
++                return { ok: false };
++            }
++        }
++        if (!value || typeof value !== 'object')
++            return { ok: false };
++        const selected = value.selected ?? {};
++        const model = value.model ?? (selected.modelProvider && selected.modelId
++            ? { provider: selected.modelProvider, model: selected.modelId, reasoningEffort: selected.effortId }
++            : undefined);
++        return {
++            ...value,
++            ok: value.ok !== false,
++            allowed: value.allowed !== false,
++            canStart: value.canStart ?? value.active ?? true,
++            workspace: value.workspace ?? value.workspaceRoot,
++            workspaceId: value.hostWorkspaceId ?? value.workspaceId,
++            preset: value.preset ?? value.presetId ?? selected.modeId,
++            model,
++        };
++    };
++    const quota = new SubscriberQuotaLease({ service: subscriptionService, subscriberId, accountId: account.id, log });
++    const quotaGate = async (input = {}) => {
++        if (input.operation === 'agent')
++            return quota.begin(input);
++        const requestId = String(input.requestId ?? `${account.id}:${input.scopeKey ?? input.conversationId ?? ''}:${input.operation ?? 'tool'}:${Date.now()}`);
++        const shrimpAuthorization = input.toolName && String(input.toolName).toLowerCase().includes('shrimp')
++            ? shrimpAuthorizationByScope.get(String(input.conversationId ?? input.scopeKey ?? ''))
++            : undefined;
++        const direct = await serviceCall(subscriptionService, ['authorizeToolCall', 'authorizeTool', 'evaluateToolCall', 'authorizeOperation', 'checkWorkday', 'toolGate'], subscriberPayload({
++            ...input,
++            requestId,
++            arguments: input.args,
++            ...(shrimpAuthorization ? { shrimpAuthorized: true, authorized: true, shrimpResourceId: shrimpAuthorization.resourceId, shrimpDisplayName: shrimpAuthorization.displayName, invocationReceiptId: shrimpAuthorization.receiptId } : {}),
++        }));
++        if (direct.called && !direct.error && !quota.denied(direct.value)) {
++            if (shrimpAuthorization && String(input.toolName).toLowerCase().includes('shrimp_run'))
++                shrimpAuthorizationByScope.delete(String(input.conversationId ?? input.scopeKey ?? ''));
++            return direct.value;
++        }
++        return false;
++    };
++    const registerSubscriberSession = async (input) => {
++        const result = await serviceCall(subscriptionService, ['registerSubscriberSession', 'registerSession'], subscriberPayload(input));
++        if (!result.called || result.error)
++            return false;
++        if (input?.requestId && input.sessionId)
++            quota.bind(input.requestId, input.sessionId);
++        const receipt = shrimpReceipts.get(`${input?.requestId ?? ''}:${input?.conversationId ?? ''}`);
++        if (receipt) {
++            const boundReceipt = await serviceCall(subscriptionService, ['bindShrimpInvocation', 'bindShrimpReceipt', 'bindInvocationReceipt'], subscriberPayload({
++                ...input,
++                receiptId: receipt.receiptId,
++                resourceId: receipt.match?.resourceId,
++                displayName: receipt.match?.displayName,
++            }));
++            if (boundReceipt.called && (boundReceipt.error || boundReceipt.value === false || boundReceipt.value?.ok === false))
++                return false;
++            shrimpReceipts.delete(`${input?.requestId ?? ''}:${input?.conversationId ?? ''}`);
++        }
++        return result.value;
++    };
++    const settleSubscriberUsage = (input = {}) => quota.record(input);
++    const finalizeQuotaLease = (input = {}) => quota.finalize(input);
++    const shrimpReceipts = new Map();
++    const authorizeSubscriberShrimp = async (match, text, msg) => {
++        if (!match || !((match.ok === true || match.matched === true) && match.allowed === true))
++            return { ...(match || {}), ok: false, matched: false, allowed: false, requested: true };
++        const payload = subscriberPayload({
++            text,
++            message: msg,
++            messageId: msg?.msgId,
++            scopeKey: msg?.conversationId,
++            resourceId: match.resourceId,
++            displayName: match.displayName,
++            exact: true,
++        });
++        const result = await serviceCall(subscriptionService, ['authorizeShrimpInvocation', 'authorizeShrimpRun', 'registerShrimpInvocation'], payload);
++        if (!result.called || result.error || result.value === undefined || result.value === false || result.value?.ok === false || result.value?.allowed === false)
++            return { ok: false, matched: false, allowed: false, requested: true };
++        const receiptId = result.value?.receiptId ?? result.value?.invocationReceiptId ?? result.value?.receipt?.id ?? match.receiptId;
++        if (receiptId)
++            shrimpReceipts.set(`${msg?.msgId ?? ''}:${msg?.conversationId ?? ''}`, { receiptId: String(receiptId), match });
++        shrimpAuthorizationByScope.set(String(msg?.conversationId ?? ''), {
++            resourceId: match.resourceId,
++            displayName: match.displayName,
++            ...(receiptId ? { receiptId: String(receiptId) } : {}),
++        });
++        return { ...match, requested: true, ...(receiptId ? { receiptId: String(receiptId) } : {}) };
++    };
++    const exactSubscriberShrimp = async (text, msg) => {
++        if (!isSubscriber)
++            return { requested: false };
++        if (typeof subscriptionService?.exactShrimpMatch !== 'function') {
++            shrimpAuthorizationByScope.delete(String(msg?.conversationId ?? ''));
++            return { requested: false };
++        }
++        try {
++            // The control-plane service accepts (subscriberId, message, catalog)
++            // while a connector-oriented revision accepts one identity object.
++            const normalizedText = String(text ?? '').normalize('NFKC').replace(/\p{Cf}/gu, '').trim();
++            const catalogValue = account.shrimpCatalog ?? ctx.get?.('shrimpCatalog')?.list?.() ?? [];
++            const catalog = await Promise.resolve(catalogValue);
++            let value;
++            try {
++                value = await subscriptionService.exactShrimpMatch(subscriberId, normalizedText, Array.isArray(catalog) ? catalog : []);
++            }
++            catch {
++                value = await subscriptionService.exactShrimpMatch(subscriberPayload({ text: normalizedText, message: msg }));
++            }
++            const normalized = value && typeof value === 'object' ? value : { requested: false };
++            if (normalized.requested === false || normalized.status === 'not-requested') {
++                shrimpAuthorizationByScope.delete(String(msg?.conversationId ?? ''));
++                return normalized;
++            }
++            if (normalized.ok === false || normalized.matched === false || normalized.allowed === false) {
++                shrimpAuthorizationByScope.delete(String(msg?.conversationId ?? ''));
++                return { ...normalized, requested: true };
++            }
++            return authorizeSubscriberShrimp(normalized, text, msg);
++        }
++        catch {
++            return { ok: false, requested: true };
++        }
++    };
++    const shrimpAuthorizationByScope = new Map();
++    const classifySubscriberContent = async (msg) => {
++        if (!isSubscriber)
++            return { protected: false };
++        if (typeof subscriptionService?.classifyProtectedContentRequest === 'function') {
++            const normalizedText = String(msg.text ?? '').normalize('NFKC').replace(/\p{Cf}/gu, '');
++            const result = await serviceCall(subscriptionService, ['classifyProtectedContentRequest'], subscriberPayload({ text: normalizedText, message: { ...msg, text: normalizedText } }));
++            if (!result.error && result.called && result.value !== undefined) {
++                const value = result.value;
++                return { protected: value === true || value?.protected === true || value?.blocked === true || value?.allowed === false, reason: value?.reason, fallback: false };
++            }
++        }
++        return { protected: protectedSubscriberRequest(msg.text), fallback: true };
++    };
 +    const configuredHttpTimeout = Number(process.env.DINGTALK_HTTP_TIMEOUT_MS);
 +    const httpTimeoutMs = Number.isFinite(configuredHttpTimeout) && configuredHttpTimeout > 0
 +        ? Math.max(1, Math.floor(configuredHttpTimeout))
@@ -2577,17 +4086,52 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
      const cardCapabilityFile = path.join(stateDir, 'capabilities.json');
      const cardCapability = new CardCapability((reason) => {
          fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
-@@ -137,14 +145,20 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -137,14 +471,54 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          fs.chmodSync(cardCapabilityFile, 0o600);
      });
      const emotion = new Emotion(() => outbound.token(), clientId, log);
 +    const deliveryStore = new DeliveryStore(stateDir);
      const renderer = new Renderer({
-         config,
+-        config,
++        // Do not stream unfiltered model chunks to subscriber cards.  The
++        // final renderer gate must inspect the complete text before any model
++        // output reaches DingTalk; owner cards preserve the configured stream.
++        config: isSubscriber ? { ...config, streaming: { ...config.streaming, enabled: false } } : config,
          outbound,
          emotion,
 -        createCard: (target) => AICard.create({
 +        deliveryStore,
++        guardOutput: isSubscriber
++            ? async (text, sessionIdValue, context) => {
++                if (sessionIdValue && !(await quota.waitForUsage({ sessionId: sessionIdValue })))
++                    return { blocked: true, reason: '本次 Token 用量无法可靠确认，已阻止交付；请稍后重试。' };
++                let result;
++                let fingerprints = Array.isArray(context?.fingerprints) ? context.fingerprints : [];
++                if (!fingerprints.length) {
++                    const fingerprintResult = await serviceCall(subscriptionService, ['protectedFingerprints', 'getProtectedFingerprints', 'listProtectedFingerprints'], subscriberPayload({ sessionId: sessionIdValue }));
++                    const candidate = fingerprintResult.called && !fingerprintResult.error ? fingerprintResult.value : undefined;
++                    fingerprints = Array.isArray(candidate) ? candidate : Array.isArray(candidate?.fingerprints) ? candidate.fingerprints : [];
++                }
++                if (typeof subscriptionService?.guardModelOutput === 'function') {
++                    try {
++                        result = { called: true, value: await subscriptionService.guardModelOutput(text, fingerprints) };
++                    }
++                    catch {
++                        result = { called: true, value: await subscriptionService.guardModelOutput(subscriberPayload({ text, sessionId: sessionIdValue, context })) };
++                    }
++                }
++                else
++                    result = await serviceCall(subscriptionService, ['guardSubscriberOutput', 'sanitizeSubscriberOutput'], subscriberPayload({ text, sessionId: sessionIdValue, context }));
++                if (!result.called || result.error)
++                    return { blocked: true, reason: '订阅者只能使用已授权能力，不能读取或修改大神本体、配置、工作模式、Skill、插件或虾定义。' };
++                const value = result.value;
++                if (value === undefined)
++                    return { blocked: true, reason: '订阅者只能使用已授权能力，不能读取或修改大神本体、配置、工作模式、Skill、插件或虾定义。' };
++                if (value === false || value?.blocked === true || value?.allowed === false)
++                    return { blocked: true, reason: value?.reason };
++                return value ?? { text };
++            }
++            : undefined,
 +        createCard: (target, options = {}) => AICard.create({
              token: () => outbound.token(),
              robotCode: clientId,
@@ -2600,7 +4144,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
              capability: cardCapability,
              log,
          }),
-@@ -152,6 +166,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -152,6 +526,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
      });
      const bindings = new JsonStore(path.join(stateDir, 'bindings.json'), log);
      const modelOverrides = new JsonStore(path.join(stateDir, 'models.json'), log);
@@ -2608,19 +4152,55 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
      const workspaceOverrides = new JsonStore(path.join(stateDir, 'workspaces.json'), log);
      const queue = new Queue(log);
      const questions = new QuestionManager({
-@@ -168,6 +183,9 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -159,7 +534,7 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+         markdownTitle: config.markdownTitle,
+         timeoutMs: config.questionTimeoutMs,
+         approvalTimeoutMs: config.approvalTimeoutMs,
+-        approvalUserId: () => owner.status().ownerStaffId,
++        approvalUserId: () => owner?.status().ownerStaffId ?? '',
+         interactionCards,
+         log,
+     });
+@@ -168,10 +543,31 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          log,
          modelOverrides,
          workspaceOverrides,
 +        presetOverrides,
 +        defaultPresetId,
 +        sessionQuery: ctx.sessionQuery,
++        accessProfile,
++        accountId: account.id,
++        subscriberId,
++        resolveRuntimePolicy: isSubscriber ? resolveSubscriberRuntimePolicy : undefined,
++        quotaGate: isSubscriber ? quotaGate : undefined,
++        finalizeQuotaLease: isSubscriber ? finalizeQuotaLease : undefined,
++        registerSession: isSubscriber ? registerSubscriberSession : undefined,
++        decorateAgentContext: isSubscriber
++            ? (agentCtx, identity) => decorateSubscriberAgentContext(agentCtx, subscriberPayload(identity), quotaGate, settleSubscriberUsage)
++            : undefined,
++        onRuntimeDenied: isSubscriber
++            ? async (msg, reason) => {
++                const denial = reason === 'runtime-policy' ? 'runtime' : reason === 'quota-or-runtime-gate' ? 'quota' : undefined;
++                await queueAccessReply(msg.conversationId, () => outbound.sendMarkdown(msg.sessionWebhook, config.markdownTitle, subscriberDeniedText(denial)));
++            }
++            : undefined,
          modelSelection: currentDefault,
          resolveImage: async (downloadCode, scopeKey) => {
              const legacyMode = config.attachImages === true ? 'always' : config.attachImages === false ? 'never' : undefined;
-@@ -201,15 +219,15 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+-            const route = modelOverrides.get(scopeKey) ?? currentDefault();
++            const route = isSubscriber
++                ? (await resolveSubscriberRuntimePolicy({ scopeKey }))?.model
++                : modelOverrides.get(scopeKey) ?? currentDefault();
+             const accepted = await modelAcceptsImages(legacyMode ?? config.imageMode, route, ctx.llm);
+             if (!accepted)
+                 return null;
+@@ -199,17 +594,18 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             // so attach the channel shadow through the live Agent.ctx as well.
+             questions.installFor(agent);
              questions.bindSession(agent.id, msg);
-             void workspace.attach(agent.id);
+-            void workspace.attach(agent.id);
++            if (!isSubscriber)
++                void workspace.attach(agent.id);
          },
 -        compose: async () => {
 +        compose: async (presetId) => {
@@ -2637,12 +4217,12 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
                  return {
                      agentPreset: resolved.id,
                      setup: async (agentCtx) => {
-@@ -224,12 +242,41 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -224,16 +620,51 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              }
          },
      });
 +    const isOwner = (msg) => {
-+        const ownerStaffId = owner.status().ownerStaffId;
++        const ownerStaffId = owner?.status().ownerStaffId;
 +        return msg.conversationType === 'direct'
 +            && typeof ownerStaffId === 'string'
 +            && ownerStaffId.length > 0
@@ -2673,17 +4253,44 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
 +        sessionQuery: ctx.sessionQuery,
 +        llm: ctx.llm,
 +        isOwner,
++        accessProfile,
++        accountId: account.id,
++        subscriberId,
++        dingtalkSubscriptions: subscriptionService,
++        subscriptionService,
++        onSubscriberCancel: isSubscriber ? (input) => finalizeQuotaLease(input) : undefined,
 +        console: {
 +            open: (msg, scopeKey) => consoleCards?.open(msg, scopeKey) ?? Promise.resolve(false),
 +        },
          defaultModel: currentDefault,
          toolsStatusLine: () => dwsTools.statusLine(),
          workspaceOverrides,
-@@ -270,6 +317,17 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+-        defaultWorkspace: cwd,
++        defaultWorkspace: isSubscriber ? undefined : cwd,
+         listWorkspaces: async () => {
+             try {
+                 const registry = ctx.get?.('workspaceRegistry');
+@@ -247,6 +678,15 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             }
+         },
+         connectorStatus: () => {
++            if (isSubscriber) {
++                return [
++                    '账户：订阅者',
++                    '私聊：仅绑定用户',
++                    '群聊：已关闭',
++                    `Stream：${streamStatus}`,
++                    `AI Card：${cardCapability.available ? '可尝试' : `已降级（${cardCapability.reason}）`}`,
++                ];
++            }
+             const ownerStatus = owner.status();
+             const senderAccess = ownerStatus.senderAccess === 'all'
+                 ? '所有人'
+@@ -270,12 +710,54 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
          markdownTitle: config.markdownTitle,
          log,
      });
-+    if (consoleInteractionCards) {
++    if (consoleInteractionCards && !isSubscriber) {
 +        consoleCards = new ConsoleCards({
 +            interactionCards: consoleInteractionCards,
 +            commands,
@@ -2694,10 +4301,114 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
 +            log,
 +        });
 +    }
++    const settledUsageEvents = new Set();
      ctx.on('session/event', (session, event) => {
          renderer.onSessionEvent(session, event);
++        if (!isSubscriber)
++            return;
++        const usage = usageFromValue(event?.data);
++        const terminal = event?.type === 'turn/end' || event?.type === 'turn/cancel' || event?.type === 'turn/error';
++        if (terminal && !usage) {
++            void finalizeQuotaLease({
++                sessionId: String(session?.id ?? ''),
++                reason: event?.type,
++                requireUsage: event?.type !== 'turn/cancel',
++            }).catch(() => undefined);
++        }
++        if (!usage)
++            return;
++        const eventKey = `${String(session?.id ?? '')}:${String(event?.data?.turn ?? event?.data?.callId ?? '')}:${event?.type ?? ''}:${JSON.stringify(usage)}`;
++        if (settledUsageEvents.has(eventKey))
++            return;
++        settledUsageEvents.add(eventKey);
++        const settling = settleSubscriberUsage({
++            operation: event?.type?.includes('tool') ? 'tool' : 'agent',
++            sessionId: String(session?.id ?? ''),
++            usage,
++        }).catch(() => undefined);
++        if (terminal) {
++            void settling.then(() => finalizeQuotaLease({
++                sessionId: String(session?.id ?? ''),
++                reason: event?.type,
++                requireUsage: event?.type !== 'turn/cancel',
++            })).catch(() => undefined);
++        }
      });
-@@ -411,6 +469,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+     // Reject visibility (Feishu SDK's reject-with-reason lesson): tell the
+     // sender once per hour why the bot ignores them, instead of dead silence.
+     const rejectNoticedAt = new Map();
++    const subscriberBindingChallenges = new Map();
+     const accessReplyQueues = new Map();
+     const queueAccessReply = (conversationId, send) => {
+         const previous = accessReplyQueues.get(conversationId) ?? Promise.resolve();
+@@ -321,15 +803,38 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             fs.chmodSync(runtimeFile, 0o600);
+         },
+         onMessage: async (msg) => {
+-            const access = owner.authorize(msg);
+-            if (access.kind === 'bound') {
++            const access = isSubscriber ? await authorizeSubscriberInbound(msg) : owner.authorize(msg);
++            if (isSubscriber && access.kind === 'pending-binding') {
++                subscriberBindingChallenges.set(`${account.id}:${msg.senderStaffId}`, {
++                    challengeId: access.challengeId,
++                    at: Date.now(),
++                });
++                const confirmation = String(msg.text ?? '').normalize('NFKC').replace(/[\u200B-\u200D\uFEFF]/gu, '').trim();
++                if (msg.conversationType === 'direct' && confirmation === '确认绑定') {
++                    const challenge = subscriberBindingChallenges.get(`${account.id}:${msg.senderStaffId}`) ?? access;
++                    const bound = await confirmSubscriberBinding(msg, challenge);
++                    if (bound)
++                        subscriberBindingChallenges.delete(`${account.id}:${msg.senderStaffId}`);
++                    await queueAccessReply(msg.conversationId, () => outbound.sendMarkdown(msg.sessionWebhook, config.markdownTitle, bound
++                        ? '✅ 绑定已确认。管理员完成工作区和额度配置后，你就可以开始对话。'
++                        : '绑定确认已失效，请联系管理员重新发起扫码绑定。'));
++                    return;
++                }
++                await noticeReject(msg, `${msg.senderStaffId}:${msg.conversationId}:subscriber-binding`, '请先完成身份绑定。请在当前私聊中直接回复“确认绑定”。');
++                return;
++            }
++            if (!isSubscriber && access.kind === 'bound') {
+                 log('owner binding completed from direct message');
+                 await queueAccessReply(msg.conversationId, () => outbound.sendMarkdown(msg.sessionWebhook, config.markdownTitle, '✅ 刚才发送的绑定指令已成功，无需重复发送。消息访问范围按 setup 配置生效；敏感操作审批仍只接受管理员。'));
+                 return;
+             }
+             if (access.kind === 'denied') {
+                 log(`inbound access denied (${access.reason})`);
+-                const notice = access.reason === 'binding-command-malformed'
++                const notice = isSubscriber
++                    ? (access.reason === 'group-not-allowed' || msg.conversationType === 'group'
++                        ? '订阅机器人只接受绑定用户的私聊消息。'
++                        : '当前账户未获授权或尚未完成绑定。')
++                    : access.reason === 'binding-command-malformed'
+                     ? '绑定指令格式不正确。请私聊发送 setup 显示的完整 `/bind <口令>`，并确保命令与口令之间只有普通空格。'
+                     : access.reason === 'owner-not-bound' || access.reason.startsWith('binding-')
+                         ? '这条消息未处理：Connector 尚未完成管理员绑定。请私聊发送当前 setup 已显示的一次性绑定指令；若已经发送，请等待成功回执，无需重新运行 setup。'
+@@ -346,6 +851,24 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+             const scopeKey = account.sessionScope === 'chat-sender' && msg.conversationType === 'group'
+                 ? `${msg.conversationId}#${msg.senderStaffId}`
+                 : msg.conversationId;
++            if (isSubscriber && msg.conversationType !== 'direct') {
++                await noticeReject(msg, `${msg.senderStaffId}:${msg.conversationId}:subscriber-group`, '订阅机器人只接受绑定用户的私聊消息。');
++                return;
++            }
++            if (isSubscriber) {
++                const classification = await classifySubscriberContent(msg);
++                if (classification.protected) {
++                    await queueAccessReply(msg.conversationId, () => outbound.sendMarkdown(msg.sessionWebhook, config.markdownTitle, classification.reason || '订阅账户不能获取大神本体、配置、工作模式、Skill、插件或虾定义内容。'));
++                    return;
++                }
++            }
++            if (isSubscriber && !String(msg.text ?? '').trim().startsWith('/')) {
++                const shrimp = await exactSubscriberShrimp(msg.text, msg);
++                if (shrimp?.requested && (shrimp.ok === false || shrimp.allowed === false || shrimp.matched === false || shrimp.status === 'denied' || shrimp.status === 'not-found')) {
++                    await queueAccessReply(msg.conversationId, () => outbound.sendMarkdown(msg.sessionWebhook, config.markdownTitle, '这只虾不存在或你没有使用权限。'));
++                    return;
++                }
++            }
+             // Picture without vision support: answer honestly instead of a silent drop.
+             if (msg.imageDownloadCodes?.length) {
+                 const legacyMode = config.attachImages === true ? 'always' : config.attachImages === false ? 'never' : undefined;
+@@ -411,6 +934,8 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
                          token: () => outbound.token(),
                          robotCode: clientId,
                          target,
@@ -2706,7 +4417,7 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
                          capability: cardCapability,
                          log,
                      });
-@@ -438,17 +498,29 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
+@@ -438,17 +963,46 @@ async function startAccount(ctx, config, account, cwd, dwsTools) {
              });
          },
          onCardCallback: async (callback) => {
@@ -2718,6 +4429,22 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
 -                cardData: { cardParamMap: { status: approved ? 'approved' : 'rejected' } },
 -                cardUpdateOptions: { updateCardDataByKey: true },
 -            };
++            if (isSubscriber && callback.actionIds?.includes('confirm-binding')) {
++                const key = `${account.id}:${callback.userId}`;
++                const challenge = subscriberBindingChallenges.get(key);
++                if (!challenge || Date.now() - challenge.at > 10 * 60_000)
++                    return {};
++                const msg = {
++                    conversationId: `subscriber-binding:${callback.userId}`,
++                    conversationType: 'direct',
++                    senderStaffId: callback.userId,
++                    text: '确认绑定',
++                };
++                const bound = await confirmSubscriberBinding(msg, challenge);
++                if (bound)
++                    subscriberBindingChallenges.delete(key);
++                return bound ? { cardData: { cardParamMap: { status: 'approved' } }, cardUpdateOptions: { updateCardDataByKey: true } } : {};
++            }
 +            if (consoleCards) {
 +                const result = await consoleCards.handleCardCallback(callback);
 +                if (result.handled)
@@ -2738,15 +4465,14 @@ index dd24fdc083454f222cf5a320536705929f676dee..797f9127c90c8938f9af7e5849e4899d
 +    // channel from becoming reachable.  Recovery itself is bounded per entry
 +    // and a new inbound gets one additional coalesced opportunity.
 +    void renderer.recoverPending().catch((error) => log(`pending recovery failed (${error instanceof Error ? error.message : 'unknown error'})`));
-+    ctx.on('dispose', async () => {
++    const dispose = async () => {
 +        await renderer.dispose();
 +        await stop();
-+    });
++    };
      log(`channel up: workspace=${cwd} replyMode=${config.replyMode.direct}/${config.replyMode.group} streaming=${config.streaming.enabled} async=${config.asyncMode}`);
++    return { dispose, account, accessProfile, subscriberId };
  }
--//# sourceMappingURL=index.js.map
-\ No newline at end of file
-+//# sourceMappingURL=index.js.map
+ //# sourceMappingURL=index.js.map
 diff --git a/lib/interaction-card.d.ts b/lib/interaction-card.d.ts
 index a0f646b033971f7f83f7948166e7361712d317e7..bac89a232fd988202aec4c148989e133e8c03f1e 100644
 --- a/lib/interaction-card.d.ts
@@ -2838,9 +4564,7 @@ index 9c6f7e3be8241f36bbd0ce6f6d1ab267a0266087..25a5fc6bb52a6cdfef4051aa6765af7a
 +        error?: unknown;
 +    }>;
  }
--//# sourceMappingURL=outbound.d.ts.map
-\ No newline at end of file
-+//# sourceMappingURL=outbound.d.ts.map
+ //# sourceMappingURL=outbound.d.ts.map
 diff --git a/lib/outbound.js b/lib/outbound.js
 index 620f618328acfa370f40cecbf1234d22e728a128..886c68233113bb02b75f48cafbd7a2df8e20037e 100644
 --- a/lib/outbound.js
@@ -2971,14 +4695,242 @@ index 620f618328acfa370f40cecbf1234d22e728a128..886c68233113bb02b75f48cafbd7a2df
 +        }, text.length);
 +    }
  }
--//# sourceMappingURL=outbound.js.map
-\ No newline at end of file
-+//# sourceMappingURL=outbound.js.map
+ //# sourceMappingURL=outbound.js.map
+diff --git a/lib/quota-lease.d.ts b/lib/quota-lease.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..83bb834a4b71cf31c49754a3113edc1870585f12
+--- /dev/null
++++ b/lib/quota-lease.d.ts
+@@ -0,0 +1,15 @@
++export interface SubscriberQuotaLeaseOptions {
++    service?: Record<string, any>;
++    subscriberId?: string;
++    accountId?: string;
++    log?(line: string): void;
++}
++export declare class SubscriberQuotaLease {
++    constructor(options?: SubscriberQuotaLeaseOptions);
++    begin(input?: Record<string, unknown>): Promise<Record<string, unknown> | false>;
++    bind(requestId: string, sessionId: string): boolean;
++    record(input?: Record<string, unknown>): Promise<Record<string, unknown> | false>;
++    hasUsage(input?: Record<string, unknown>): boolean;
++    waitForUsage(input?: Record<string, unknown>): Promise<boolean>;
++    finalize(input?: Record<string, unknown>): Promise<Record<string, unknown> | false>;
++}
+diff --git a/lib/quota-lease.js b/lib/quota-lease.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..215fc7129333f578b05cb6ce0851a84d67630ae2
+--- /dev/null
++++ b/lib/quota-lease.js
+@@ -0,0 +1,203 @@
++/**
++ * Subscriber turn quota lease adapter.
++ *
++ * A lease is opened once at turn start, usage deltas are recorded as they
++ * arrive, and the lease is finalized at turn/end or cancellation.  There is
++ * intentionally no one-token fallback: without an authoritative lease the
++ * subscriber request is refused.
++ */
++export class SubscriberQuotaLease {
++    service;
++    subscriberId;
++    accountId;
++    log;
++    leases = new Map();
++    bySession = new Map();
++    pendingRecords = new Map();
++    completedUsageSessions = new Set();
++    constructor(options = {}) {
++        this.service = options.service;
++        this.subscriberId = options.subscriberId;
++        this.accountId = options.accountId;
++        this.log = typeof options.log === 'function' ? options.log : () => {};
++    }
++    leaseId(value) {
++        return String(value?.reservationId ?? value?.leaseId ?? value?.id ?? value?.lease?.reservationId ?? value?.lease?.leaseId ?? value?.lease?.id ?? '').trim();
++    }
++    denied(value) {
++        return value === false || value?.ok === false || value?.allowed === false || value?.granted === false || value?.reserved === false || value?.status === 'denied' || value?.status === 'blocked';
++    }
++    async begin(input = {}) {
++        const requestId = String(input.requestId ?? `${this.accountId}:${input.scopeKey ?? input.conversationId ?? ''}:${Date.now()}`);
++        let value;
++        if (typeof this.service?.beginQuotaLease === 'function') {
++            try {
++                value = await this.service.beginQuotaLease(this.subscriberId, {
++                    requestId,
++                    sessionId: input.sessionId,
++                    conversationId: input.conversationId,
++                    operation: input.operation,
++                    metadata: { accountId: this.accountId, scopeKey: input.scopeKey },
++                });
++            }
++            catch {
++                try {
++                    value = await this.service.beginQuotaLease({ subscriberId: this.subscriberId, accountId: this.accountId, ...input, requestId });
++                }
++                catch {
++                    value = false;
++                }
++            }
++        }
++        else {
++            // A future service may expose the lease through quotaGate.  Only a
++            // response carrying a lease id is accepted by this adapter.
++            for (const name of ['quotaGate', 'gate']) {
++                if (typeof this.service?.[name] !== 'function') continue;
++                try {
++                    value = await this.service[name]({ subscriberId: this.subscriberId, accountId: this.accountId, ...input, requestId });
++                }
++                catch {
++                    value = false;
++                }
++                if (value !== undefined) break;
++            }
++        }
++        const reservationId = this.leaseId(value);
++        if (this.denied(value) || !reservationId)
++            return false;
++        this.leases.set(requestId, { requestId, reservationId, sessionId: input.sessionId ? String(input.sessionId) : '', scopeKey: input.scopeKey ? String(input.scopeKey) : '', lastTotal: 0, usageSeen: false });
++        if (input.sessionId)
++            this.bySession.set(String(input.sessionId), requestId);
++        return { ...value, requestId, reservationId };
++    }
++    bind(requestId, sessionId) {
++        const lease = this.leases.get(String(requestId));
++        if (!lease || !sessionId) return false;
++        lease.sessionId = String(sessionId);
++        this.bySession.set(lease.sessionId, lease.requestId);
++        return true;
++    }
++    find(input = {}) {
++        if (input.reservationId) {
++            for (const lease of this.leases.values()) if (lease.reservationId === String(input.reservationId)) return lease;
++        }
++        if (input.requestId && this.leases.has(String(input.requestId))) return this.leases.get(String(input.requestId));
++        if (input.sessionId && this.bySession.has(String(input.sessionId))) return this.leases.get(this.bySession.get(String(input.sessionId)));
++        return undefined;
++    }
++    total(usage = {}) {
++        const direct = Number(usage.totalTokens ?? usage.total_tokens ?? usage.totalTokenCount ?? usage.total_token_count ?? usage.total ?? usage.tokens);
++        if (Number.isFinite(direct) && direct >= 0) return direct;
++        return ['inputTokens', 'input_tokens', 'inputTokenCount', 'input_token_count', 'promptTokens', 'prompt_tokens', 'promptTokenCount', 'prompt_token_count', 'outputTokens', 'output_tokens', 'outputTokenCount', 'output_token_count', 'completionTokens', 'completion_tokens', 'completionTokenCount', 'completion_token_count', 'cacheReadTokens', 'cache_read_tokens', 'cachedInputTokens', 'cached_input_tokens', 'cacheWriteTokens', 'cache_write_tokens', 'reasoningTokens', 'reasoning_tokens', 'input', 'output', 'prompt', 'completion', 'cacheRead', 'cacheWrite', 'reasoning']
++            .map((key) => Number(usage[key]))
++            .filter((value) => Number.isFinite(value) && value >= 0)
++            .reduce((sum, value) => sum + value, 0);
++    }
++    async record(input = {}) {
++        const lease = this.find(input);
++        if (!lease) return false;
++        const previous = this.pendingRecords.get(lease.requestId) ?? Promise.resolve();
++        const current = previous.catch(() => undefined).then(() => this.recordNow(input));
++        this.pendingRecords.set(lease.requestId, current);
++        try {
++            return await current;
++        }
++        finally {
++            if (this.pendingRecords.get(lease.requestId) === current)
++                this.pendingRecords.delete(lease.requestId);
++        }
++    }
++    async recordNow(input = {}) {
++        const lease = this.find(input);
++        if (!lease) return false;
++        const usage = input.usage ?? {};
++        const explicitDelta = Number(usage.deltaTokens ?? usage.delta);
++        const currentTotal = this.total(usage);
++        const hasReliableUsage = Object.keys(usage).some((key) => ['totalTokens', 'total_tokens', 'totalTokenCount', 'total_token_count', 'inputTokens', 'input_tokens', 'inputTokenCount', 'input_token_count', 'promptTokens', 'prompt_tokens', 'promptTokenCount', 'prompt_token_count', 'outputTokens', 'output_tokens', 'outputTokenCount', 'output_token_count', 'completionTokens', 'completion_tokens', 'completionTokenCount', 'completion_token_count', 'cacheReadTokens', 'cache_read_tokens', 'cachedInputTokens', 'cached_input_tokens', 'cacheWriteTokens', 'cache_write_tokens', 'reasoningTokens', 'reasoning_tokens', 'deltaTokens', 'delta'].includes(key));
++        if (input.requireUsage === true && !hasReliableUsage)
++            return false;
++        const delta = Number.isFinite(explicitDelta) && explicitDelta >= 0 ? explicitDelta : Math.max(0, currentTotal - lease.lastTotal);
++        if (delta <= 0) {
++            if (hasReliableUsage)
++                lease.usageSeen = true;
++            return { ok: true, idempotent: true, delta: 0 };
++        }
++        let value;
++        try {
++            if (typeof this.service?.recordQuotaUsage === 'function') {
++                try {
++                    value = await this.service.recordQuotaUsage(lease.reservationId, delta, { metadata: { accountId: this.accountId, operation: input.operation, sessionId: input.sessionId ?? lease.sessionId } });
++                }
++                catch {
++                    value = await this.service.recordQuotaUsage({ subscriberId: this.subscriberId, accountId: this.accountId, ...input, reservationId: lease.reservationId, deltaTokens: delta });
++                }
++            }
++            else if (typeof this.service?.settleUsage === 'function') {
++                value = await this.service.settleUsage({ subscriberId: this.subscriberId, accountId: this.accountId, ...input, reservationId: lease.reservationId, deltaTokens: delta });
++            }
++            else {
++                return false;
++            }
++        }
++        catch (error) {
++            this.log(`subscriber usage record failed (${error instanceof Error ? error.message : 'unknown'})`);
++            return false;
++        }
++        if (value === undefined || this.denied(value)) return false;
++        if (hasReliableUsage)
++            lease.usageSeen = true;
++        lease.lastTotal += delta;
++        return value ?? { ok: true, delta };
++    }
++    hasUsage(input = {}) {
++        const lease = this.find(input);
++        return lease?.usageSeen === true;
++    }
++    async waitForUsage(input = {}) {
++        const lease = this.find(input);
++        if (!lease)
++            return input.sessionId ? this.completedUsageSessions.has(String(input.sessionId)) : false;
++        await this.pendingRecords.get(lease.requestId)?.catch(() => undefined);
++        return lease.usageSeen === true;
++    }
++    async finalize(input = {}) {
++        const lease = this.find(input);
++        if (!lease) return { ok: true, idempotent: true };
++        await this.pendingRecords.get(lease.requestId)?.catch(() => undefined);
++        if (input.requireUsage === true && lease.usageSeen !== true)
++            return false;
++        let value;
++        try {
++            if (typeof this.service?.finalizeQuotaLease === 'function') {
++                try {
++                    value = await this.service.finalizeQuotaLease(lease.reservationId, { reason: input.reason ?? 'turn-end', metadata: { accountId: this.accountId, sessionId: input.sessionId ?? lease.sessionId } });
++                }
++                catch {
++                    value = await this.service.finalizeQuotaLease({ subscriberId: this.subscriberId, accountId: this.accountId, ...input, reservationId: lease.reservationId });
++                }
++            }
++            else if (typeof this.service?.finalizeLease === 'function') {
++                value = await this.service.finalizeLease({ subscriberId: this.subscriberId, accountId: this.accountId, ...input, reservationId: lease.reservationId });
++            }
++            else {
++                return false;
++            }
++        }
++        catch (error) {
++            this.log(`subscriber quota lease finalize failed (${error instanceof Error ? error.message : 'unknown'})`);
++            return false;
++        }
++        if (value === undefined || this.denied(value)) return false;
++        this.leases.delete(lease.requestId);
++        if (lease.sessionId) {
++            this.bySession.delete(lease.sessionId);
++            if (lease.usageSeen === true) {
++                this.completedUsageSessions.add(lease.sessionId);
++                if (this.completedUsageSessions.size > 4096)
++                    this.completedUsageSessions.delete(this.completedUsageSessions.values().next().value);
++            }
++        }
++        return value ?? { ok: true };
++    }
++}
 diff --git a/lib/renderer.d.ts b/lib/renderer.d.ts
-index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..52f04ae2d0fdd801d66093da1c4d79802edb7ddf 100644
+index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..e1c12a6eae567fc6b459fb1802b7cf44f08a93e9 100644
 --- a/lib/renderer.d.ts
 +++ b/lib/renderer.d.ts
-@@ -12,17 +12,31 @@ import type { InboundMessage } from './stream.js';
+@@ -12,17 +12,33 @@ import type { InboundMessage } from './stream.js';
  import type { Outbound } from './outbound.js';
  import type { Emotion } from './emotion.js';
  import { AICard, type CardTarget } from './aicard.js';
@@ -2996,6 +4948,8 @@ index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..52f04ae2d0fdd801d66093da1c4d7980
 +    deliveryStore?: DeliveryStore;
 +    /** Injectable transport deadline for tests; production defaults to 15s. */
 +    timeoutMs?: number;
++    /** Optional subscriber output guard; errors fail closed before final delivery. */
++    guardOutput?(text: string, sessionId: string, context: unknown): Promise<{ blocked?: boolean; allowed?: boolean; reason?: string; text?: string }>;
      log(line: string): void;
  }
  export declare class Renderer {
@@ -3011,15 +4965,8 @@ index 7e6780b1b902d519c6ffce5242c66bf01e0a82b3..52f04ae2d0fdd801d66093da1c4d7980
      /**
       * Register the reply context for the turn this inbound message will drive.
       * The emotion was already added at message intake (before queueing).
-@@ -41,4 +55,4 @@ export declare class Renderer {
-     private flush;
-     private finalize;
- }
--//# sourceMappingURL=renderer.d.ts.map
-\ No newline at end of file
-+//# sourceMappingURL=renderer.d.ts.map
 diff --git a/lib/renderer.js b/lib/renderer.js
-index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef51b263d2e 100644
+index 97e5400b98d964d297791017ee7aaeaa498cb184..d8e8f1e6b5da670fe5a013932c09791dec81c547 100644
 --- a/lib/renderer.js
 +++ b/lib/renderer.js
 @@ -1,7 +1,9 @@
@@ -3054,7 +5001,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
          const isDirect = msg.conversationType === 'direct';
          const mode = isDirect ? config.replyMode.direct : config.replyMode.group;
          let settle;
-@@ -55,21 +65,133 @@ export class Renderer {
+@@ -55,21 +65,148 @@ export class Renderer {
              finalParts: [],
              lastFlushed: '',
              flushing: false,
@@ -3089,6 +5036,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
 +    rememberRoute(sessionId, msg, mode) {
 +        this.clearRoute(sessionId);
 +        const route = {
++            sessionId: String(sessionId),
 +            conversationType: msg.conversationType,
 +            conversationId: msg.conversationId,
 +            senderStaffId: msg.senderStaffId,
@@ -3158,6 +5106,20 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
 +        if (!route.sessionWebhook || !text.trim())
 +            return;
 +        const { config, outbound } = this.deps;
++        if (this.deps.guardOutput) {
++            try {
++                const guarded = await this.deps.guardOutput(text, route.sessionId ?? '', route);
++                if (guarded?.blocked || guarded?.allowed === false) {
++                    text = guarded.reason || '订阅者只能使用已授权能力，不能读取或修改大神本体、配置、工作模式、Skill、插件或虾定义。';
++                }
++                else if (typeof guarded?.text === 'string') {
++                    text = guarded.text;
++                }
++            }
++            catch {
++                text = '订阅者只能使用已授权能力，不能读取或修改大神本体、配置、工作模式、Skill、插件或虾定义。';
++            }
++        }
 +        let card;
 +        try {
 +            card = await this.deps.createCard(cardTarget(route));
@@ -3189,7 +5151,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
      /**
       * A new bubble entered the conversation below any live card — mark its
       * turn(s) so the next frame rolls output over to a fresh card at the bottom.
-@@ -81,25 +203,86 @@ export class Renderer {
+@@ -81,25 +218,86 @@ export class Renderer {
              }
          }
      }
@@ -3286,7 +5248,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
              case 'assistant/chunk': {
                  const chunk = event.data?.chunk;
                  if (chunk?.type === 'text-delta' && typeof chunk.text === 'string') {
-@@ -130,6 +313,7 @@ export class Renderer {
+@@ -130,6 +328,7 @@ export class Renderer {
                  break;
              }
              case 'assistant/message': {
@@ -3294,7 +5256,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
                  const blocks = event.data?.message?.content;
                  if (Array.isArray(blocks)) {
                      const text = blocks
-@@ -142,13 +326,14 @@ export class Renderer {
+@@ -142,13 +341,14 @@ export class Renderer {
                  break;
              }
              case 'turn/end': {
@@ -3310,7 +5272,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
              return;
          if (st.flushTimer)
              return;
-@@ -158,11 +343,16 @@ export class Renderer {
+@@ -158,11 +358,16 @@ export class Renderer {
          }, this.deps.config.streaming.throttleMs);
      }
      async flush(sessionId, st) {
@@ -3331,7 +5293,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
              if (!card || !this.states.has(sessionId))
                  return;
              const full = renderLive(st.live);
-@@ -171,15 +361,14 @@ export class Renderer {
+@@ -171,15 +376,14 @@ export class Renderer {
                  return;
              // Over-length roll-over (Feishu streamMaxElementChars analog): settle the
              // full current card and continue the remainder on a fresh one.
@@ -3350,7 +5312,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
                  return;
              }
              else if (content === st.lastFlushed) {
-@@ -187,90 +376,415 @@ export class Renderer {
+@@ -187,90 +391,427 @@ export class Renderer {
              }
              await card.stream(content);
              st.lastFlushed = content;
@@ -3399,23 +5361,23 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
 +            return;
 +        try {
 +            this.deps.deliveryStore.remove(outTrackId);
-         }
--        finally {
--            st.flushing = false;
++        }
 +        catch (error) {
 +            this.deps.log(`delivery pending journal cleanup failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-         }
-     }
++        }
++    }
 +    async markdownOutcome(outbound, webhook, title, text) {
 +        if (typeof outbound.sendMarkdownResult === 'function')
 +            return outbound.sendMarkdownResult(webhook, title, text);
 +        try {
 +            return { ok: await outbound.sendMarkdown(webhook, title, text), uncertain: true };
-+        }
+         }
+-        finally {
+-            st.flushing = false;
 +        catch (error) {
 +            return { ok: false, uncertain: error?.uncertain !== false, error };
-+        }
-+    }
+         }
+     }
 +    async deliverCardText(sessionId, st, text, card, errorText) {
 +        const chunks = [];
 +        const max = this.maxCardChars();
@@ -3580,6 +5542,18 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
 +                    text = text ? `${text}\n\n${errText}` : errText;
 +                if (!text.trim())
 +                    text = EMPTY_MODEL_RESPONSE;
++                if (this.deps.guardOutput) {
++                    try {
++                        const guarded = await this.deps.guardOutput(text, sessionId, st);
++                        if (guarded?.blocked || guarded?.allowed === false)
++                            text = guarded.reason || '订阅者只能使用已授权能力，不能读取或修改大神本体、配置、工作模式、Skill、插件或虾定义。';
++                        else if (typeof guarded?.text === 'string')
++                            text = guarded.text;
++                    }
++                    catch {
++                        text = '订阅者只能使用已授权能力，不能读取或修改大神本体、配置、工作模式、Skill、插件或虾定义。';
++                    }
++                }
 +                let card = null;
 +                if (!st.cardUnavailable && st.cardPromise) {
 +                    try {
@@ -3832,9 +5806,7 @@ index 97e5400b98d964d297791017ee7aaeaa498cb184..e34cb611ce53d83d7bff8486d3e94ef5
 -            await outbound.sendMarkdown(st.msg.sessionWebhook, config.markdownTitle, text);
      }
  }
--//# sourceMappingURL=renderer.js.map
-\ No newline at end of file
-+//# sourceMappingURL=renderer.js.map
+ //# sourceMappingURL=renderer.js.map
 diff --git a/lib/stream.d.ts b/lib/stream.d.ts
 index a87cbf31f8387c382c54c39bdce883a0f6859e3a..5624d8f4fc196c492d3000ed2f2427c79181e955 100644
 --- a/lib/stream.d.ts
@@ -3947,9 +5919,7 @@ index 6fc62ccc82033cde730853de52bb1d5e48e6cebc..917f3868b140e23977fc5915f6e076e8
 +    sendFile(request: SendFileRequest): Promise<SendFileResult>;
      statusLine(): string;
  }
--//# sourceMappingURL=tools.d.ts.map
-\ No newline at end of file
-+//# sourceMappingURL=tools.d.ts.map
+ //# sourceMappingURL=tools.d.ts.map
 diff --git a/lib/tools.js b/lib/tools.js
 index e41389954581e57aa7762c107c0fb29da156b474..082ae01215b501346ccf6e363762ee03da006774 100644
 --- a/lib/tools.js
@@ -4207,6 +6177,43 @@ index e41389954581e57aa7762c107c0fb29da156b474..082ae01215b501346ccf6e363762ee03
 +        return `开启（机器人附件可用｜${this.status.dwsVersion ?? 'dws'}｜个人身份：${this.status.authed ? '已登录' : '未登录'}｜skill ${this.status.skillInstalled ? '已挂载' : '挂载失败'}）`;
      }
  }
--//# sourceMappingURL=tools.js.map
-\ No newline at end of file
-+//# sourceMappingURL=tools.js.map
+ //# sourceMappingURL=tools.js.map
+diff --git a/lib/questions.js b/lib/questions.js
+--- a/lib/questions.js
++++ b/lib/questions.js
+@@ -153,25 +153,33 @@ export class QuestionManager {
+     /** Register the DingTalk-specific shadow in one agent's scoped context. */
+     install(agentCtx) {
+         const agent = agentCtx.agent;
+         if (agent && this.installedAgents.has(agent))
+             return;
+-        agentCtx.tools.register(this.definition());
++        let registeredShadow = true;
++        try {
++            agentCtx.tools.register(this.definition());
++        }
++        catch (error) {
++            if (!/already registered in this scope/iu.test(String(error instanceof Error ? error.message : error)))
++                throw error;
++            registeredShadow = false;
++        }
+         if (agent) {
+             this.installedAgents.add(agent);
+             agentCtx.on('user-questions/request', (request, next) => {
+                 if (request.agent !== undefined && request.agent !== agent)
+                     return next();
+                 if (!this.routes.has(agent.id))
+                     return next();
+                 return this.askNative(agent, request);
+             });
+             agentCtx.on('approval/request', (request, next) => {
+                 if (request.agent !== agent)
+                     return next();
+                 if (!this.routes.has(agent.id))
+                     return next();
+                 return this.askApproval(agent, request);
+             }, { prepend: true });
+-            this.opts.log(`ask_user_question installed for session ${agent.id}`);
++            this.opts.log(`${registeredShadow ? 'ask_user_question installed' : 'existing ask_user_question reused'} for session ${agent.id}`);
+         }
+     }

@@ -1,0 +1,5 @@
+# Host-only subscriber control plane.  The Swift bridge may call the native
+# admin endpoint; no browser-side write route is exposed by this patch.
+- insert:
+    - id: dsh-dingtalk-subscriptions
+      name: '@local/dsh-dingtalk-subscriptions'

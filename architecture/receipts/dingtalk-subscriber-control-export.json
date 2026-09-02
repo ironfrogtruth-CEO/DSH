@@ -1,0 +1,18 @@
+{
+  "schema": "production_receipt.v1",
+  "node": "export",
+  "status": "completed",
+  "inputs": ["validated runtime artifacts"],
+  "outputs": {
+    "native_app": "/Applications/大神.app",
+    "native_binary_sha256": "c35281d23707d912fd84502f6bdc9945a2b032d5b7ec8314ee055f331f4d89e8",
+    "host_url": "http://127.0.0.1:3080",
+    "shrimptank_url": "http://127.0.0.1:7843",
+    "database_backup": "/Users/marcus/Desktop/虾缸/data/backups/shrimptank-before-dingtalk-subscribers-20260901-102901.db",
+    "database_backup_sha256": "1960422bc15223270b89685d507e87e69482959c99f258f70da040fd6051e79f",
+    "native_binary_backup": "/Applications/大神.app/Contents/MacOS/大神.bak-20260901-102901"
+  },
+  "validation": ["codesign strict verification passed", "SQLite quick_check returned ok", "owner DingTalk Stream reconnected", "native panel read back updated quota and binding failure state"],
+  "recovery": "Restore the saved native binary and SQLite backup; stop only subscriber streams while keeping the owner robot active.",
+  "lineage": "dingtalk-subscriber-control.v1"
+}

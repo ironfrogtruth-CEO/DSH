@@ -1,0 +1,49 @@
+{
+  "name": "@local/dsh-dingtalk-subscriptions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./store": "./store.js",
+    "./calendar": "./calendar.js",
+    "./policy": "./policy.js",
+    "./brand": "./brand.js",
+    "./client": "./client.js",
+    "./native-client": "./native-client.js",
+    "./shrimp-client": "./shrimp-client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "store.js",
+    "calendar.js",
+    "policy.js",
+    "brand.js",
+    "client.js",
+    "native-client.js",
+    "shrimp-client.js",
+    "assets/dashen-bot-avatar.png",
+    "assets/dashen-bot-avatar.sha256",
+    "assets/brand-manifest.json",
+    "scripts/derive-brand-asset.py",
+    "index.test.mjs",
+    "client.test.mjs",
+    "README.md",
+    "cordis.patch.yml",
+    "pnpm-lock.yaml",
+    "package.json"
+  ],
+  "dependencies": {
+    "qrcode": "1.5.4"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}

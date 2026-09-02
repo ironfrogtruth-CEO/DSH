@@ -1,0 +1,22 @@
+{
+  "schema": "production_receipt.v1",
+  "node": "generate",
+  "status": "completed",
+  "inputs": ["dingtalk-subscriber-control.v1.json"],
+  "outputs": {
+    "control_service": "/Users/marcus/.dsh/extensions/dsh-dingtalk-subscriptions",
+    "control_service_entry_sha256": "7ff11a2e41b5c57896387da7982ee81a9258b8ba89b3298ca2d599248547eac4",
+    "control_panel_sha256": "61b05728c3019a84d27881e385a3dee10318240a335c029bded705a47f09fea7",
+    "connector_patch": "/Users/marcus/.dsh/profiles/web/patches/@dingtalk-real-ai__dsh-dingtalk@0.6.2.patch",
+    "connector_patch_sha256": "ca6b4770840417101a93e279ac6d2b3229bf63973b5838d3b486ee6420eaf5e0",
+    "subscriber_adapter": "/Users/marcus/.dsh/extensions/shrimp-shell/index.js",
+    "subscriber_adapter_sha256": "21af728946663e1026e573eb14c357d97204bed07063b61df81e38dcf3139510",
+    "shrimptank_runtime": "/Users/marcus/Desktop/虾缸/backend/domain/subscribers.py",
+    "shrimptank_runtime_sha256": "b3c5ba49101665c9000b294a7bcd09c3eb1fe2ae4ca5e2eb19a68e2fa80ea4be",
+    "shrimptank_service_sha256": "198c7ab4cafd63b4da7b9a0cd9a664786206610da68f98991003a5414f5d2012",
+    "brand_avatar_sha256": "380efb54e7271281ddf4fac530915c03cbf90fb4bb2e01fc62d838c2aa7ce1ff"
+  },
+  "validation": ["syntax checks passed", "offline frozen dependency installs passed", "scan persistence failure now fails closed", "brand-pending blocks Stream activation"],
+  "recovery": "Disable dynamic subscriber accounts; owner connector remains independent.",
+  "lineage": "dingtalk-subscriber-control.v1"
+}

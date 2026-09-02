@@ -77,6 +77,14 @@ test('ensure-web keeps homes without node-addon-require-builtin on the existing 
   )
 })
 
+test('ensure-web restores the subscriber QR dependency from its frozen local graph', () => {
+  const source = readFileSync(ensureWeb, 'utf8')
+  assert.match(source, /DINGTALK_SUBSCRIPTIONS_DIR="\$HOME\/\.dsh\/extensions\/dsh-dingtalk-subscriptions"/)
+  assert.match(source, /node_modules\/qrcode\/package\.json/)
+  assert.match(source, /install --offline --frozen-lockfile --ignore-scripts/)
+  assert.match(source, /dsh-dingtalk-subscriptions\/pnpm-lock\.yaml/)
+})
+
 test('ensure-web repairs or clearly blocks a missing Darwin optional binding before Host startup', () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-ensure-web-node-addon-binding-'))
   const dshHome = join(root, '.dsh')
@@ -284,6 +292,15 @@ test('ensure-web reload signature covers the complete CyberMarcus and Avengers r
     '$HOME/.dsh/extensions/dsh-dingtalk-status/index.js',
     '$HOME/.dsh/extensions/dsh-dingtalk-status/client.js',
     '$HOME/.dsh/extensions/dsh-dingtalk-status/cordis.patch.yml',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/package.json',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/index.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/store.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/calendar.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/policy.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/brand.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/client.js',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/cordis.patch.yml',
+    '$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/assets/dashen-bot-avatar.sha256',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/package.json',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/index.js',
     '$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js',

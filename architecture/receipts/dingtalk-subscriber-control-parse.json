@@ -1,0 +1,24 @@
+{
+  "schema": "production_receipt.v1",
+  "node": "parse",
+  "status": "completed",
+  "inputs": [
+    "user-confirmed subscription plan",
+    "official DingTalk device registration flow boundary",
+    "existing DSH owner connector and ShrimpTank runtime"
+  ],
+  "outputs": {
+    "truth_separated": true,
+    "locked_constraints": [
+      "system_owner is unique",
+      "subscriber direct chat only",
+      "native admin only",
+      "workspace and capability isolation",
+      "official workday calendar with adjusted weekends",
+      "no protected definition disclosure"
+    ]
+  },
+  "validation": ["requirements represented in cybermarcus_work_contract.v1"],
+  "recovery": "Return to the route receipt without changing runtime state.",
+  "lineage": "dingtalk-subscriber-control.v1"
+}

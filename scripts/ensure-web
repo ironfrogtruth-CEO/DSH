@@ -300,6 +300,23 @@ if [ -d "$KB_MANAGER_DIR" ] && [ ! -f "$KB_MANAGER_DIR/node_modules/@deepseek-ai
   fi
 fi
 
+# The native DingTalk subscriber panel renders the official registration URI
+# as a real QR image.  This local extension has its own frozen dependency graph;
+# linked profile packages do not install their dependencies on behalf of the
+# target directory.  Restore only from the pnpm store during normal startup so
+# an offline/migrated Host cannot silently fall back to an unscannable link.
+DINGTALK_SUBSCRIPTIONS_DIR="$HOME/.dsh/extensions/dsh-dingtalk-subscriptions"
+if [ -d "$DINGTALK_SUBSCRIPTIONS_DIR" ] && [ ! -f "$DINGTALK_SUBSCRIPTIONS_DIR/node_modules/qrcode/package.json" ]; then
+  if [ ! -x "$PNPM_BIN" ]; then
+    echo "$(date '+%F %T') ensure-web: DingTalk subscription QR dependency missing and pnpm unavailable" >>"$LOG"
+    exit 1
+  fi
+  if ! (cd "$DINGTALK_SUBSCRIPTIONS_DIR" && "$PNPM_BIN" install --offline --frozen-lockfile --ignore-scripts) >>"$LOG" 2>&1; then
+    echo "$(date '+%F %T') ensure-web: DingTalk subscription QR dependency restore failed" >>"$LOG"
+    exit 1
+  fi
+fi
+
 # The official DingTalk connector is a profile dependency, not a local npm
 # extension.  Restore the exact frozen profile graph on a migrated Mac without
 # running third-party lifecycle scripts.  Missing credentials remain the
@@ -342,6 +359,16 @@ SIGNATURE=$(/usr/bin/shasum -a 256 \
   "$HOME/.dsh/extensions/dsh-dingtalk-status/index.js" \
   "$HOME/.dsh/extensions/dsh-dingtalk-status/client.js" \
   "$HOME/.dsh/extensions/dsh-dingtalk-status/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/package.json" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/pnpm-lock.yaml" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/index.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/store.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/calendar.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/policy.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/brand.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/client.js" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/cordis.patch.yml" \
+  "$HOME/.dsh/extensions/dsh-dingtalk-subscriptions/assets/dashen-bot-avatar.sha256" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/package.json" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/index.js" \
   "$HOME/.dsh/extensions/dsh-shrimp-run-status/client.js" \

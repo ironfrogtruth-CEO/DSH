@@ -1,0 +1,44 @@
+{
+  "schema": "production_receipt.v1",
+  "node_id": "route",
+  "status": "completed",
+  "input_checksum": "b3c7b6f4236bb1713579f724ebc4c96c4ae775fb003826405b0d4fa5403ed569",
+  "version_refs": {
+    "work_contract": "dingtalk-subscriber-control.v1",
+    "dingtalk_connector": "0.6.2",
+    "dsh_branch": "main",
+    "shrimptank_branch": "agent/ux-rebuild-20260810"
+  },
+  "actual_bindings": {
+    "controller": "gpt-5.6-sol",
+    "execution_role": "luna_worker",
+    "skills": [
+      "goal-first-control",
+      "three-provinces-six-ministries",
+      "plan-before-action",
+      "sop-orchestrator",
+      "native-chinese-expression"
+    ]
+  },
+  "artifacts": [
+    "/Users/marcus/.dsh/architecture/dingtalk-subscriber-control.v1.json"
+  ],
+  "qa_result": {
+    "status": "passed",
+    "checks": [
+      "work contract schema valid",
+      "dsh worktree had no pre-existing dirty changes",
+      "ShrimpTank worktree had no pre-existing dirty changes",
+      "protected Host listener recorded at 127.0.0.1:3080",
+      "protected ShrimpTank listener recorded at 127.0.0.1:7843"
+    ]
+  },
+  "evidence": [
+    "validate_contract.py returned ok=true and nodes=7",
+    "work contract sha256=b3c7b6f4236bb1713579f724ebc4c96c4ae775fb003826405b0d4fa5403ed569",
+    "lsof observed node PID 93242 on port 3080",
+    "lsof observed Python PID 728 on port 7843"
+  ],
+  "failure_fingerprint": null,
+  "rollback_to": null
+}

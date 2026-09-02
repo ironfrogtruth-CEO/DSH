@@ -16,6 +16,10 @@ window.__ModuleLoader__.load({
     const safe = (value, fallback = '') => String(value ?? fallback)
     let openHostSession = null
 
+    function nativeSubscriberAdminAvailable() {
+      return typeof window?.webkit?.messageHandlers?.dingtalkSubscriptionAdmin?.postMessage === 'function'
+    }
+
     function DingTalkIcon() {
       return h('svg', { viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true },
         h('path', { d: 'M5.2 4.5h13.6A2.7 2.7 0 0 1 21.5 7.2v7.1a2.7 2.7 0 0 1-2.7 2.7H11l-4.4 3v-3H5.2a2.7 2.7 0 0 1-2.7-2.7V7.2a2.7 2.7 0 0 1 2.7-2.7Z', stroke: 'currentColor', 'stroke-width': 1.7, 'stroke-linejoin': 'round' }),
@@ -103,8 +107,10 @@ window.__ModuleLoader__.load({
       }, [load])
       React.useEffect(() => {
         const closeOther = (event) => { if (event?.detail?.id !== 'dsh-dingtalk-status') setOpen(false) }
+        const openStatus = () => { window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'dsh-dingtalk-status' } })); setOpen(true) }
         window.addEventListener('dsh:utility-open', closeOther)
-        return () => window.removeEventListener('dsh:utility-open', closeOther)
+        window.addEventListener('dsh:open-dingtalk-status', openStatus)
+        return () => { window.removeEventListener('dsh:utility-open', closeOther); window.removeEventListener('dsh:open-dingtalk-status', openStatus) }
       }, [])
       React.useEffect(() => {
         if (!open) return undefined
@@ -133,6 +139,7 @@ window.__ModuleLoader__.load({
         try { await copyCommand(state?.setupCommand || 'npx @dingtalk-real-ai/dsh-dingtalk@0.6.2 setup'); setNotice('命令已复制，可在本机终端手动运行') }
         catch (cause) { setError(safe(cause?.message, '复制失败，请手动选择命令')) }
       }
+      const openSubscriptions = () => { setOpen(false); window.dispatchEvent(new CustomEvent('dsh:open-dingtalk-subscriptions')) }
       const headline = statusHeadline(state)
       const status = state?.stream?.status || 'unobserved'
       const color = streamColor(status)
@@ -166,6 +173,15 @@ window.__ModuleLoader__.load({
                 h('span', null, '已绑定会话', h('strong', null, Number(state?.boundSessionCount || 0))),
               ),
             ),
+            nativeSubscriberAdminAvailable() ? h('section', { className: 'dsh-dingtalk-section' },
+              h('div', { className: 'dsh-dingtalk-admin-card' },
+                h('div', { className: 'dsh-dingtalk-admin-copy' },
+                  h('div', { className: 'dsh-dingtalk-admin-title' }, h('strong', null, '订阅管理'), h('span', null, '仅大神.app')),
+                  h('p', null, '添加订阅者，设置工作区、模式、模型、推理强度、周额度和逐只虾权限。'),
+                ),
+                h('button', { ref: firstFocusRef, type: 'button', onClick: openSubscriptions }, '进入管理'),
+              ),
+            ) : null,
             h('section', { className: 'dsh-dingtalk-section' },
               h('div', { className: 'dsh-dingtalk-section-title' }, '最近钉钉会话'),
               Array.isArray(state?.sessions) && state.sessions.length
@@ -211,6 +227,7 @@ window.__ModuleLoader__.load({
             [data-sidebar-collapsed] [data-dsh-sidebar-foot]{display:flex!important;flex-direction:column!important;align-items:center!important;gap:4px!important;width:36px!important}[data-sidebar-collapsed] [data-dsh-sidebar-foot] .dsbalance-rail{order:1!important;width:36px!important;height:36px!important;margin:0!important}[data-sidebar-collapsed] [data-dsh-sidebar-foot] .dsh-dingtalk-root{order:2!important;width:36px!important;height:36px!important}[data-sidebar-collapsed] [data-dsh-sidebar-foot] [data-slot="sidebar.settings"] > *{order:3!important;width:36px!important;height:36px!important;padding:0!important;justify-content:center!important}.dsh-dingtalk-trigger-label,.dsh-dingtalk-trigger-dot{display:inline}
             @media(max-width:520px) and (pointer:coarse),(max-width:380px){.dsh-dingtalk-trigger-label,.dsh-dingtalk-trigger-dot{display:none}.dsh-dingtalk-trigger{width:36px;padding:0;justify-content:center}.dsh-dingtalk-dialog{left:8px!important;right:8px!important;transform:none;width:calc(100vw - 16px)!important}.dsh-dingtalk-grid{grid-template-columns:1fr}}
       `
+      style.textContent += `.dsh-dingtalk-admin-card{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid #35a56f38;border-radius:10px;background:linear-gradient(135deg,#35a56f12,rgba(20,22,25,.92))}.dsh-dingtalk-admin-copy{min-width:0;flex:1}.dsh-dingtalk-admin-title{display:flex;align-items:center;gap:8px}.dsh-dingtalk-admin-title strong{font-size:12px}.dsh-dingtalk-admin-title span{padding:2px 6px;border-radius:999px;background:#35a56f1d;color:#75d09c;font-size:9px}.dsh-dingtalk-admin-copy p{margin:5px 0 0;color:var(--dsw-alias-label-tertiary,#9aa0a8);font-size:10px;line-height:16px}.dsh-dingtalk-admin-card button{flex:none;min-height:30px;padding:0 10px;border:1px solid #35a56f55;border-radius:8px;background:#244332;color:#dcf6e6;font-size:11px;cursor:pointer}`
       document.getElementById(style.id)?.remove()
       document.head.appendChild(style)
       const markSidebarFoot = () => {

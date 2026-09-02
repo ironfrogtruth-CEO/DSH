@@ -1,0 +1,20 @@
+{
+  "name": "大神",
+  "description": "大神｜Visible Workflow. Reliable Intelligence.",
+  "source": "/Users/marcus/Desktop/虾缸/assets/brand/shrimp-tank/optimized/mark-dark.png",
+  "output": "/Users/marcus/.dsh/extensions/dsh-dingtalk-subscriptions/assets/dashen-bot-avatar.png",
+  "width": 512,
+  "height": 512,
+  "mode": "RGBA",
+  "transparentBackground": true,
+  "borderless": true,
+  "shadow": false,
+  "text": false,
+  "alphaBoundingBox": [
+    0,
+    53,
+    512,
+    458
+  ],
+  "sha256": "380efb54e7271281ddf4fac530915c03cbf90fb4bb2e01fc62d838c2aa7ce1ff"
+}

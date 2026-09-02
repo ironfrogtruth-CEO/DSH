@@ -1,0 +1,14 @@
+{
+  "schema": "production_receipt.v1",
+  "node": "review",
+  "status": "in_progress",
+  "inputs": ["all node receipts", "runtime and UI evidence"],
+  "outputs": {
+    "production_readiness": "code deployed; one subscriber remains pending because the first scan did not persist credentials",
+    "safe_next_step": "Delete or disable the orphaned DeepSeek 助手 in DingTalk, use 重新生成二维码 once, complete brand setup, then private-chat 确认绑定 and run one round-trip acceptance.",
+    "owner_regression": "none observed; owner robot connected after every Host restart"
+  },
+  "validation": ["fail-closed boundaries retained for missing calendar, missing usage, unsafe shrimp and protected content"],
+  "recovery": "Disable subscriber account loading and keep the pending subscriber database, workspace, quota and audit records; the owner robot remains independent.",
+  "lineage": "dingtalk-subscriber-control.v1"
+}
