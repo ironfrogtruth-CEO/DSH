@@ -109,6 +109,9 @@ const HEARTBEAT_RUNNER_SPECS = Object.freeze({
     command: '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3',
     args: Object.freeze(['/Users/marcus/Desktop/虾缸/scripts/heartbeat_gzh_publish.py']),
     cwd: '/Users/marcus/Desktop/虾缸',
+    // 心跳脚本 import tools.generated.* 需以仓库根为 PYTHONPATH；显式下发，
+    // 不依赖 Host/调用方环境（executeFixedHeartbeatCommand 会把本 env 并入子进程）。
+    env: Object.freeze({ PYTHONPATH: '/Users/marcus/Desktop/虾缸' }),
     timeoutMs: 6 * 60 * 60 * 1000,
     preflight: Object.freeze({
       command: '/bin/bash',
@@ -312,6 +315,7 @@ export function heartbeatRunnerSpec(runner) {
     args: [...spec.args],
     cwd: spec.cwd,
     timeoutMs: spec.timeoutMs,
+    ...(spec.env ? { env: { ...spec.env } } : {}),
     ...(spec.preflight ? {
       preflight: {
         command: spec.preflight.command,
@@ -347,6 +351,9 @@ function executeFixedHeartbeatCommand(spec, payload, { execFileImpl = execFile }
           env: {
             ...process.env,
             PYTHONUNBUFFERED: '1',
+            // runner 级显式 env（如 gzh-multi-article 的 PYTHONPATH=仓库根）优先于
+            // Host 进程环境注入，确保脚本能 import tools.generated.*。
+            ...(spec.env || {}),
             DSH_HEARTBEAT_PAYLOAD_JSON: heartbeatRunnerPayloadEnv(payload),
           },
           timeout: spec.timeoutMs,

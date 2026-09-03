@@ -4,7 +4,7 @@ agent-default-model:
   # 对话默认走云端 GLM；本地 Ollama 只承载后台媒体/检索模型，不进入对话选择器。
   provider: zhipu-glm
   model: glm-5.3-flash
-  reasoningEffort: high
+  reasoningEffort: max
 agent-presets:
   default: reliable-development
 permission:
