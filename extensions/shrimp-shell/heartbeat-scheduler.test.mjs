@@ -215,7 +215,8 @@ test('reliable evolution runner is fixed and payload cannot inject command or pa
   assert.deepEqual(spec, {
     runner: 'reliable-evolution-weekly',
     command: '/usr/local/bin/node',
-    args: ['/Users/marcus/.dsh/scripts/weekly-evolution-review.mjs', '--execute'],
+    // 2026-09-02 合并：先本地快照提交（原 git-daily-commit 职责），再评审。
+    args: ['/Users/marcus/.dsh/scripts/never-stop-thursday.mjs', '--execute'],
     cwd: '/Users/marcus/.dsh',
     timeoutMs: 3 * 60 * 60 * 1000,
   })
@@ -230,7 +231,7 @@ test('reliable evolution runner is fixed and payload cannot inject command or pa
   }, { execFileImpl: fakeExecFile })
   assert.equal(calls.length, 1)
   assert.equal(calls[0].command, '/usr/local/bin/node')
-  assert.deepEqual(calls[0].args, ['/Users/marcus/.dsh/scripts/weekly-evolution-review.mjs', '--execute'])
+  assert.deepEqual(calls[0].args, ['/Users/marcus/.dsh/scripts/never-stop-thursday.mjs', '--execute'])
 })
 
 test('legacy browser cron skips disabled and Host-bound heartbeat tasks', async () => {
