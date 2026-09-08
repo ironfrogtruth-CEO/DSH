@@ -58,14 +58,30 @@ mihomo_reload() {
   fi
 }
 
+METRICS_READY_URL="http://127.0.0.1:20241/ready"
+
 tunnel_probe() {
   # Healthy when oauth2-proxy answers (401) or anything is served (<500).
-  local code
+  local code ready
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$PROBE_TIMEOUT" "$PUBLIC_URL")
   case "$code" in
     200|301|302|303|307|308|401|403|404) return 0 ;;
-    *) return 1 ;;
   esac
+  # Public probe can fail while the tunnel itself is fine: on carrier networks
+  # (e.g. phone hotspot) direct TLS from this Mac to Cloudflare edge may be
+  # cut even though cloudflared holds registered edge connections. The local
+  # metrics /ready endpoint is the authoritative signal (200 = tunnel up);
+  # never kickstart-restart a healthy tunnel because the public path is cut.
+  ready=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "$METRICS_READY_URL")
+  if [ "$ready" = "200" ]; then
+    now=$(date +%s)
+    if [ "$FAILURES" -gt 0 ] || [ $((now - LAST_SKIP_LOG)) -ge 60 ]; then
+      log "公网探测失败(HTTP $code) 但本地隧道 /ready=200, 判定健康跳过重启"
+      LAST_SKIP_LOG=$now
+    fi
+    return 0
+  fi
+  return 1
 }
 
 kickstart_tunnel() {
@@ -74,6 +90,7 @@ kickstart_tunnel() {
 
 LAST_ROUTE=""
 LAST_KICKSTART=0
+LAST_SKIP_LOG=0
 FAILURES=0
 
 log "netwatch 启动 (rebuilt 2026-09-09)"
