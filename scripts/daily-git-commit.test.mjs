@@ -141,14 +141,16 @@ test('daily commit blocks unignored sensitive/runtime candidates', () => {
   assert.match(spawnSync(GIT, ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).stdout, /heartbeats-secret\.json/)
 })
 
-test('daily commit validates, commits locally with the required message, and never pushes', () => {
+test('daily commit validates, commits locally with the required message, and pushes best-effort', () => {
   const root = fixture()
   writeFileSync(join(root, 'settings.yaml'), 'daily snapshot\n')
   const result = runDailyGitCommit({ repoRoot: root, validate: passValidation, now: new Date('2026-08-25T00:00:00.000Z') })
   assert.equal(result.ok, true)
   assert.equal(result.status, 'committed')
   assert.equal(result.message, 'chore(backup): daily snapshot 2026-08-25')
-  assert.equal(result.push, false)
+  // No remote in the fixture: the push attempt is reported as failed but the
+  // local snapshot commit remains the durable, successful artifact.
+  assert.equal(result.push.ok, false)
   assert.match(spawnSync(GIT, ['log', '-1', '--format=%s'], { cwd: root, encoding: 'utf8' }).stdout, /^chore\(backup\): daily snapshot 2026-08-25\n$/)
   assert.equal(spawnSync(GIT, ['diff', '--cached', '--quiet'], { cwd: root }).status, 0)
   assert.equal(spawnSync(GIT, ['remote'], { cwd: root, encoding: 'utf8' }).stdout, '')

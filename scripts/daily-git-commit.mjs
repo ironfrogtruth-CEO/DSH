@@ -2,7 +2,9 @@
 /**
  * Create a safe, local-only daily snapshot of the DSH repository.
  *
- * The command intentionally has no push path. It refuses to run when the
+ * After a successful commit the command best-effort pushes the branch to its
+ * origin (user-approved 2026-09-09); a failed push never fails the backup.
+ * It refuses to run when the
  * index is already staged, protects runtime/private paths even if .gitignore
  * is damaged, validates the staged snapshot, and only then commits it.
  * `runDailyGitCommit()` is exported so tests can exercise the state machine in
@@ -444,6 +446,25 @@ function resultBase(root, message) {
   return { repository: root, message, push: false }
 }
 
+/** Best-effort push of the committed HEAD to origin. The local commit is the
+ * durable artifact; a failed push is reported, never thrown. Repositories
+ * without an "origin" remote fall back to their first configured remote. */
+function pushHeadToOrigin(repoRoot) {
+  const branch = runGit(['rev-parse', '--abbrev-ref', 'HEAD'], { repoRoot, timeoutMs: COMMAND_TIMEOUT_MS })
+  const ref = branch.stdout?.trim?.() ?? ''
+  if (branch.code !== 0 || ref === '' || ref === 'HEAD') {
+    return { ok: false, error: trimOutput(branch.stderr || '无法确定当前分支') }
+  }
+  const remotes = runGit(['remote'], { repoRoot, timeoutMs: COMMAND_TIMEOUT_MS })
+  const names = (remotes.stdout ?? '').split('\n').map((name) => name.trim()).filter(Boolean)
+  if (remotes.code !== 0 || names.length === 0) {
+    return { ok: false, branch: ref, error: '无配置的推送远端' }
+  }
+  const remote = names.includes('origin') ? 'origin' : names[0]
+  const push = runGit(['push', remote, ref], { repoRoot, timeoutMs: COMMAND_TIMEOUT_MS })
+  return { ok: push.code === 0, remote, branch: ref, output: trimOutput(push.stderr || push.stdout || '') }
+}
+
 function runDailyGitCommitUnlocked({ repoRoot, dryRun = false, now = new Date(), validate = runQuickValidations }) {
   const root = resolve(repoRoot)
   const message = `${DAILY_COMMIT_PREFIX} ${formatShanghaiDate(now)}`
@@ -508,9 +529,11 @@ function runDailyGitCommitUnlocked({ repoRoot, dryRun = false, now = new Date(),
     return failureWithCleanup(root, message, { ok: false, status: 'failed', code: 'COMMIT_FAILED', error: trimOutput(commit.stderr || commit.stdout || '本地提交失败'), validation: validation.checks }, cleanup)
   }
   const hash = runGit(['rev-parse', '--short', 'HEAD'], { repoRoot: root })
+  const push = pushHeadToOrigin(root)
   return {
     ...resultBase(root, message), ok: true, status: 'committed', candidateCount: candidatePaths.length,
     stagedCount: createdStaged.length, validation: validation.checks, commit: hash.code === 0 ? hash.stdout.trim() : null,
+    push,
   }
 }
 
@@ -578,7 +601,7 @@ export function main(argv = process.argv.slice(2)) {
     return result
   }
   if (args.help) {
-    const result = { ok: true, status: 'help', usage: 'daily-git-commit.mjs [--dry-run]', repositories: DAILY_REPOSITORIES, push: false }
+    const result = { ok: true, status: 'help', usage: 'daily-git-commit.mjs [--dry-run]', repositories: DAILY_REPOSITORIES, push: true }
     console.log(JSON.stringify(result))
     return result
   }
