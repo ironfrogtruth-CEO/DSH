@@ -142,6 +142,67 @@ const HEARTBEAT_RUNNER_SPECS = Object.freeze({
 })
 export const HEARTBEAT_RUNNERS = HEARTBEAT_RUNNER_SPECS
 
+// 文章心跳的选题边界属于 Host→runner 合同，而不是一次运行的临时
+// prompt。这样即使 durable heartbeat 记录只有 runner/pipelineSlug，Host
+// 仍会把用户确认过的三槽位方向传给 heartbeat_gzh_publish.py；显式传入
+// topics 或 heartbeat_topic_policy 时保留调用方合同，支持文章虾脱离心跳
+// 自主创作用户另行指定的内容。
+export const GZH_HEARTBEAT_TOPIC_POLICY = Object.freeze({
+  schema: 'heartbeat_topic_policy.v1',
+  version: 1,
+  scope: 'heartbeat_only',
+  mode: 'fixed_three_slots',
+  custom_topics_priority: true,
+  selection_rule: '每个槽位只选一个具体事件；无合格候选时阻断，不以旧稿或其他槽位补写。',
+  standalone_article: Object.freeze({
+    enabled: true,
+    mode: 'unconstrained',
+    policy_applies: false,
+  }),
+  slots: Object.freeze([
+    Object.freeze({
+      slot: 1,
+      slot_id: 'x_tibo_or_openai',
+      out: '01_x_ai_news',
+      kind: 'news',
+      article_type: 'news',
+      topic_class: 'x_tibo_or_openai',
+      source_channel: 'x',
+      subject_scope: Object.freeze(['Tibo', 'OpenAI']),
+      subject_rule: 'Tibo 或 OpenAI 任一主体即可，不要求同一事件同时出现两者。',
+      selection_rule: 'X 上最近 48 小时内与 Tibo 或 OpenAI 直接相关的一个具体资讯事件。',
+      exclusions: Object.freeze(['Agent 工具或应用落地类事件，除非事件主体确为 Tibo 或 OpenAI。']),
+    }),
+    Object.freeze({
+      slot: 2,
+      slot_id: 'x_other_model_vendors',
+      out: '02_x_ai_news',
+      kind: 'news',
+      article_type: 'news',
+      topic_class: 'x_other_model_vendors',
+      source_channel: 'x',
+      subject_scope: Object.freeze(['Anthropic', 'Google/Gemini', 'Meta/Llama', 'DeepSeek', 'Qwen', '字节/豆包', '阿里/通义', 'MiniMax', 'Mistral', 'xAI', '腾讯/混元']),
+      subject_rule: '主体必须是 OpenAI 之外的模型厂商；OpenAI 为主体的事件排除。',
+      selection_rule: 'X 上最近 48 小时内与其他大模型厂商直接相关的一个具体资讯事件。',
+      exclusions: Object.freeze(['OpenAI 为主体的事件；泛行业盘点；与模型厂商无关的 Agent 工具或应用资讯。']),
+    }),
+    Object.freeze({
+      slot: 3,
+      slot_id: 'dashen_capability_or_problem_reflection',
+      out: '03_reflection',
+      kind: 'reflection',
+      article_type: 'opinion',
+      topic_class: 'dashen_capability_or_problem_reflection',
+      source_channel: 'local_verified_materials',
+      subject_scope: Object.freeze(['大神自身能力升级', '大神正在讨论的问题']),
+      subject_rule: '可写近期可核实的能力升级事实，也可写由近期本地材料支持的讨论问题与判断，不绑定固定交付观点。',
+      selection_rule: '只使用近期本地可核实材料；没有材料或证据不完整时清晰阻断，不编造经历。',
+      allowed_modes: Object.freeze(['capability_upgrade', 'problem_discussion']),
+      exclusions: Object.freeze(['把单次验收写成长期经验；使用录音、转写、私密目录、账号或凭证作为事实。']),
+    }),
+  ]),
+})
+
 function heartbeatTimeZoneParts(epochMs, timezone = HEARTBEAT_TIMEZONE) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
@@ -336,6 +397,24 @@ export function heartbeatRunnerPayloadEnv(payload) {
   return serialized
 }
 
+/**
+ * Add the article-heartbeat topic contract at the Host boundary.  The
+ * contract is deliberately separate from the script's ordinary input:
+ * explicit topics/policy are caller-owned, while an omitted policy receives
+ * the durable default used by the scheduled article runner.
+ */
+export function heartbeatRunnerPayload(runner, payload) {
+  const value = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
+  if (String(runner || '').trim() !== 'gzh-multi-article') return value
+  const hasExplicitTopics = Object.prototype.hasOwnProperty.call(value, 'topics')
+  const hasExplicitPolicy = Object.prototype.hasOwnProperty.call(value, 'heartbeat_topic_policy')
+  if (hasExplicitTopics || hasExplicitPolicy) return value
+  return {
+    ...value,
+    heartbeat_topic_policy: JSON.parse(JSON.stringify(GZH_HEARTBEAT_TOPIC_POLICY)),
+  }
+}
+
 export function heartbeatTaskIsOneShot(task) {
   return Boolean(task && task.payload && typeof task.payload === 'object' && task.payload.one_shot === true)
 }
@@ -419,7 +498,8 @@ export function executeHeartbeatRunner(task, { execFileImpl = execFile } = {}) {
         throw error
       }
     }
-    const result = await executeFixedHeartbeatCommand(spec, task && task.payload, { execFileImpl })
+    const payload = heartbeatRunnerPayload(spec.runner, task && task.payload)
+    const result = await executeFixedHeartbeatCommand(spec, payload, { execFileImpl })
     return { runner: spec.runner, ...result, ...(preflight ? { preflight } : {}) }
   })()
 }

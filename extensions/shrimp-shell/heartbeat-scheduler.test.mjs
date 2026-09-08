@@ -5,10 +5,12 @@ import {
   HEARTBEAT_TIMEZONE,
   HEARTBEAT_CATCH_UP_MAX_OCCURRENCES,
   HEARTBEAT_CATCH_UP_WINDOW_MS,
+  GZH_HEARTBEAT_TOPIC_POLICY,
   clearHeartbeatRunnerFailure,
   executeHeartbeatRunner,
   heartbeatFailureFingerprint,
   heartbeatRunnerErrorDetail,
+  heartbeatRunnerPayload,
   heartbeatRunnerPayloadEnv,
   heartbeatRunnerSpec,
   heartbeatTaskIsOneShot,
@@ -156,7 +158,31 @@ test('runner is an immutable allowlist and cannot accept an arbitrary command', 
   assert.equal(calls[1].args[0], spec.args[0])
   assert.equal(calls[1].options.cwd, spec.cwd)
   assert.equal(calls[1].options.shell, undefined)
-  assert.equal(calls[1].options.env.DSH_HEARTBEAT_PAYLOAD_JSON, '{}')
+  const defaultPayload = JSON.parse(calls[1].options.env.DSH_HEARTBEAT_PAYLOAD_JSON)
+  assert.deepEqual(defaultPayload.heartbeat_topic_policy, GZH_HEARTBEAT_TOPIC_POLICY)
+})
+
+test('article heartbeat policy has three fixed directions and explicit payload remains authoritative', () => {
+  assert.equal(GZH_HEARTBEAT_TOPIC_POLICY.schema, 'heartbeat_topic_policy.v1')
+  assert.deepEqual(GZH_HEARTBEAT_TOPIC_POLICY.slots.map((item) => item.out), [
+    '01_x_ai_news',
+    '02_x_ai_news',
+    '03_reflection',
+  ])
+  assert.match(GZH_HEARTBEAT_TOPIC_POLICY.slots[0].selection_rule, /Tibo.*OpenAI/)
+  assert.match(GZH_HEARTBEAT_TOPIC_POLICY.slots[1].selection_rule, /其他大模型厂商/)
+  assert.deepEqual(GZH_HEARTBEAT_TOPIC_POLICY.slots[2].subject_scope, ['大神自身能力升级', '大神正在讨论的问题'])
+
+  const base = { goal: '文章@虾六答' }
+  const injected = heartbeatRunnerPayload('gzh-multi-article', base)
+  assert.equal(injected.heartbeat_topic_policy.schema, GZH_HEARTBEAT_TOPIC_POLICY.schema)
+  assert.equal(base.heartbeat_topic_policy, undefined)
+
+  const explicitTopics = { topics: [{ out: 'custom-1' }, { out: 'custom-2' }, { out: 'custom-3' }] }
+  assert.strictEqual(heartbeatRunnerPayload('gzh-multi-article', explicitTopics), explicitTopics)
+  const explicitPolicy = { heartbeat_topic_policy: { schema: 'custom.v1', topics: [] } }
+  assert.strictEqual(heartbeatRunnerPayload('gzh-multi-article', explicitPolicy), explicitPolicy)
+  assert.deepEqual(heartbeatRunnerPayload('git-daily-commit', base), base)
 })
 
 test('git daily commit runner uses the fixed local Node script and ignores payload command/path', async () => {
