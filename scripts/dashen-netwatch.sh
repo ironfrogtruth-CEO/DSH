@@ -72,6 +72,13 @@ tunnel_probe() {
   # cut even though cloudflared holds registered edge connections. The local
   # metrics /ready endpoint is the authoritative signal (200 = tunnel up);
   # never kickstart-restart a healthy tunnel because the public path is cut.
+  # 502 happened at 10:46 with /ready=200 while the origin listener was down:
+  # HTTP-level failures are REAL failures (path reached Cloudflare), only a
+  # connection-level failure (000) can be carrier SNI filtering.
+  if [ "$code" != "000" ]; then
+    PUBLIC_FAILING=1
+    return 1
+  fi
   ready=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "$METRICS_READY_URL")
   if [ "$ready" = "200" ]; then
     now=$(date +%s)
