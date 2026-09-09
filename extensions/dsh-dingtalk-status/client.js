@@ -1,8 +1,9 @@
-// @local/dsh-dingtalk-status — read-only client half.
+// @local/dsh-dingtalk-status — mobile gateway client half.
 //
-// The client uses the existing utility footer seam.  It only reads the local
-// status API and copies the fixed setup command; it cannot edit configuration,
-// run commands, send messages, or contact DingTalk itself.
+// Replaces the former DingTalk footer entry with the mobile gateway
+// connection switch + status (user request 2026-09-09).  It reads
+// /api/mobile-gateway/status and posts explicit user actions to
+// /api/mobile-gateway/action; it never touches configuration files itself.
 window.__ModuleLoader__.load({
   id: '@local/dsh-dingtalk-status',
   factory: (require) => {
@@ -12,10 +13,9 @@ window.__ModuleLoader__.load({
 
     const React = require('react')
     const h = React.createElement
-    const inject = ['slots', 'sessions']
+    const inject = ['slots']
     const safe = (value, fallback = '') => String(value ?? fallback)
-    let openHostSession = null
-
+    
     function nativeSubscriberAdminAvailable() {
       return typeof window?.webkit?.messageHandlers?.dingtalkSubscriptionAdmin?.postMessage === 'function'
     }
@@ -27,49 +27,46 @@ window.__ModuleLoader__.load({
       )
     }
 
-    const STREAM_LABEL = { connected: '已连接', reconnecting: '重连中', stale: '状态过期', unobserved: '未观测' }
+    const STATE_LABEL = { connected: '隧道已连接', degraded: '隧道降级', stopped: '隧道未运行' }
 
     function Dot({ color }) {
       return h('span', { 'aria-hidden': true, style: { display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 0 3px color-mix(in srgb, ${color} 15%, transparent)` } })
     }
 
-    function streamColor(status) {
-      return status === 'connected' ? '#35a56f' : status === 'reconnecting' ? '#e3a72f' : '#9aa0a8'
+    function stateColor(state) {
+      if (state === 'connected') return '#35a56f'
+      if (state === 'degraded') return '#e3a72f'
+      return '#d84c45'
     }
 
     function statusHeadline(state) {
-      if (!state?.package?.installed) return '未安装'
-      if (!state?.credentials?.configured) return '待配置'
-      if (!state.ownerBound) return '待绑定'
-      return STREAM_LABEL[state.stream?.status] || '未观测'
+      return STATE_LABEL[state?.state] || '状态未知'
     }
 
     function statusDescription(state) {
-      if (!state?.package?.installed) return '官方连接器尚未安装'
-      if (!state?.credentials?.configured) return '需要在本机完成一次官方 setup'
-      if (!state.ownerBound) return '需要用管理员账号完成绑定'
-      return `Stream ${STREAM_LABEL[state.stream?.status] || '未观测'}`
+      if (state?.state === 'stopped') return 'cloudflared 进程未运行'
+      if (state?.state === 'degraded') return '进程在但边缘连接未就绪，可尝试重新连接'
+      if (state?.publicReachable === false) return '边缘正常；公网探测被拦，疑似当前网络对该域名的 SNI 干扰（隧道本身健康）'
+      if (state?.publicReachable === true) return '边缘连接与公网链路均正常'
+      return '边缘连接正常'
     }
 
     async function readStatus() {
-      const response = await fetch('/api/dsh-dingtalk/status', { cache: 'no-store', headers: { Accept: 'application/json' } })
+      const response = await fetch('/api/mobile-gateway/status', { cache: 'no-store', headers: { Accept: 'application/json' } })
       const value = await response.json().catch(() => ({}))
       if (!response.ok || value.ok === false) throw new Error(value.error || `状态读取失败(${response.status})`)
       return value
     }
 
-    async function openSession(sessionId) {
-      if (!sessionId) return
-      try {
-        if (typeof openHostSession === 'function') {
-          await openHostSession(sessionId)
-          return
-        }
-      } catch {
-        // Fall through to the legacy event bridge only when the native session
-        // opener rejects this canonical id.
-      }
-      window.dispatchEvent(new CustomEvent('dsh:open-session', { detail: { sessionId } }))
+    async function postAction(action) {
+      const response = await fetch('/api/mobile-gateway/action', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const value = await response.json().catch(() => ({}))
+      if (!response.ok || value.ok === false) throw new Error(value.error || `操作失败(${response.status})`)
+      return value
     }
 
     async function copyCommand(value) {
@@ -97,7 +94,7 @@ window.__ModuleLoader__.load({
       const firstFocusRef = React.useRef(null)
 
       const load = React.useCallback(async () => {
-        try { setState(await readStatus()); setError('') } catch (cause) { setError(safe(cause?.message, '钉钉状态读取失败')) }
+        try { setState(await readStatus()); setError('') } catch (cause) { setError(safe(cause?.message, '移动端连接状态读取失败')) }
       }, [])
 
       React.useEffect(() => {
@@ -106,10 +103,10 @@ window.__ModuleLoader__.load({
         return () => clearInterval(timer)
       }, [load])
       React.useEffect(() => {
-        const closeOther = (event) => { if (event?.detail?.id !== 'dsh-dingtalk-status') setOpen(false) }
-        const openStatus = () => { window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'dsh-dingtalk-status' } })); setOpen(true) }
+        const closeOther = (event) => { if (event?.detail?.id !== 'dsh-mobile-gateway') setOpen(false) }
+        const openStatus = () => { window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'dsh-mobile-gateway' } })); setOpen(true) }
         window.addEventListener('dsh:utility-open', closeOther)
-        window.addEventListener('dsh:open-dingtalk-status', openStatus)
+        window.addEventListener('dsh:open-mobile-gateway', openStatus)
         return () => { window.removeEventListener('dsh:utility-open', closeOther); window.removeEventListener('dsh:open-dingtalk-status', openStatus) }
       }, [])
       React.useEffect(() => {
@@ -131,7 +128,7 @@ window.__ModuleLoader__.load({
 
       const openPanel = () => {
         const next = !open
-        if (next) window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'dsh-dingtalk-status' } }))
+        if (next) window.dispatchEvent(new CustomEvent('dsh:utility-open', { detail: { id: 'dsh-mobile-gateway' } }))
         setOpen(next)
       }
       const close = () => { setOpen(false); setError(''); setNotice('') }
@@ -140,73 +137,71 @@ window.__ModuleLoader__.load({
         catch (cause) { setError(safe(cause?.message, '复制失败，请手动选择命令')) }
       }
       const openSubscriptions = () => { setOpen(false); window.dispatchEvent(new CustomEvent('dsh:open-dingtalk-subscriptions')) }
+      const [busyAction, setBusyAction] = React.useState('')
       const headline = statusHeadline(state)
-      const status = state?.stream?.status || 'unobserved'
-      const color = streamColor(status)
-      const trigger = h('button', { type: 'button', className: 'dsh-dingtalk-trigger', 'aria-label': `钉钉：${headline}`, 'aria-expanded': open, title: `钉钉：${headline}`, onClick: openPanel }, h(DingTalkIcon), props?.wide ? h('span', { className: 'dsh-dingtalk-trigger-label' }, '钉钉') : null, props?.wide ? h('span', { className: 'dsh-dingtalk-trigger-dot', 'aria-hidden': true, style: { background: color } }) : null)
+      const stateKey = state?.state || 'stopped'
+      const color = stateColor(stateKey)
+      const trigger = h('button', { type: 'button', className: 'dsh-dingtalk-trigger', 'aria-label': `移动端连接：${headline}`, 'aria-expanded': open, title: `移动端连接：${headline}`, onClick: openPanel }, h(DingTalkIcon), props?.wide ? h('span', { className: 'dsh-dingtalk-trigger-label' }, '移动端') : null, props?.wide ? h('span', { className: 'dsh-dingtalk-trigger-dot', 'aria-hidden': true, style: { background: color } }) : null)
       if (!open) return h('div', { className: 'dsh-dingtalk-root dsh-sidebar-footer-entry' }, trigger)
 
-      const card = state?.aiCard
-      const cardText = !card?.known ? '未观测' : card.available ? '已知可用' : '已知不可用'
-      const observed = state?.stream?.observedAt ? new Date(state.stream.observedAt).toLocaleTimeString() : '—'
+      const lastWarn = state?.lastWarning
+      const warnText = lastWarn?.time ? `${safe(lastWarn.event, '告警')} @ ${new Date(lastWarn.time).toLocaleTimeString()}` : '近期无告警'
+      const readyText = state?.metricsReady === true ? '就绪' : state?.metricsReady === false ? '未就绪' : '不可达'
+      const publicText = state?.publicReachable === true ? '可达' : state?.publicReachable === false ? '被拦（疑似SNI干扰）' : '未探测'
+      const runAction = async (action, confirmText = '') => {
+        if (confirmText && !window.confirm(confirmText)) return
+        setBusyAction(action); setError(''); setNotice('')
+        try {
+          const next = await postAction(action)
+          setState(next)
+          setNotice(action === 'stop' ? '隧道已停止' : action === 'start' ? '隧道已启动' : '已重新连接，状态稍后自动刷新')
+        } catch (cause) { setError(safe(cause?.message, '操作失败')) }
+        finally { setBusyAction('') }
+      }
       return h('div', { className: 'dsh-dingtalk-root dsh-sidebar-footer-entry' }, trigger,
         h('div', { className: 'dsh-dingtalk-backdrop', onMouseDown: (event) => { if (event.target === event.currentTarget) close() }, 'aria-hidden': true }),
         h('section', { ref: dialogRef, className: 'dsh-dingtalk-dialog', role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'dsh-dingtalk-title', tabIndex: -1 },
           h('header', { className: 'dsh-dingtalk-head' },
-            h('div', { className: 'dsh-dingtalk-title-row' }, h('span', { className: 'dsh-dingtalk-mark' }, h(DingTalkIcon)), h('div', null, h('h2', { id: 'dsh-dingtalk-title' }, '钉钉'), h('p', null, '官方 Stream 连接状态'))),
-            h('button', { type: 'button', className: 'dsh-dingtalk-close', onClick: close, 'aria-label': '关闭钉钉面板' }, '×'),
+            h('div', { className: 'dsh-dingtalk-title-row' }, h('span', { className: 'dsh-dingtalk-mark' }, h(DingTalkIcon)), h('div', null, h('h2', { id: 'dsh-dingtalk-title' }, '移动端连接'), h('p', null, '手机访问大神的隧道开关与状态'))),
+            h('button', { type: 'button', className: 'dsh-dingtalk-close', onClick: close, 'aria-label': '关闭移动端连接面板' }, '×'),
           ),
           h('div', { className: 'dsh-dingtalk-body' },
             error ? h('div', { className: 'dsh-dingtalk-alert error', role: 'alert' }, error) : null,
             notice ? h('div', { className: 'dsh-dingtalk-alert success', role: 'status' }, notice) : null,
             h('div', { className: 'dsh-dingtalk-state' }, h(Dot, { color }), h('strong', null, headline), h('span', null, statusDescription(state))),
-            h('p', { className: 'dsh-dingtalk-intro' }, '钉钉支持收任务/续聊/审批/图片/流式结果；会话仍由大神 Host 与官方连接器共同管理。'),
             h('section', { className: 'dsh-dingtalk-section' },
               h('div', { className: 'dsh-dingtalk-section-title' }, '连接状态'),
               h('div', { className: 'dsh-dingtalk-grid' },
-                h('span', null, '官方插件', h('strong', null, state?.package?.version || '未安装')),
-                h('span', null, '凭据', h('strong', null, state?.credentials?.configured ? '已配置' : '待配置')),
-                h('span', null, '管理员', h('strong', null, state?.ownerBound ? '已绑定' : '待绑定')),
-                h('span', null, 'Stream', h('strong', null, STREAM_LABEL[status] || '未观测')),
-                h('span', null, 'AI Card', h('strong', null, cardText)),
-                h('span', null, '最近观测', h('strong', null, observed)),
-                h('span', null, '已绑定会话', h('strong', null, Number(state?.boundSessionCount || 0))),
+                h('span', null, 'cloudflared 进程', h('strong', null, state?.pid ? `运行中 #${state.pid}` : '未运行')),
+                h('span', null, '边缘连接(/ready)', h('strong', null, readyText)),
+                h('span', null, '公网链路', h('strong', null, publicText)),
+                h('span', null, '最近告警', h('strong', null, warnText)),
               ),
             ),
-            nativeSubscriberAdminAvailable() ? h('section', { className: 'dsh-dingtalk-section' },
-              h('div', { className: 'dsh-dingtalk-admin-card' },
-                h('div', { className: 'dsh-dingtalk-admin-copy' },
-                  h('div', { className: 'dsh-dingtalk-admin-title' }, h('strong', null, '订阅管理'), h('span', null, '仅大神.app')),
-                  h('p', null, '添加订阅者，设置工作区、模式、模型、推理强度、周额度和逐只虾权限。'),
-                ),
-                h('button', { ref: firstFocusRef, type: 'button', onClick: openSubscriptions }, '进入管理'),
+            h('section', { className: 'dsh-dingtalk-section' },
+              h('div', { className: 'dsh-dingtalk-section-title' }, '操作'),
+              h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                stateKey === 'stopped'
+                  ? h('button', { ref: firstFocusRef, type: 'button', disabled: busyAction !== '', onClick: () => { void runAction('start') }, style: { minHeight: '30px', padding: '0 12px', border: '1px solid #35a56f55', borderRadius: '8px', background: '#244332', color: '#dcf6e6', fontSize: '12px', cursor: 'pointer' } }, busyAction === 'start' ? '启动中…' : '启动隧道')
+                  : null,
+                stateKey !== 'stopped'
+                  ? h('button', { ref: firstFocusRef, type: 'button', disabled: busyAction !== '', onClick: () => { void runAction('restart') }, style: { minHeight: '30px', padding: '0 12px', border: '1px solid #e3a72f55', borderRadius: '8px', background: '#3a3220', color: '#f0d9a0', fontSize: '12px', cursor: 'pointer' } }, busyAction === 'restart' ? '重连中…' : '重新连接')
+                  : null,
+                stateKey !== 'stopped'
+                  ? h('button', { type: 'button', disabled: busyAction !== '', onClick: () => { void runAction('stop', '确定停止移动端隧道？停止后手机将无法访问，需要再点启动恢复。') }, style: { minHeight: '30px', padding: '0 12px', border: '1px solid rgba(128,128,128,.3)', borderRadius: '8px', background: 'transparent', color: 'var(--dsw-alias-label-secondary,#8c949d)', fontSize: '12px', cursor: 'pointer' } }, busyAction === 'stop' ? '停止中…' : '停止')
+                  : null,
               ),
-            ) : null,
-            h('section', { className: 'dsh-dingtalk-section' },
-              h('div', { className: 'dsh-dingtalk-section-title' }, '最近钉钉会话'),
-              Array.isArray(state?.sessions) && state.sessions.length
-                ? h('div', { className: 'dsh-dingtalk-sessions' }, state.sessions.map((session) => h('div', { className: 'dsh-dingtalk-session', key: session.sessionId },
-                    h('div', { className: 'dsh-dingtalk-session-main' }, h('strong', null, session.title || '钉钉会话'), h('small', null, session.running ? '执行中' : '已暂停')),
-                    h('button', { type: 'button', onClick: () => { void openSession(session.sessionId) }, title: '打开对应会话' }, '打开'),
-                  )))
-                : h('div', { className: 'dsh-dingtalk-empty' }, '暂无可显示的绑定会话。'),
             ),
             h('section', { className: 'dsh-dingtalk-section' },
-              h('div', { className: 'dsh-dingtalk-section-title' }, '真实边界'),
-              h('p', { className: 'dsh-dingtalk-note' }, '当前官方连接器不支持入站文件、音频、视频；输出以 AI Card 或 Markdown 为主。本地产物仍需在大神会话中打开。'),
+              h('div', { className: 'dsh-dingtalk-section-title' }, '怎么判断'),
+              h('p', { className: 'dsh-dingtalk-note' }, '「公网被拦」不代表隧道挂了：部分运营商网络会按域名（SNI）拦截 yizhiwa.cn，此时手机和 Mac 都打不开，换一个网络（如家庭 Wi-Fi）即可恢复，无需重启隧道。「重新连接」强制 cloudflared 断开并重连边缘，用于边缘连接假死的情况。'),
             ),
-            !state?.credentials?.configured ? h('section', { className: 'dsh-dingtalk-section' },
-              h('div', { className: 'dsh-dingtalk-section-title' }, '本机配置'),
-              h('p', { className: 'dsh-dingtalk-note' }, '请在独立本机终端手动执行以下固定命令；面板不会自动执行，也不会读取或录制私密终端。'),
-              h('div', { className: 'dsh-dingtalk-command' }, h('code', null, state?.setupCommand || 'npx @dingtalk-real-ai/dsh-dingtalk@0.6.2 setup'), h('button', { ref: firstFocusRef, type: 'button', onClick: copySetup }, '复制命令')),
-            ) : null,
           ),
         ),
       )
     }
 
     function apply(ctx) {
-      openHostSession = ctx.sessions.open.bind(ctx.sessions)
       const style = document.createElement('style')
       style.id = 'dsh-dingtalk-status-styles'
       style.textContent = `
@@ -251,7 +246,7 @@ window.__ModuleLoader__.load({
       const root = document.querySelector('[data-dsh-sidebar-foot]')?.parentElement
       if (root && typeof ResizeObserver !== 'undefined') { resize = new ResizeObserver(markSidebarFoot); resize.observe(root) }
       ctx.effect(() => () => { observer.disconnect(); resize?.disconnect(); document.documentElement.style.removeProperty('--dsh-sidebar-half-width'); style.remove() }, 'dsh-dingtalk-status: styles')
-      ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({ name: 'sidebar.footer.action', id: 'dsh-dingtalk-status', order: 70, label: '钉钉' }, DingTalkPanel)), 'dsh-dingtalk-status: sidebar footer')
+      ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({ name: 'sidebar.footer.action', id: 'dsh-dingtalk-status', order: 70, label: '移动端' }, DingTalkPanel)), 'dsh-dingtalk-status: sidebar footer')
     }
 
     exports.apply = apply

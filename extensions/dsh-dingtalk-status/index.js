@@ -5,6 +5,9 @@
 // deliberately small status contract for the existing sidebar utility slot.
 // It never writes configuration, invokes a shell, sends a message, or opens a
 // network connection.
+import { execFile } from 'node:child_process'
+import http from 'node:http'
+import https from 'node:https'
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -270,6 +273,128 @@ function sendJson(res, status, value) {
   res.end(JSON.stringify(value))
 }
 
+// ---------------------------------------------------------------------------
+// Mobile gateway (dashen.yizhiwa.cn cloudflared tunnel) control surface.
+// Added 2026-09-09 when the DingTalk footer entry was replaced by the mobile
+// gateway connection switch per user request.  Status is read-only; the only
+// mutating surface is the explicit launchctl action endpoint below.
+// ---------------------------------------------------------------------------
+
+export const GATEWAY_LABEL = 'cn.yizhiwa.dashen.cloudflared'
+export const GATEWAY_ACTIONS = ['restart', 'start', 'stop']
+export const METRICS_READY_TIMEOUT_MS = 1_500
+export const PUBLIC_PROBE_TIMEOUT_MS = 3_500
+
+export function gatewayPaths({ home = homedir() } = {}) {
+  const dir = join(dshHome(home), 'private', 'mobile-gateway')
+  return {
+    dir,
+    pid: join(dir, 'cloudflared-connector.pid'),
+    warnLog: join(dir, 'cloudflared-connector.warn.jsonl'),
+    plist: join(home, 'Library', 'LaunchAgents', `${GATEWAY_LABEL}.plist`),
+  }
+}
+
+function probe(url, timeoutMs) {
+  return new Promise((resolve) => {
+    try {
+      const transport = url.startsWith('https:') ? https : http
+      const request = transport.get(url, { timeout: timeoutMs }, (response) => {
+        response.resume()
+        resolve({ ok: true, status: response.statusCode ?? 0 })
+      })
+      request.on('timeout', () => { request.destroy(); resolve({ ok: false }) })
+      request.on('error', () => resolve({ ok: false }))
+    } catch {
+      resolve({ ok: false })
+    }
+  })
+}
+
+async function readPid(pidFile) {
+  try {
+    const raw = (await readFile(pidFile, 'utf8')).trim()
+    const pid = Number.parseInt(raw, 10)
+    return Number.isInteger(pid) && pid > 1 ? pid : null
+  } catch {
+    return null
+  }
+}
+
+function processAlive(pid) {
+  if (!Number.isInteger(pid)) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function lastWarning(warnLog) {
+  try {
+    const raw = await readFile(warnLog, 'utf8')
+    const lines = raw.trimEnd().split('\n')
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      try {
+        const value = JSON.parse(lines[index])
+        if (typeof value?.time === 'string' && typeof value?.event === 'string') {
+          return { time: value.time, event: value.event }
+        }
+      } catch { /* skip malformed tail line */ }
+    }
+  } catch { /* no log yet */ }
+  return null
+}
+
+export async function gatewayStatus({ home = homedir() } = {}) {
+  const paths = gatewayPaths({ home })
+  const pid = await readPid(paths.pid)
+  const alive = processAlive(pid)
+  const [ready, pub] = await Promise.all([
+    probe('http://127.0.0.1:20241/ready', METRICS_READY_TIMEOUT_MS),
+    probe('https://dashen.yizhiwa.cn/', PUBLIC_PROBE_TIMEOUT_MS),
+  ])
+  const metricsReady = ready.ok && ready.status === 200
+  const state = !alive ? 'stopped' : metricsReady ? 'connected' : 'degraded'
+  return {
+    ok: true,
+    source: 'mobile-gateway.v1',
+    state,
+    pid: alive ? pid : null,
+    metricsReady,
+    publicReachable: pub.ok ? pub.status < 500 : null,
+    publicStatus: pub.ok ? pub.status : null,
+    lastWarning: await lastWarning(paths.warnLog),
+    label: GATEWAY_LABEL,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function runGatewayAction(action, { execFileImpl = execFile, home = homedir() } = {}) {
+  if (!GATEWAY_ACTIONS.includes(action)) return Promise.reject(new Error(`未知操作: ${action}`))
+  const uid = process.getuid?.() ?? 501
+  const paths = gatewayPaths({ home })
+  const args = action === 'restart'
+    ? ['kickstart', '-k', `gui/${uid}/${GATEWAY_LABEL}`]
+    : action === 'stop'
+      ? ['bootout', `gui/${uid}/${GATEWAY_LABEL}`]
+      : ['bootstrap', `gui/${uid}`, paths.plist]
+  return new Promise((resolve, reject) => {
+    execFileImpl('/bin/launchctl', args, { timeout: 10_000 }, (error, stdout, stderr) => {
+      if (error) reject(new Error(String(stderr || error.message || 'launchctl 失败').slice(0, 200)))
+      else resolve({ ok: true, action })
+    })
+  })
+}
+
+export async function gatewayActionAndStatus(action, options = {}) {
+  await runGatewayAction(action, options)
+  await new Promise((resolve) => setTimeout(resolve, 1_500))
+  return gatewayStatus(options)
+}
+
+
 export function captureProjectionServices(ctx) {
   return {
     credentials: ctx.credentials,
@@ -306,4 +431,53 @@ export function apply(ctx) {
       }
     },
   }), 'dsh-dingtalk-status: read-only status api')
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: '/api/mobile-gateway/status',
+    handler: async (req, res) => {
+      if (req.method && req.method !== 'GET') {
+        sendJson(res, 405, { ok: false, error: '只允许 GET' })
+        return
+      }
+      try {
+        sendJson(res, 200, await gatewayStatus())
+      } catch {
+        sendJson(res, 200, { ok: false, state: 'unknown', error: '状态读取失败' })
+      }
+    },
+  }), 'dsh-dingtalk-status: mobile gateway status api')
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: '/api/mobile-gateway/action',
+    handler: async (req, res) => {
+      if (req.method !== 'POST') {
+        sendJson(res, 405, { ok: false, error: '只允许 POST' })
+        return
+      }
+      let action = ''
+      try {
+        const chunks = []
+        let bytes = 0
+        for await (const chunk of req) {
+          bytes += chunk.length
+          if (bytes > 4_096) break
+          chunks.push(chunk)
+        }
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+        action = typeof body?.action === 'string' ? body.action : ''
+      } catch {
+        sendJson(res, 400, { ok: false, error: '请求体必须是 JSON' })
+        return
+      }
+      if (!GATEWAY_ACTIONS.includes(action)) {
+        sendJson(res, 400, { ok: false, error: '未知操作' })
+        return
+      }
+      try {
+        sendJson(res, 200, await gatewayActionAndStatus(action))
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: error?.message || '操作失败' })
+      }
+    },
+  }), 'dsh-dingtalk-status: mobile gateway action api')
 }

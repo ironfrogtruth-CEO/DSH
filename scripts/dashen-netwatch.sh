@@ -65,7 +65,7 @@ tunnel_probe() {
   local code ready
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$PROBE_TIMEOUT" "$PUBLIC_URL")
   case "$code" in
-    200|301|302|303|307|308|401|403|404) return 0 ;;
+    200|301|302|303|307|308|401|403|404) PUBLIC_FAILING=0; return 0 ;;
   esac
   # Public probe can fail while the tunnel itself is fine: on carrier networks
   # (e.g. phone hotspot) direct TLS from this Mac to Cloudflare edge may be
@@ -81,6 +81,7 @@ tunnel_probe() {
     fi
     return 0
   fi
+  PUBLIC_FAILING=1
   return 1
 }
 
@@ -92,6 +93,10 @@ LAST_ROUTE=""
 LAST_KICKSTART=0
 LAST_SKIP_LOG=0
 FAILURES=0
+PUBLIC_FAILING=0
+PUBLIC_FAIL_SINCE=0
+ZOMBIE_KICKSTART_AFTER=600   # public failing 10 min while /ready=200
+ZOMBIE_KICKSTART_COOLDOWN=1800
 
 log "netwatch 启动 (rebuilt 2026-09-09)"
 
@@ -121,6 +126,24 @@ while true; do
     fi
     FAILURES=0
     LAST_KICKSTART=0
+    # Zombie-connection guard: /ready stays 200 while edge connections are
+    # actually dead (observed 2026-09-09 09:36).  Public failing with the
+    # metrics endpoint up is either SNI filtering (hotspot) or zombies; after
+    # ZOMBIE_KICKSTART_AFTER of continuous failure give ONE bounded kickstart
+    # per ZOMBIE_KICKSTART_COOLDOWN to clear zombies without hotspot flapping.
+    now=$(date +%s)
+    if [ "$PUBLIC_FAILING" = "1" ]; then
+      if [ "$PUBLIC_FAIL_SINCE" = "0" ]; then
+        PUBLIC_FAIL_SINCE=$now
+      elif [ $((now - PUBLIC_FAIL_SINCE)) -ge "$ZOMBIE_KICKSTART_AFTER" ] && [ $((now - LAST_KICKSTART)) -ge "$ZOMBIE_KICKSTART_COOLDOWN" ]; then
+        log "公网持续失败 ${ZOMBIE_KICKSTART_AFTER}s 且 /ready=200, 疑似边缘连接假死, 有限 kickstart 一次"
+        kickstart_tunnel
+        LAST_KICKSTART=$now
+        PUBLIC_FAIL_SINCE=0
+      fi
+    else
+      PUBLIC_FAIL_SINCE=0
+    fi
     sleep "$POLL_INTERVAL"
     continue
   fi
