@@ -281,7 +281,12 @@ function sendJson(res, status, value) {
 // ---------------------------------------------------------------------------
 
 export const GATEWAY_LABEL = 'cn.yizhiwa.dashen.cloudflared'
-export const GATEWAY_ACTIONS = ['restart', 'start', 'stop']
+export const GATEWAY_ACTIONS = ['recover']
+export const RECOVER_LABELS = [
+  'cn.yizhiwa.dashen.cloudflared',
+  'cn.yizhiwa.dashen.mobile-gateway-edge',
+  'cn.yizhiwa.dashen.netwatch',
+]
 export const METRICS_READY_TIMEOUT_MS = 1_500
 export const PUBLIC_PROBE_TIMEOUT_MS = 3_500
 
@@ -374,18 +379,14 @@ export async function gatewayStatus({ home = homedir() } = {}) {
 export function runGatewayAction(action, { execFileImpl = execFile, home = homedir() } = {}) {
   if (!GATEWAY_ACTIONS.includes(action)) return Promise.reject(new Error(`未知操作: ${action}`))
   const uid = process.getuid?.() ?? 501
-  const paths = gatewayPaths({ home })
-  const args = action === 'restart'
-    ? ['kickstart', '-k', `gui/${uid}/${GATEWAY_LABEL}`]
-    : action === 'stop'
-      ? ['bootout', `gui/${uid}/${GATEWAY_LABEL}`]
-      : ['bootstrap', `gui/${uid}`, paths.plist]
-  return new Promise((resolve, reject) => {
-    execFileImpl('/bin/launchctl', args, { timeout: 10_000 }, (error, stdout, stderr) => {
-      if (error) reject(new Error(String(stderr || error.message || 'launchctl 失败').slice(0, 200)))
-      else resolve({ ok: true, action })
-    })
+  const jobs = action === 'recover' ? RECOVER_LABELS : [GATEWAY_LABEL]
+  const kick = (label) => new Promise((resolve) => {
+    execFileImpl('/bin/launchctl', ['kickstart', '-k', `gui/${uid}/${label}`], { timeout: 10_000 }, () => resolve())
   })
+  return (async () => {
+    for (const label of jobs) await kick(label)
+    return { ok: true, action, kicked: jobs }
+  })()
 }
 
 export async function gatewayActionAndStatus(action, options = {}) {
