@@ -3,8 +3,8 @@ ui-onboarding:
 agent-default-model:
   # 对话默认走云端 GLM；本地 Ollama 只承载后台媒体/检索模型，不进入对话选择器。
   provider: zhipu-glm
-  model: glm-5.3-flash
-  reasoningEffort: max
+  model: deepseek-flash
+  reasoningEffort: high
 agent-presets:
   default: reliable-development
 permission:
@@ -17,8 +17,8 @@ llm-deepseek:
   # durable 附件准入，随后由 shrimp-shell 固定视觉桥接管原图。桥内顺序：
   # V4 Flash Vision → 智谱免费视觉；云端均不可用时明确阻断。
   models:
-    - id: deepseek-v4-flash
-      name: DeepSeek-V4-Flash
+    - id: deepseek-flash
+      name: DeepSeek-V4.1-Flash（正式版）
       inputModalities:
         - text
         - image
@@ -43,6 +43,8 @@ llm-pi-ai:
       # 写成 thinking:disabled,智谱直接 400 code 1210。这里强制兜底为 high。
       reasoning: high
       models:
+        - id: glm-5.3
+          name: GLM-5.3
         - id: glm-5.3-flash
           name: GLM-5.3-Flash
           contextWindow: 1048576
