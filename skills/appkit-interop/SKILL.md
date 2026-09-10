@@ -5,6 +5,7 @@ description: Bridge macOS SwiftUI into AppKit narrowly. Use when implementing
   responder chain.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # AppKit Interop

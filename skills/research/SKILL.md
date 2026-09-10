@@ -8,6 +8,7 @@ description: Run fast, source-grounded UX research on the highest-signal
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Research

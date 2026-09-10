@@ -4,6 +4,7 @@ description: Check whether public NGS tools and packages already exist before
   downloading, installing, or running a sequencing pipeline.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # NGS Runtime Environment

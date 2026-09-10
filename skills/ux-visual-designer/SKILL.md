@@ -1,6 +1,6 @@
 ---
 name: ux-visual-designer
-description: User-centered interaction and visual design decision framework for web and mobile products. Use when requests involve page layout, information hierarchy, click/scroll/filter flows, component placement, UI states, or high-fidelity visual design choices (typography, cards, shadows, corner radius, buttons, sliders, selected states, menus). Trigger especially when design must fit specific user groups or usage contexts.
+description: 以用户为中心的 Web/移动交互与视觉设计决策框架：页面布局、信息层级、操作流、组件摆放、UI 状态与高保真选择（字体、卡片、圆角、按钮、菜单）；设计需要贴合特定用户群与场景时用它。
 ---
 
 # UX Visual Designer

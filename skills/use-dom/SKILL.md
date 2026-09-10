@@ -4,6 +4,7 @@ description: Use Expo DOM components to run web code in a webview on native and
   as-is on web. Migrate web code to native incrementally.
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## What are DOM Components?

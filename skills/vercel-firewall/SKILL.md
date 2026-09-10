@@ -6,6 +6,7 @@ description: Vercel Firewall and security expert guidance. Use when configuring
   the Vercel platform.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Firewall

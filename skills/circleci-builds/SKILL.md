@@ -6,6 +6,7 @@ description: Diagnose and fix failing CircleCI builds quickly and safely. Use
   test setup, or build-related code paths.
 compatibility: Ported from Codex plugin circleci (https://circleci.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # CircleCI Builds

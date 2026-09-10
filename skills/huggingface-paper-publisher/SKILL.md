@@ -5,6 +5,7 @@ description: Publish and manage research papers on Hugging Face Hub. Supports
   and generating professional markdown-based research articles.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Overview

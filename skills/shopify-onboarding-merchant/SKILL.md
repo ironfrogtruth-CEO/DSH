@@ -12,6 +12,7 @@ description: "Set up and connect a Shopify store from your AI assistant. Use
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Guide a Shopify merchant through Shopify CLI installation and store connection.

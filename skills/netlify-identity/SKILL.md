@@ -6,6 +6,7 @@ description: Use when the task involves authentication, user signups, logins,
   `netlify-identity-widget` or `gotrue-js` — they are deprecated.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Identity

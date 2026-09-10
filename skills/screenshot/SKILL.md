@@ -1,6 +1,6 @@
 ---
 name: "screenshot"
-description: "Use when the user explicitly asks for a desktop or system screenshot (full screen, specific app or window, or a pixel region), or when tool-specific capture capabilities are unavailable and an OS-level capture is needed."
+description: 用户明确要桌面或系统截图（全屏、某应用/窗口、像素区域），或工具截图能力不可用、需要系统级截取时用它。
 ---
 
 

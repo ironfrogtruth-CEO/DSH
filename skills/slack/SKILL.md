@@ -4,6 +4,7 @@ description: Read Slack context, route to the right Slack workflow, and prepare
   or perform Slack writes that match the user's intent.
 compatibility: Ported from Codex plugin slack (https://slack.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Slack

@@ -7,6 +7,7 @@ description: Primary skill for composing, drafting, or refining any outbound
   final outgoing message.
 compatibility: Ported from Codex plugin slack (https://slack.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Slack Outgoing Message

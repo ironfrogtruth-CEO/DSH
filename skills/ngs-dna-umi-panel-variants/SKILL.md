@@ -5,6 +5,7 @@ description: Run or plan targeted DNA panel variant workflows that use UMIs,
   coverage, and panel-specific QC.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # UMI Panel DNA Variants

@@ -1,10 +1,6 @@
 ---
 name: frontend-testing-debugging
-description: "Use when testing, debugging, or making targeted improvements to
-  rendered frontend apps through the Build Web Apps or web dev plugin: local dev
-  servers, UI regressions, interaction bugs, console errors, responsive layout,
-  and visual QA. Check whether the Browser plugin is available and use it first
-  when it is; otherwise use regular Playwright with the recorded reason."
+description: 测试、调试或定向改进已渲染的前端应用：本地开发服务器、UI 回归、交互 bug、控制台报错、响应式布局与视觉 QA 都从这里入手。
 compatibility: Ported from Codex plugin build-web-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

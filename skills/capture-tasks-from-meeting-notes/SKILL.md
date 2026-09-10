@@ -9,6 +9,7 @@ description: "Analyze meeting notes to find action items and create Jira tasks
 compatibility: Ported from Codex plugin atlassian-rovo
   (https://www.atlassian.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Capture Tasks from Meeting Notes

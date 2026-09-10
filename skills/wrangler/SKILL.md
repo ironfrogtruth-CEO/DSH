@@ -8,6 +8,7 @@ description: Cloudflare Workers CLI for deploying, developing, and managing
 compatibility: Ported from Codex plugin cloudflare
   (https://workers.cloudflare.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Wrangler CLI

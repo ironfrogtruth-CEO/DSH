@@ -5,6 +5,7 @@ description: Use when screening funds or ETFs by Morningstar category, ratings,
 compatibility: Ported from Codex plugin morningstar
   (https://www.morningstar.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Fund Screener

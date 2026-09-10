@@ -10,6 +10,7 @@ description: "Attaches and manages persistent disks on Render services—mount
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Persistent Disks

@@ -6,6 +6,7 @@ description: Expert guidance for Geistdocs, Vercel's documentation template
   geistdocs, writing MDX content, or setting up docs infrastructure.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Geistdocs — Vercel Documentation Template

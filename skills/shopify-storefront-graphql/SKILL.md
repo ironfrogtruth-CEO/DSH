@@ -8,6 +8,7 @@ description: Use for custom storefronts requiring direct GraphQL
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Required Tool Calls (do not skip)

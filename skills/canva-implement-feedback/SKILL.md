@@ -8,6 +8,7 @@ description: Implement reviewer feedback on a Canva design. Reads all comment
   the feedback".
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Feedback to Finished

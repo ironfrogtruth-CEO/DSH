@@ -9,6 +9,7 @@ description: MUST be used first when prompts mention Metafields or Metaobjects.
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 <critical-instructions>

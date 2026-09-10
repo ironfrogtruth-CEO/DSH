@@ -4,6 +4,7 @@ description: Deploying Expo apps to iOS App Store, Android Play Store, web
   hosting, and API routes
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Deployment

@@ -8,6 +8,7 @@ description: Build AI agents on Cloudflare Workers using the Agents SDK. Load
 compatibility: Ported from Codex plugin cloudflare
   (https://workers.cloudflare.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Cloudflare Agents SDK

@@ -19,6 +19,7 @@ description: >
 compatibility: Ported from Codex plugin cloudflare
   (https://workers.cloudflare.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Building Cloudflare Agents

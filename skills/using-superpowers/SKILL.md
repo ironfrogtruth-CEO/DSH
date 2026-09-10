@@ -1,8 +1,6 @@
 ---
 name: using-superpowers
-description: Use when starting any conversation - establishes how to find and
-  use skills, requiring Skill tool invocation before ANY response including
-  clarifying questions
+description: 每次会话开始先读它：建立查找与使用技能的方法，要求任何回应（包括澄清提问）前先调用技能工具。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

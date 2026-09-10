@@ -6,6 +6,7 @@ description: Predict structures and binding for one defined complex with Boltz.
   design.
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

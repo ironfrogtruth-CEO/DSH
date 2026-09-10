@@ -1,6 +1,6 @@
 ---
 name: pingan-asset-curator
-description: Use this skill when curating visual assets for Ping An Good Doctor HTML/PPT materials, including screening assets for Ping An corporate style, organizing /Users/marcus/Desktop/平安企康/平安健康知识库&技能/素材库, creating tags/manifests/contact sheets, and preparing replaceable HTML asset maps.
+description: 为平安好医生 HTML/PPT 材料筛选视觉素材：按平安企业风格把关、整理素材库、生成标签/清单/联系表，并准备可替换的 HTML 素材映射。
 ---
 
 # Ping An Asset Curator

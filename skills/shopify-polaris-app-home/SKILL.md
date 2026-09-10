@@ -6,6 +6,7 @@ description: Build your app's primary user interface embedded in the Shopify
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Required Tool Calls (do not skip)

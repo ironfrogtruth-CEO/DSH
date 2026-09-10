@@ -5,6 +5,7 @@ description: Run or plan ChIP-seq, CUT&RUN, or CUT&Tag QC, control handling,
   and differential binding workflows.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # ChIP/CUT&RUN Peaks QC

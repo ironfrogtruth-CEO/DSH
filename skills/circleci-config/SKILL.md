@@ -6,6 +6,7 @@ description: Optimize CircleCI configuration for speed, reliability, and
   flaky pipeline behavior caused by configuration choices.
 compatibility: Ported from Codex plugin circleci (https://circleci.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # CircleCI Config

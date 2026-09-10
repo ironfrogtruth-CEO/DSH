@@ -14,6 +14,7 @@ description: >
   use gap-analysis, document-quality-check, or risk-analysis-audit for that.
 compatibility: Ported from Codex plugin datasite (https://www.datasite.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # VDR Index Setup

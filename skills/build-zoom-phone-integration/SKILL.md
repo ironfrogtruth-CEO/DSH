@@ -3,6 +3,7 @@ name: build-zoom-phone-integration
 description: Use when building Phone.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build Zoom Phone Integration

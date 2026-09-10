@@ -5,6 +5,7 @@ description: SWR data-fetching expert guidance. Use when building React apps
   UI, pagination, or infinite loading using the SWR library.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SWR — React Hooks for Data Fetching

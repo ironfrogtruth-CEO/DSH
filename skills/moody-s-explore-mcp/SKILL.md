@@ -7,6 +7,7 @@ compatibility: Ported from Codex plugin moody-s
   (https://www.moodys.com/web/en/us/genai/model-context-protocol.html), license
   MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 <!-- To activate this skill, add `"skills": "./skills/"` to `.codex-plugin/plugin.json`. -->

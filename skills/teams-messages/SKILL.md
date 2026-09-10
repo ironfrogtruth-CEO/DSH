@@ -7,6 +7,7 @@ compatibility: Ported from Codex plugin teams
   (https://www.microsoft.com/en-us/microsoft-teams/group-chat-software), license
   MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Teams Messages

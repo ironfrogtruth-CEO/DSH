@@ -8,6 +8,7 @@ description: Screen existing small-molecule libraries with Boltz. Use when
   boltz-small-molecule-adme).
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

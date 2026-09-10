@@ -1,6 +1,6 @@
 ---
 name: jianshibao
-description: 检视宝：用于检视领导层收到的汇报材料、产品方案、医疗健康服务产品、互联网化产品、金融产品、上级领导工作指示、需下发的任务安排，以及基于工作材料编写周报/月报和管理复盘。Use when the user asks to evaluate material reliability, business reasonableness, source sufficiency, organizational responsibility boundaries, feasibility of executive instructions, upward response wording, downward task deployment, or work-review / weekly-report / monthly-report synthesis based on a local knowledge base of Ping An Health business knowledge, products, report methods, organization structure, department/role responsibilities, and source-traceable Markdown/OCR files.
+description: 检视宝：检视汇报材料、产品方案、医疗健康与金融产品、上级指示和待发任务，评估可靠性、业务合理性、来源充分性与责任边界；也结合平安健康知识库写周报、月报与管理复盘。
 ---
 
 # 检视宝

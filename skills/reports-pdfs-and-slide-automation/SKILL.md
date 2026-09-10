@@ -1,9 +1,6 @@
 ---
 name: reports-pdfs-and-slide-automation
-description: Lay out and export data-rich reports and documents. Use when the
-  user needs report structure, figure packaging, PDFs, PowerPoint or Google
-  Slides automation, or programmatic insertion of visualizations, UML-like
-  diagrams, or architecture diagrams into documents.
+description: 排版并导出数据密集型报告：需要报告结构、图表打包、PDF、PowerPoint/Google Slides 自动化，或把可视化/架构图程序化插入文档时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

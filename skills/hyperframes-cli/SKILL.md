@@ -1,11 +1,6 @@
 ---
 name: hyperframes-cli
-description: HyperFrames CLI tool — hyperframes init, lint, inspect, preview,
-  render, transcribe, tts, doctor, browser, info, upgrade, compositions, docs,
-  benchmark. Use when scaffolding a project, linting, validating, inspecting
-  visual layout in compositions, previewing in the studio, rendering to video,
-  transcribing audio, generating TTS, or troubleshooting the HyperFrames
-  environment.
+description: HyperFrames 命令行工具：init、lint、inspect、preview、render、transcribe、tts、doctor 等；搭建项目、检查版式、渲染成片、转录音频、生成 TTS 或排查环境时用它。
 compatibility: Ported from Codex plugin hyperframes
   (https://hyperframes.heygen.com), license Apache-2.0.
 allowed-tools: Bash

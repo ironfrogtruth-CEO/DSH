@@ -1,6 +1,6 @@
 ---
 name: plan-before-action
-description: 谋定后动：Use at the model's `full` planning depth when a task needs an executable production blueprint, durable node receipts, repeatability assessment, catch-shrimp design, or an authorized high-consequence run. Do not use for trivial one-step answers.
+description: 谋定后动：任务需要可执行的生产蓝图、节点回执、复用性评估、抓虾设计或经授权的高后果运行，且规划深度为 full 时用它；琐碎一步问答不要用。
 ---
 
 # 谋定后动

@@ -5,6 +5,7 @@ description: Dispatch ATAC-seq, ChIP-seq, CUT&RUN, or CUT&Tag requests to
   differential peak workflows.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Epigenomics Peaks

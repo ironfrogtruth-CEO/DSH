@@ -3,6 +3,7 @@ name: setup-zoom-oauth
 description: Use when setting up OAuth.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # /setup-zoom-oauth

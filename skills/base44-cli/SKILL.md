@@ -7,6 +7,7 @@ description: "The base44 CLI is used for EVERYTHING related to base44 projects:
   implement a feature, you must learn this skill"
 compatibility: Ported from Codex plugin base44 (https://docs.base44.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Base44 CLI

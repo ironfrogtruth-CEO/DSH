@@ -5,6 +5,7 @@ description: Troubleshoot production issues using backend function logs. Use
   production problems in Base44 apps.
 compatibility: Ported from Codex plugin base44 (https://docs.base44.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Troubleshoot Production Issues

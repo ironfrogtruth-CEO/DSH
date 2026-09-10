@@ -8,6 +8,7 @@ compatibility: Ported from Codex plugin outlook-email
   (https://www.microsoft.com/en-us/microsoft-365/outlook/email-and-calendar-software-microsoft-outlook),
   license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Outlook Email Subscription Cleanup

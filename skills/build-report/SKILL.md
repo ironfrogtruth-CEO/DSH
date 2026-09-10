@@ -1,9 +1,6 @@
 ---
 name: build-report
-description: Build polished analytical reports for executive, product, business,
-  or technical audiences. Use when the task needs a durable answer-first
-  narrative with evidence-backed findings, visuals or tables, caveats, and
-  source context.
+description: 面向高管、产品、业务或技术读者写高质量分析报告：结论先行，附有证据支撑的发现、图表表格、局限说明与来源背景。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

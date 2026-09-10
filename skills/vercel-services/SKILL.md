@@ -5,6 +5,7 @@ description: Vercel Services — deploy multiple services within a single Vercel
   with a frontend (Next.js, Vite) in one deployment.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Deploy multi-service projects with Vercel

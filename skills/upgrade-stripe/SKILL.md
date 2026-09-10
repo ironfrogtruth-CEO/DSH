@@ -3,6 +3,7 @@ name: upgrade-stripe
 description: Guide for upgrading Stripe API versions and SDKs
 compatibility: Ported from Codex plugin stripe (https://stripe.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 The latest Stripe API version is 2026-02-25.clover - use this version when upgrading unless the user specifies a different target version.

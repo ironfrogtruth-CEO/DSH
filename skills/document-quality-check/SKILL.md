@@ -13,6 +13,7 @@ description: >
   or for identifying missing sections (use gap-analysis).
 compatibility: Ported from Codex plugin datasite (https://www.datasite.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Document Quality Check

@@ -5,6 +5,7 @@ description: Design new protein binders with Boltz. Use when generating protein,
   screening existing proteins or small molecules.
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

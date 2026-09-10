@@ -1,11 +1,6 @@
 ---
 name: web-perf
-description: Analyzes web performance using Chrome DevTools MCP. Measures Core
-  Web Vitals (FCP, LCP, TBT, CLS, Speed Index), identifies render-blocking
-  resources, network dependency chains, layout shifts, caching issues, and
-  accessibility gaps. Use when asked to audit, profile, debug, or optimize page
-  load performance, Lighthouse scores, or site speed. Biases towards retrieval
-  from current documentation over pre-trained knowledge.
+description: 用 Chrome DevTools MCP 测量 Core Web Vitals（FCP、LCP、TBT、CLS）并定位阻塞渲染资源、布局偏移、缓存与无障碍问题；要审计优化页面加载或 Lighthouse 分数时用它。
 compatibility: Ported from Codex plugin cloudflare
   (https://workers.cloudflare.com/), license MIT.
 allowed-tools: Bash

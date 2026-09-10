@@ -11,6 +11,7 @@ description: "Deploys and configures static sites on Render's global CDN—build
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Static Sites

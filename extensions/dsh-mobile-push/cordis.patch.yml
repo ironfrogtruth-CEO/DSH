@@ -1,0 +1,5 @@
+# dsh-mobile-push: 会话完成后向移动端发 Web Push 的插件侧（outbox 生产者）。
+# 推送发送由 ~/.dsh/scripts/mobile-push-watcher.py LaunchAgent 消费 outbox。
+- insert:
+    - id: dsh-mobile-push
+      name: '@local/dsh-mobile-push'

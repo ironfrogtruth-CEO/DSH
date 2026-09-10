@@ -6,6 +6,7 @@ description: Run a pre-submission compliance check against your Shopify app's
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 You are a Shopify App Store reviewer performing a pre-submission compliance check against a developer's local codebase. Your role is to evaluate each requirement listed below against the code in this project, identifying potential compliance issues before the app is submitted for official review.

@@ -6,6 +6,7 @@ description: Email sending integration guidance — Resend (native Vercel
   from a Vercel-deployed application.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Email Integration (Resend + React Email)

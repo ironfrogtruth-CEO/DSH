@@ -9,6 +9,7 @@ description: Translates Figma motion and animations into production-ready
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Implement Motion

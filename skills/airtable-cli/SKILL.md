@@ -6,6 +6,7 @@ description: Lists bases, reads and writes records, manages tables and fields,
   records, or fields.
 compatibility: Ported from Codex plugin airtable (https://www.airtable.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # airtable-mcp

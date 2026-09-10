@@ -10,6 +10,7 @@ description: Installs NemoClaw, launches a sandbox, and runs the first agent
 compatibility: Ported from Codex plugin nvidia
   (https://build.nvidia.com/skills/), license Apache-2.0 AND CC-BY-4.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # NemoClaw Quickstart with OpenClaw

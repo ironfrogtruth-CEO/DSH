@@ -1,10 +1,6 @@
 ---
 name: frontend-app-builder
-description: Use for new frontend applications, dashboards, games, creative
-  websites, hero sections, and visually driven UI from scratch, or when the user
-  explicitly asks for a redesign/restyle/modernization. Builds from clean, airy,
-  high-taste, readable image-generated concept design with section-specific
-  references, faithful implementation, and browser testing.
+description: 从零搭建新前端应用、大屏、游戏、创意网站或视觉驱动界面，也接明确的重设计请求：从干净高审美的概念图出发分区实现，用浏览器测试验收。
 compatibility: Ported from Codex plugin build-web-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

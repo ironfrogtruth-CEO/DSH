@@ -13,6 +13,7 @@ description: Trains and fine-tunes vision models for object detection (D-FINE,
   fine-tuning vision models on Hugging Face Jobs.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vision Model Training on Hugging Face Jobs

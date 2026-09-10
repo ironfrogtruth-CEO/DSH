@@ -1,9 +1,6 @@
 ---
 name: visualize
-description: Create visualizations and interactive tools directly in
-  conversation. Use when asked to show how something works, make simulators or
-  labs, maps, plots, charts or graphs, comparisons, UI mockups, scenarios,
-  adjustable inputs, and exploration beyond regular text.
+description: 直接在对话里做可视化与交互工具：演示原理、模拟器、地图、绘图、对比、UI 线框、情景与可调输入，凡是文字之外要探索的都用它。
 compatibility: Ported from Codex plugin visualize (https://openai.com/), license Proprietary.
 allowed-tools: Bash
 ---

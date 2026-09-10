@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: 任何功能或 bug 修复，在写实现代码之前先用它：先写一个会失败的测试，再让实现代码把它跑绿。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

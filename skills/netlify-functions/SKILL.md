@@ -7,6 +7,7 @@ description: Guide for writing Netlify serverless functions. Use when creating
   streaming, and method routing.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Functions

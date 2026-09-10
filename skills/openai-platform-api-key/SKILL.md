@@ -9,6 +9,7 @@ description: 'Use when Codex is asked to build, run, test, debug, or configure
 compatibility: Ported from Codex plugin openai-developers
   (https://platform.openai.com/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # OpenAI API Key

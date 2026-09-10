@@ -1,8 +1,6 @@
 ---
 name: visualize-data
-description: Design, build, revise, or QA quantitative charts and figures. Use
-  when an analytical answer needs visual judgment, whether for an inline answer,
-  report, dashboard, notebook, or artifact.
+description: 设计、构建、修订或 QA 定量图表与图形：分析回答需要视觉判断时用它，无论放在对话、报告、大屏、notebook 还是独立产物里。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

@@ -7,6 +7,7 @@ description: Run evaluations for Hugging Face Hub models using inspect-ai and
   automation.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Overview

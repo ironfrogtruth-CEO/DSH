@@ -6,6 +6,7 @@ description: Guide for using Netlify Blobs object storage. Use when storing
   site-scoped stores, and local development.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Blobs

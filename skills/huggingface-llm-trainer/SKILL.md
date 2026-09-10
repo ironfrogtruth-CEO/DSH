@@ -11,6 +11,7 @@ description: This skill should be used when users want to train or fine-tune
   Face Jobs without local GPU setup.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # TRL Training on Hugging Face Jobs

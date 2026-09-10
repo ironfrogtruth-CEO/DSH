@@ -1,9 +1,6 @@
 ---
 name: agent-browser-verify
-description: Automated browser verification for dev servers. Triggers when a dev
-  server starts to run a visual gut-check with agent-browser — verifies the page
-  loads, checks for console errors, validates key UI elements, and reports
-  pass/fail before continuing.
+description: 开发服务器启动后自动跑视觉冒烟检查：确认页面能加载、无控制台报错、关键 UI 元素正常，给出通过/失败结论后再继续后续工作。
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
 ---

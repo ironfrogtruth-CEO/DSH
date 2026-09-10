@@ -6,6 +6,7 @@ description: Guide for using the Netlify CLI and deploying sites. Use when
   netlify deploy, Git vs non-Git workflows, and environment variable management.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify CLI and Deployment

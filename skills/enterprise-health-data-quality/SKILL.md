@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-data-quality
-description: Normalize and validate parsed enterprise-health data for types, units, duplicates, missing values, denominators, periods, and source-cell traceability. Use for A02 confirmed-data-package production and blocking claims.
+description: 规范化并校验已解析的企康数据：类型、单位、去重、缺失值、分母、统计期间与源单元格可追溯；用于产出 A02 已确认数据包并拦截可疑论断。
 ---
 
 # 企业健康数据质量

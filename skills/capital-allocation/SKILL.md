@@ -3,6 +3,7 @@ name: capital-allocation
 description: Deep dive into capital deployment, buybacks, dividends, and shareholder yield
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Perform a deep dive into capital allocation for the company named in the user's request. If no ticker or company is provided, ask for one before proceeding.

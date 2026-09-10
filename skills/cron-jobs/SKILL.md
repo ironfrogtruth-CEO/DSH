@@ -4,6 +4,7 @@ description: Vercel Cron Jobs configuration and best practices. Use when adding,
   editing, or debugging scheduled tasks in vercel.json.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Cron Jobs

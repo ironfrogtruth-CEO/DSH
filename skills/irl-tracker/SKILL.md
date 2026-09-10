@@ -14,6 +14,7 @@ description: >
   room structural gap analysis — use gap-analysis for that.
 compatibility: Ported from Codex plugin datasite (https://www.datasite.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # IRL Tracker — Due Diligence Document Tracker

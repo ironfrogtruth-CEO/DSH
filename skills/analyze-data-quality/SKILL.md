@@ -1,9 +1,6 @@
 ---
 name: analyze-data-quality
-description: Assess whether structured data, query results, dashboards, or
-  analytical evidence are trustworthy enough to use. Use when the task is to
-  check data quality, reconcile conflicting sources or metric definitions, or
-  decide whether evidence is safe to cite.
+description: 判断结构化数据、查询结果、仪表盘或分析证据是否可信到能直接用：核查数据质量、调解相互冲突的来源与指标口径，或决定某证据能否放心引用时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

@@ -3,6 +3,7 @@ name: zoom-apps-sdk
 description: Use when using Apps SDK.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Zoom Apps SDK

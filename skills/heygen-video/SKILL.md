@@ -49,6 +49,7 @@ description: >
   avatars.
 compatibility: Ported from Codex plugin heygen (https://heygen.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HeyGen Video Producer

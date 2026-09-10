@@ -1,8 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need
-  to decide how to integrate the work - guides completion of development work by
-  presenting structured options for merge, PR, or cleanup
+description: 实现完成、测试全过之后决定如何收尾时用它：给出合并、开 PR 或清理等结构化选项，引导开发工作的集成与收口。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

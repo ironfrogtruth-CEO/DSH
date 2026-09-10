@@ -1,12 +1,6 @@
 ---
 name: gantt-chart-visualization
-description: Design, critique, route, and implement Gantt charts and schedule
-  visualizations. Use when the user mentions Gantt charts, project schedules,
-  roadmaps with task spans, milestones, dependencies, predecessors, critical
-  path, baselines, WBS, resource plans, capacity timelines, MS Project,
-  Primavera P6, Jira Advanced Roadmaps, GitHub Projects, Smartsheet, monday.com,
-  Asana, ClickUp, Azure DevOps iterations, or importing/exporting
-  project-management data for a timeline chart.
+description: 设计、评审、分流并实现甘特图与排期可视化：项目排期、里程碑、依赖、关键路径、资源计划、WBS，或导入导出 MS Project、Jira 等项目数据时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

@@ -8,6 +8,7 @@ description: Guides and best practices for working with Neon Serverless
 compatibility: Ported from Codex plugin neon-postgres
   (https://neon.com/docs/ai/neon-mcp-server), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Neon Serverless Postgres

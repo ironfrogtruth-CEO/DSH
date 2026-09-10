@@ -5,6 +5,7 @@ description: Run or plan ATAC-seq QC, alignment, TSS enrichment, fragment-size,
   workflows.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # ATAC-seq Peaks QC

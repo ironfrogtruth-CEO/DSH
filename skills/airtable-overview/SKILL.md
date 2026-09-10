@@ -5,6 +5,7 @@ description: Explains what Airtable is and how data is structured — bases,
   context about the Airtable data model.
 compatibility: Ported from Codex plugin airtable (https://www.airtable.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Airtable Overview

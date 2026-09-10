@@ -1,6 +1,6 @@
 ---
 name: magazine-editor
-description: Use this skill when creating or revising A4 magazine-style enterprise health reports, especially HR/union/management-facing 企业健康报告 with differentiated company storylines, knowledge-base citations, editable HTML components, 220px top image layers, optional 300px footer image layers, browser QA, and clean PDF export.
+description: 创建或修订 A4 杂志式企业健康报告，尤其面向 HR、工会与管理层的企康材料：差异化故事线、知识库引用、可编辑 HTML 组件、顶部页脚图层层，最后浏览器 QA 并导出干净 PDF。
 ---
 
 # 企业健康报告杂志skill v1.3

@@ -6,6 +6,7 @@ description: >
   Codex as a remote SSH workspace.
 compatibility: Ported from Codex plugin digitalocean (https://www.digitalocean.com/).
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Provision a DigitalOcean droplet as a Codex remote workspace

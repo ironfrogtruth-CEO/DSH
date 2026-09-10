@@ -5,6 +5,7 @@ description: Implement 2D browser games with Phaser. Use when the user wants a
   sprite animation, and DOM-overlay HUD patterns.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Phaser 2D Game

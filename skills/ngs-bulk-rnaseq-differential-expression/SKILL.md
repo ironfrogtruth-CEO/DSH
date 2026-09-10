@@ -5,6 +5,7 @@ description: Run or plan bulk RNA-seq differential-expression analysis from
   QC plot, and result-table checks.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Bulk RNA-seq Differential Expression

@@ -4,6 +4,7 @@ description: Inspect macOS signing, entitlements, and Gatekeeper issues. Use
   when diagnosing code signing, sandbox, hardened runtime, or trust failures.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Signing & Entitlements

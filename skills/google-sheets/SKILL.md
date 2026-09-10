@@ -8,6 +8,7 @@ description: Analyze and edit connected Google Sheets with range precision. Use
 compatibility: Ported from Codex plugin google-drive
   (https://workspace.google.com/products/drive/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Google Sheets

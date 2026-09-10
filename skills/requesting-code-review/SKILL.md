@@ -1,7 +1,6 @@
 ---
 name: requesting-code-review
-description: Use when completing tasks, implementing major features, or before
-  merging to verify work meets requirements
+description: 完成重要任务、实现大功能或准备合并前用它：让代码评审核验工作是否满足需求。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

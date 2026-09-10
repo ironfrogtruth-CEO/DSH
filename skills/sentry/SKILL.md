@@ -6,6 +6,7 @@ description: Use when the user asks to inspect Sentry issues or events,
   `SENTRY_AUTH_TOKEN`.
 compatibility: Ported from Codex plugin sentry (https://sentry.io/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Sentry (Read-only Observability)

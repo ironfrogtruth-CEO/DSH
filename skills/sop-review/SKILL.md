@@ -1,6 +1,6 @@
 ---
 name: sop-review
-description: Use this skill as the review node in a harness SOP pipeline to summarize completed nodes, artifacts, QA results, failures, rollbacks, reusable patterns, and follow-up improvements after delivery.
+description: SOP 流水线的评审节点：交付后汇总完成的节点、产物、QA 结果、失败与回滚，沉淀可复用模式与后续改进项。
 ---
 
 # SOP Review Node

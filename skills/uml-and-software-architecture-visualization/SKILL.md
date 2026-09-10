@@ -1,16 +1,6 @@
 ---
 name: uml-and-software-architecture-visualization
-description: Design, critique, read, write, render, and implement UML and
-  UML-like software diagrams. Use when the user mentions UML, sequence diagrams,
-  class diagrams, activity diagrams, state machines, use case diagrams,
-  component diagrams, deployment diagrams, object diagrams, package diagrams,
-  profile diagrams, timing diagrams, communication diagrams, interaction
-  overview diagrams, composite structure diagrams, ERDs, database schema
-  diagrams, C4, BPMN, swimlanes, flowcharts, network diagrams, application
-  architecture diagrams, software architecture diagrams, diagram-as-code,
-  model-as-code, XMI, UMLDI, PlantUML, Mermaid, Graphviz DOT, D2, Structurizr,
-  DBML, diagrams.net/draw.io, Kroki, or interactive diagram editors and
-  explorers.
+description: 设计、评审、读写并实现 UML 与软件架构图：时序图、类图、状态机、用例图、ERD、C4、流程图、网络与架构图；也用 PlantUML、Mermaid、Graphviz DOT、D2、draw.io 做图即代码。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

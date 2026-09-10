@@ -10,6 +10,7 @@ description: "Provisions and configures Render Key Value (Redis-compatible
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Key Value

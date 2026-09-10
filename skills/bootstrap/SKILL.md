@@ -6,6 +6,7 @@ description: Project bootstrapping orchestrator for repos that depend on
   pulls, and first-run db/dev commands happen in the correct safe order.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Project Bootstrap Orchestrator

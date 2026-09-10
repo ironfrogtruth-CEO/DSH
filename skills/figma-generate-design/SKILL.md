@@ -15,6 +15,7 @@ description: "Use this skill alongside figma-use when the task involves
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build / Update Screens and Views from Design System

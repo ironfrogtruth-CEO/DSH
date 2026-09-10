@@ -6,6 +6,7 @@ description: Use when the user mentions MagicPath, designs, UI components,
 compatibility: Ported from Codex plugin magicpath
   (https://github.com/MagicPathAI/agent-skills), license UNLICENSED.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # MagicPath

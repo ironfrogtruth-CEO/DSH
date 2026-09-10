@@ -7,6 +7,7 @@ description: React and Next.js performance optimization guidelines from Vercel
   or performance improvements.
 compatibility: Ported from Codex plugin build-web-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel React Best Practices

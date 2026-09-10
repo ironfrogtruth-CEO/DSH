@@ -1,6 +1,6 @@
 ---
 name: ib-deck
-description: Generate an institutional-grade investment banking pitch deck (HTML)
+description: 要一份机构级投资银行 Pitch Deck 时用它，直接产出完整、可直接演示的 HTML 路演稿，适合融资与并购等投行展示场景。
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
 ---

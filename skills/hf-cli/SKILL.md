@@ -5,6 +5,7 @@ description: Hugging Face Hub CLI (`hf`) for downloading, uploading, and
   Replaces now deprecated `huggingface-cli` command.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Install: `curl -LsSf https://hf.co/cli/install.sh | bash -s`.

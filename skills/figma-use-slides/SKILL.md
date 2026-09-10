@@ -6,6 +6,7 @@ description: This skill helps agents use Figma's use_figma MCP tool in the
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # use_figma — Figma Plugin API Skill for Slides

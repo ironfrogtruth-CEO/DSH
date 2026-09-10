@@ -5,6 +5,7 @@ description: Expert guidance for Satori — Vercel's library that converts HTML
   other frameworks.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Satori — HTML/CSS to SVG for OG Images

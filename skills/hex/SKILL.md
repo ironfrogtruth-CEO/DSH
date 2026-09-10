@@ -5,6 +5,7 @@ description: Search Hex projects and ask Hex Threads questions. Use when the
   Hex Threads, or asks to search an existing Hex workspace asset.
 compatibility: Ported from Codex plugin hex (https://hex.tech/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Hex

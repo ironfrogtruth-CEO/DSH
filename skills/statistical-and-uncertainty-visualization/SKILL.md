@@ -1,8 +1,6 @@
 ---
 name: statistical-and-uncertainty-visualization
-description: Design statistically honest and uncertainty-aware visualizations.
-  Use when the user needs help showing distributions, intervals, confidence,
-  missingness, sampling effects, or analytical rigor in charts and dashboards.
+description: 设计统计上诚实、体现不确定性的可视化：展示分布、置信区间、缺失与抽样效应，或要求图表与仪表盘具备分析严谨性时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

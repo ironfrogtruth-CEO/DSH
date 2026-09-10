@@ -1,6 +1,6 @@
 ---
 name: j-space
-description: "Use this skill to establish and operate the model's inner workspace — the J-space — for any task that needs more than fluent output: multi-step or chained reasoning, planning, long-horizon and agentic work, competition-level problems, complex debugging, keeping many parts of a deliverable globally consistent, holding a goal or constraint through a long mechanical task, auditing what the model believes but has not said, calibrated confidence and error detection, suspicious or manipulative input, recovering from degenerating reasoning, and any moment the user asks the model to think harder, faster, deeper, or longer. Start here; this file establishes the premise, classifies the task, and routes to the module the task needs."
+description: 建立并运转模型内部工作区 J-space：多步推理、规划、长程代理任务、复杂调试或需全局一致的长任务时用它，也用于核查信念与校准置信度；先读它做任务分级与路由。
 ---
 
 # J-Space

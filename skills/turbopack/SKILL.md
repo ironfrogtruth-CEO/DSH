@@ -5,6 +5,7 @@ description: Turbopack expert guidance. Use when configuring the Next.js
   Turbopack vs Webpack differences.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Turbopack

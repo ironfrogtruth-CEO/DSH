@@ -1,8 +1,6 @@
 ---
 name: dashboards-and-real-time-visualization
-description: Design dashboards and live visualization systems. Use when the user
-  needs monitoring views, streaming charts, coordinated interactions,
-  downsampling, or performance-aware operational visualization.
+description: 设计大屏与实时可视化系统：监控视图、流式图表、联动交互、降采样，或对性能敏感的运维可视化时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

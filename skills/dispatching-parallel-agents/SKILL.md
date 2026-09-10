@@ -1,7 +1,6 @@
 ---
 name: dispatching-parallel-agents
-description: Use when facing 2+ independent tasks that can be worked on without
-  shared state or sequential dependencies
+description: 遇到两个以上彼此独立、无共享状态或顺序依赖的任务时，用它并行分派多个代理，各自完成后再汇总。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

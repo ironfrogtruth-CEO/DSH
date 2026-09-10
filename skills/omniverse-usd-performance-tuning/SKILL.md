@@ -6,6 +6,7 @@ description: Top-level workflow skill for USD performance diagnosis and
 compatibility: Ported from Codex plugin nvidia
   (https://build.nvidia.com/skills/), license Apache-2.0 AND CC-BY-4.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Omniverse USD Performance Tuning

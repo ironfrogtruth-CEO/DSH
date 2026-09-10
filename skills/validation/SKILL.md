@@ -7,6 +7,7 @@ description: Use when Codex is already in the validation phase of a security
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Security Validation

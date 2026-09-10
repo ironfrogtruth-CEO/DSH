@@ -11,6 +11,7 @@ description: "Search across company knowledge bases (Confluence, Jira, internal
 compatibility: Ported from Codex plugin atlassian-rovo
   (https://www.atlassian.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Search Company Knowledge

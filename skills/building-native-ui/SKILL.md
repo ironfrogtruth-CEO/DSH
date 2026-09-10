@@ -5,6 +5,7 @@ description: Complete guide for building beautiful apps with Expo Router. Covers
   native tabs.
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Expo UI Guidelines

@@ -7,6 +7,7 @@ description: Guide for writing Netlify Edge Functions. Use when building
   choose edge vs serverless.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Edge Functions

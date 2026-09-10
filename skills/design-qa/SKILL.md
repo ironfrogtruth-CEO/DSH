@@ -1,10 +1,6 @@
 ---
 name: design-qa
-description: Internal prototype QA helper. Use only after a Product Design
-  prototype, URL-to-code build, or image-to-code build has a source visual
-  target and a rendered implementation to compare before handoff. Do not use for
-  broad UX critique, design critique, product audits, or flow reviews; route
-  those user-facing requests to audit.
+description: 内部原型 QA 助手：原型、URL 转代码或图片转代码后，把渲染实现与源视觉目标逐项比对再交付；宽泛的 UX 批评与产品审计请走 audit。
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

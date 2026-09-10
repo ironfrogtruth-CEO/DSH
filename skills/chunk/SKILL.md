@@ -7,6 +7,7 @@ description: Use CircleCI Chunk for AI-assisted CI/CD work through either the
   such as init, validate, build-prompt, auth, sandbox, task, and skill install.
 compatibility: Ported from Codex plugin circleci (https://circleci.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Chunk

@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-page-plan
-description: Convert the approved storyline into a locked page-by-page content framework with all visible text, component-visible copy, notes, and service names before HTML generation.
+description: 把已确认的故事线落成锁定版的逐页内容框架：写全每页可见文字、组件文案、备注与服务名，再交给 HTML 生成环节。
 ---
 
 # 企业健康报告逐页稿 Skill

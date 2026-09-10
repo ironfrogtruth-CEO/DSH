@@ -6,6 +6,7 @@ description: Operate and troubleshoot CircleCI using the CircleCI CLI. Use when
   gather actionable diagnostics from CLI outputs.
 compatibility: Ported from Codex plugin circleci (https://circleci.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # CircleCI CLI

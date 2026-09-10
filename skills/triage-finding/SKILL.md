@@ -8,6 +8,7 @@ description: Use when the user supplies or imports existing security findings,
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Triage Finding

@@ -6,6 +6,7 @@ description: Guide for using Netlify AI Gateway to access AI models. Use when
   setup, environment variables, and the list of available models.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify AI Gateway

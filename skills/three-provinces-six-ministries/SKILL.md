@@ -1,6 +1,6 @@
 ---
 name: three-provinces-six-ministries
-description: 三省六部治理层：当模型选择三省六部轴的 light/full 深度时，把 goal-first-control 的七节点映射为内容、行动、渲染三省与六部；保护真源、动作、质量和交付，不把治理叠加误当成所有任务的强制流程。
+description: 三省六部治理层：选定该轴 light/full 深度时，把 goal-first 节点映射为内容、行动、渲染三省与六部职责，守住真源、动作、质量与交付，但别把治理仪式强加给普通任务。
 ---
 
 # 三省六部

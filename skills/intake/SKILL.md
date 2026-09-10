@@ -8,6 +8,7 @@ compatibility: Ported from Codex plugin creative-production
   (https://github.com/openai/oai-maintained-plugins/tree/main/plugins/creative-production),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Intake

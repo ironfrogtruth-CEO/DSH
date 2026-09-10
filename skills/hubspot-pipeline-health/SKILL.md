@@ -4,6 +4,7 @@ description: Use when reviewing HubSpot pipeline health, forecasts, stale deals,
   slipping close dates, or open deal risks.
 compatibility: Ported from Codex plugin hubspot (https://www.hubspot.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HubSpot Pipeline Health

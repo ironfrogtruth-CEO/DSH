@@ -4,6 +4,7 @@ description: AI generation persistence patterns — unique IDs, addressable URLs
   database storage, and cost tracking for every LLM generation
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # AI Generation Persistence

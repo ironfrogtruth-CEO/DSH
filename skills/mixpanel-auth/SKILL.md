@@ -6,6 +6,7 @@ description: "Manage Mixpanel Headless authentication: check session state,
 compatibility: Ported from Codex plugin mixpanel-headless
   (https://mixpanel.github.io/mixpanel-headless/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Mixpanel Authentication Management

@@ -99,3 +99,8 @@
         sessionScope: chat
 - id: dsh-dingtalk-status
   name: "@local/dsh-dingtalk-status"
+- id: dsh-mobile-push
+  name: "@local/dsh-mobile-push"
+- insert:
+    - id: dsh-paste-input
+      name: "@dsh-external/dsh-paste-input"

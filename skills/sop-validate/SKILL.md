@@ -1,6 +1,6 @@
 ---
 name: sop-validate
-description: Use this skill as the validate node in a harness SOP pipeline to enforce QA as a blocking gate for facts, schema, components, rendering, format delivery, source traceability, and user constraints.
+description: SOP 流水线的验证节点：把 QA 当阻塞闸门，对事实、schema、组件、渲染、格式交付、来源可追溯与用户约束逐一把关。
 ---
 
 # SOP Validate Node

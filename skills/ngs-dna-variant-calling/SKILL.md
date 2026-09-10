@@ -5,6 +5,7 @@ description: Dispatch WGS, WES, or targeted DNA variant requests to germline,
   DeepVariant, samtools, or bcftools workflows.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # DNA Variant Calling

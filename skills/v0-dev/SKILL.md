@@ -6,6 +6,7 @@ description: v0 by Vercel expert guidance. Use when discussing AI code
   Vercel deployment.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # v0 by Vercel

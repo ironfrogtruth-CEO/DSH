@@ -4,6 +4,7 @@ description: Draft Slack replies from available context. Use when the user wants
   help finding messages that likely need a response and preparing reply drafts.
 compatibility: Ported from Codex plugin slack (https://slack.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Slack Reply Drafting

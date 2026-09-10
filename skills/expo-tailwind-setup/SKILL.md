@@ -4,6 +4,7 @@ description: Set up Tailwind CSS v4 in Expo with react-native-css and NativeWind
   v5 for universal styling
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Tailwind CSS Setup for Expo with react-native-css

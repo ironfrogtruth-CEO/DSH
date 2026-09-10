@@ -9,6 +9,7 @@ description: Gather and interpret Android performance evidence on an adb target
   artifacts.
 compatibility: Ported from Codex plugin test-android-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Android Performance

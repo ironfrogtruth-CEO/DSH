@@ -7,6 +7,7 @@ description: Create on-brand Canva presentations from an outline or brief. Use
   doc by name, or a Canva design link (e.g., https://www.canva.com/design/...).
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Canva Branded Presentation Creator

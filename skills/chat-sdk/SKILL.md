@@ -6,6 +6,7 @@ description: Vercel Chat SDK expert guidance. Use when building multi-platform
   messages, cards, modals, streaming, state management, and webhook setup.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Chat SDK

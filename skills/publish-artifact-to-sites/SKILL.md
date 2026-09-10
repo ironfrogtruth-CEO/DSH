@@ -8,6 +8,7 @@ description: Publish a validated Data Analytics report or dashboard artifact
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Publish Artifact To Sites

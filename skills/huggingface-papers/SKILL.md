@@ -7,6 +7,7 @@ description: Look up and read Hugging Face paper pages in markdown, and use the
   explain, or analyze an AI research paper.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Hugging Face Paper Pages

@@ -8,6 +8,7 @@ description: Find and rank good meeting times for multiple people using
 compatibility: Ported from Codex plugin google-calendar
   (https://workspace.google.com/products/calendar/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Google Calendar Group Scheduler

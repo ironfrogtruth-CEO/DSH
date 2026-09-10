@@ -1,8 +1,6 @@
 ---
 name: verification
-description: "Full-story verification — infers what the user is building, then
-  verifies the complete flow end-to-end: browser → API → data → response.
-  Triggers on dev server start and 'why isn't this working' signals."
+description: 全链路验证：推断用户正在构建什么，再端到端核验浏览器到 API 到数据到响应的整条链路；开发服务器启动或出现「为什么不行」的求助信号时触发。
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
 ---

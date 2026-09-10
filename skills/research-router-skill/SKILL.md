@@ -9,6 +9,7 @@ compatibility: Ported from Codex plugin life-science-research
   (https://github.com/openai/openai/tree/master/plugins/life-science-research),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Research Router

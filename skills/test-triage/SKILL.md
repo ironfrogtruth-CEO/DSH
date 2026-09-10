@@ -5,6 +5,7 @@ description: Triage macOS tests across Xcode and SwiftPM. Use when narrowing
   regressions.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Test Triage

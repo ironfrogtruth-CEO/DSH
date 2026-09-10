@@ -10,6 +10,7 @@ description: Use when the user asks for a deep, exhaustive, multi-pass, or
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Deep Security Scan

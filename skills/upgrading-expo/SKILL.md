@@ -3,6 +3,7 @@ name: upgrading-expo
 description: Guidelines for upgrading Expo SDK versions and fixing dependency issues
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## References

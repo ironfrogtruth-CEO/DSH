@@ -7,6 +7,7 @@ description: Motion / animation context for the `use_figma` MCP tool — animati
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # use_figma — Figma Plugin API Skill for Motion

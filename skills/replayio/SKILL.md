@@ -5,6 +5,7 @@ description: Use when you need to record or inspect an agent browser run in
   use the Replay MCP server for deeper debugging of an uploaded recording.
 compatibility: Ported from Codex plugin replayio (https://replay.io), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Replay Browser + Agent Browser + Replay MCP

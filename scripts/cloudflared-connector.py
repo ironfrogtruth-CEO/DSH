@@ -22,6 +22,7 @@ import errno
 import fcntl
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -74,6 +75,8 @@ def append_warning(level: str, text: str) -> None:
             "time": utc_now_iso(),
             "level": level,
             "event": classify_event(text),
+            "causes": [kind for kind in ("connection refused", "timeout", "context canceled", "EOF", "Unable to reach the origin service", "TLS handshake", "no route to host", "quic", "http2", "failed to dial", "connection reset", "network is unreachable") if kind.lower() in text.lower()],
+            "loopbackPorts": sorted(set(re.findall(r"(?:127\.0\.0\.1|localhost|\[::1\]):(\d+)", text))),
         }
         line = json.dumps(record, ensure_ascii=False) + "\n"
         fd = os.open(WARN_LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
@@ -127,6 +130,7 @@ def main() -> int:
         CLOUDFLARED,
         "tunnel",
         "--metrics", METRICS,
+        "--protocol", "http2",
         "run",
         "--token-file", str(TOKEN_FILE),
     ]

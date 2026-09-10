@@ -10,6 +10,7 @@ description: Guide Codex through instrumenting or extending repositories with
 compatibility: Ported from Codex plugin openai-ads-conversions
   (https://developers.openai.com/ads/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # OpenAI Ads Conversions Setup

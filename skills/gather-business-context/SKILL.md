@@ -1,11 +1,6 @@
 ---
 name: gather-business-context
-description: Gather business context from connected or provided sources so
-  downstream analysis starts with the right framing. Use when an analytical
-  question depends on missing context, such as what a metric means, what changed
-  recently, or which sources should be checked. If the same prompt asks for
-  diagnosis, recommendation, or a deliverable, gather context first and continue
-  to the focused skill.
+description: 先从已连接或提供的来源收集业务背景，让下游分析有正确的框架；分析问题缺上下文（指标含义、最近变化、该查哪些源）时先用它再继续。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

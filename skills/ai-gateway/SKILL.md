@@ -5,6 +5,7 @@ description: Vercel AI Gateway expert guidance. Use when configuring model
   through a unified API.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel AI Gateway

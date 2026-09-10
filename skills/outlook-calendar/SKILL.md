@@ -11,6 +11,7 @@ compatibility: Ported from Codex plugin outlook-calendar
   (https://www.microsoft.com/en-us/microsoft-365/outlook/calendar-app), license
   MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Outlook Calendar

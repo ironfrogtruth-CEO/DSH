@@ -5,6 +5,7 @@ description: Turborepo expert guidance. Use when setting up or optimizing
   or the --affected flag for incremental CI.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Turborepo

@@ -3,6 +3,7 @@ name: comps
 description: Trading comparables analysis with peer multiples and implied valuation
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Build a trading comparables analysis for the company named in the user's request. If no ticker or company is provided, ask for one before proceeding.

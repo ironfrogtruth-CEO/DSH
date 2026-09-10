@@ -11,6 +11,7 @@ description: Diagnose and fix excessive Postgres egress (network data transfer)
 compatibility: Ported from Codex plugin neon-postgres
   (https://neon.com/docs/ai/neon-mcp-server), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Postgres Egress Optimizer

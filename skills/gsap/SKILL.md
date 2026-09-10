@@ -8,6 +8,7 @@ description: GSAP animation reference for HyperFrames. Covers gsap.to(), from(),
 compatibility: Ported from Codex plugin hyperframes
   (https://hyperframes.heygen.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # GSAP

@@ -7,6 +7,7 @@ description: Check a Canva design against a brand kit and report where it
   brand guidelines", or "brand-check my design".
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Brand Checker

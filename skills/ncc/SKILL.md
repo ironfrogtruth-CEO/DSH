@@ -6,6 +6,7 @@ description: Expert guidance for @vercel/ncc — a simple CLI for compiling
   self-contained file.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # @vercel/ncc — Node.js Compiler Collection

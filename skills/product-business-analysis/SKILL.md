@@ -1,9 +1,6 @@
 ---
 name: product-business-analysis
-description: Analyze product or business data to support a decision or
-  recommendation. Use when a decision depends on metric-backed evidence, such as
-  choosing a direction, prioritizing an opportunity, evaluating a change,
-  segmenting users, sizing tradeoffs, or deciding what to do next.
+description: 分析产品或业务数据以支撑决策：定方向、排优先级、评估变更、做用户细分或权衡取舍时，用它拿到有指标证据的分析结论。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

@@ -6,6 +6,7 @@ description: Headless CMS integration guidance — Sanity (native Vercel
   Editing. Use when building content-driven sites with a headless CMS on Vercel.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Headless CMS Integration

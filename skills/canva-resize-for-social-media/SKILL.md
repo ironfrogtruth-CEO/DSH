@@ -7,6 +7,7 @@ description: Resize a Canva design into multiple social media formats (Facebook
   format manually.
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Canva Resize for Social Media

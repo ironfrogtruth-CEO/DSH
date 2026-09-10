@@ -5,6 +5,7 @@ description: Validate Illumina BCL run folders and sample sheets, plan
   and interpret demux metrics while surfacing license/download boundaries.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # BCL To FASTQ

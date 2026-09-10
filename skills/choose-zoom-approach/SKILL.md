@@ -3,6 +3,7 @@ name: choose-zoom-approach
 description: Use when choosing architecture.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Choose Zoom Approach

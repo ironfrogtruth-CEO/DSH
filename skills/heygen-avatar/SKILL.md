@@ -44,6 +44,7 @@ description: >
   tasks.
 compatibility: Ported from Codex plugin heygen (https://heygen.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HeyGen Avatar Designer

@@ -1,8 +1,6 @@
 ---
 name: metric-diagnostics
-description: Diagnose why a metric changed or differs from expectation. Use when
-  the task is to identify likely drivers of a metric movement, anomaly, gap, or
-  discrepancy.
+description: 诊断某指标为什么变化或偏离预期：找指标波动、异常、差距背后最可能的驱动因素时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

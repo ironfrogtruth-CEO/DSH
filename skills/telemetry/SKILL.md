@@ -4,6 +4,7 @@ description: Add and verify lightweight macOS runtime telemetry. Use when wiring
   Logger events or inspecting logs for windows, sidebars, menus, and actions.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Telemetry

@@ -9,6 +9,7 @@ description: Sets up and optimizes Managed PostgreSQL on Render—connection
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Managed PostgreSQL

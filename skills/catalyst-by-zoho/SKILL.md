@@ -17,6 +17,7 @@ description: >
 compatibility: Ported from Codex plugin catalyst-by-zoho
   (https://catalyst.zoho.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # 🛑 STOP — Read this before doing ANYTHING

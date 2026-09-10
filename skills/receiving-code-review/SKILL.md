@@ -1,9 +1,6 @@
 ---
 name: receiving-code-review
-description: Use when receiving code review feedback, before implementing
-  suggestions, especially if feedback seems unclear or technically questionable
-  - requires technical rigor and verification, not performative agreement or
-  blind implementation
+description: 收到代码评审反馈、动手采纳前用它，尤其反馈含糊或技术上存疑时：要求技术严谨与核实，不表演性认同也不盲改。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

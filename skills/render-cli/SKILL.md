@@ -10,6 +10,7 @@ description: "Installs and uses the Render CLI for deploys, logs, SSH, psql,
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render CLI

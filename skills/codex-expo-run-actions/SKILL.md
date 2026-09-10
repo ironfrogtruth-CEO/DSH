@@ -6,6 +6,7 @@ description: Wire Expo projects into the Codex app with project-local run
   Expo start/run workflow from Codex.
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Codex Run Actions for Expo

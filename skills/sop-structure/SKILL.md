@@ -1,6 +1,6 @@
 ---
 name: sop-structure
-description: Use this skill as the structure node in a harness SOP pipeline to turn parsed inputs into schemas, outlines, storylines, page plans, field tables, component contracts, execution contracts, and confirmation-ready intermediate artifacts.
+description: SOP 流水线的结构节点：把解析后的输入转成 schema、大纲、故事线、页面计划、字段表、组件合同与可确认的中间产物。
 ---
 
 # SOP Structure Node

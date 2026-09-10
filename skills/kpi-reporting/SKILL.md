@@ -1,9 +1,6 @@
 ---
 name: kpi-reporting
-description: Prepare KPI readouts, scorecards, WBR/MBR/QBR updates, and
-  executive summaries from quantitative business or product metrics; use when
-  the task is to report status, compare against targets, explain validated
-  drivers, and state operating implications.
+description: 用量化业务或产品指标产出 KPI 播报、记分卡、WBR/MBR/QBR 更新与高管摘要：报状态、对比目标、解释已验证的驱动因素并说明运营含义时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

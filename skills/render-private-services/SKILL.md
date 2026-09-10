@@ -10,6 +10,7 @@ description: "Configures Render private services—internal-only apps that accep
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Private Services

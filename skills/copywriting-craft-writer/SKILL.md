@@ -1,6 +1,6 @@
 ---
 name: copywriting-craft-writer
-description: Rewrite A07 enterprise-health page copy into clear, formal Chinese for enterprise health and employee-care readers while preserving every fact, boundary, citation, recommendation decision, and component binding. Use for A08 copy polishing and emphasis metadata.
+description: 把企业健康报告的 A07 页面文案改写成清楚正式的中文，面向企康与员工关爱读者，逐条保留事实、边界、引用、建议与组件绑定，供 A08 文案打磨与强调标记使用。
 ---
 
 # 企业健康报告文案精修

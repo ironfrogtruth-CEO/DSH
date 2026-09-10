@@ -5,6 +5,7 @@ description: Writes public-facing litigation updates — blog posts, client
   "write a blog post about…," "draft a client alert on…"
 compatibility: Ported from Codex plugin midpage (https://www.midpage.ai), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Litigation Update Post

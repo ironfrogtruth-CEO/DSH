@@ -3,6 +3,7 @@ name: zoom-oauth
 description: Use when implementing OAuth.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Zoom OAuth

@@ -5,6 +5,7 @@ description: Build, run, and debug macOS apps with shell-first Xcode and Swift
   failures.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build / Run / Debug

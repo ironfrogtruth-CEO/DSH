@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-xlsx-ingestion
-description: Parse uploaded enterprise-health XLSX or CSV files deterministically, lock the source hash, recognize headers by meaning and aliases, and emit traceable field mappings without relying on spreadsheet plugins. Use for A01 source recognition.
+description: 确定性解析上传的企业健康 XLSX/CSV：锁定源文件哈希，按含义与别名识别表头，输出可追溯字段映射，不依赖表格插件；用于 A01 源识别。
 ---
 
 # 企业健康字段表导入

@@ -11,6 +11,7 @@ description: This skill should be used when the user asks about Mixpanel product
 compatibility: Ported from Codex plugin mixpanel-headless
   (https://mixpanel.github.io/mixpanel-headless/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # mixpanel_headless API Reference

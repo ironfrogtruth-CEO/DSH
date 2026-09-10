@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-business-analysis
-description: Turn confirmed enterprise-health facts into traceable risk, service, cost, and management conclusions for HR and union readers. Use for A04 analysis after A02 quality and A03 evidence gates pass.
+description: 把已核实的企康数据事实转成可追溯的风险、服务、成本与管理结论，面向 HR 与工会读者；在 A02 数据质量、A03 证据两关通过后的 A04 分析环节使用。
 ---
 
 # 企业健康经营视角分析

@@ -1,15 +1,6 @@
 ---
 name: hyperframes
-description: Create video compositions, animations, title cards, overlays,
-  captions, voiceovers, audio-reactive visuals, and scene transitions in
-  HyperFrames HTML. Use when asked to build any HTML-based video content, add
-  captions or subtitles synced to audio, generate text-to-speech narration,
-  create audio-reactive animation (beat sync, glow, pulse driven by music), add
-  animated text highlighting (marker sweeps, hand-drawn circles, burst lines,
-  scribble, sketchout), or add transitions between scenes (crossfades, wipes,
-  reveals, shader transitions). Covers composition authoring, timing, media, and
-  the full video production workflow. For CLI commands (init, lint, preview,
-  render, transcribe, tts) see the hyperframes-cli skill.
+description: 在 HyperFrames HTML 里做视频：合成动画、片头卡片、叠加字幕、配音、音频可视化与场景转场；需要 HTML 视频、同步字幕、TTS 旁白或转场时用它，CLI 见 hyperframes-cli。
 compatibility: Ported from Codex plugin hyperframes
   (https://hyperframes.heygen.com), license Apache-2.0.
 allowed-tools: Bash

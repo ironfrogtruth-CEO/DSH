@@ -8,6 +8,7 @@ description: Comprehensive Cloudflare platform skill covering Workers, Pages,
 compatibility: Ported from Codex plugin cloudflare
   (https://workers.cloudflare.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Cloudflare Platform Skill

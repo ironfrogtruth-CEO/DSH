@@ -5,6 +5,7 @@ description: Audit SwiftUI runtime performance from code first. Use when
   needs.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SwiftUI Performance Audit

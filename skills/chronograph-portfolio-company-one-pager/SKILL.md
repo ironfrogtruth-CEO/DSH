@@ -16,6 +16,7 @@ description: >
 compatibility: Ported from Codex plugin chronograph-gp
   (https://www.chronograph.pe/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # GP Report Builder

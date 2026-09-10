@@ -5,6 +5,7 @@ description: Route BCL, FASTQ, BAM/CRAM, count-matrix, or VCF sequencing
   assay-specific setup questions.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Life Sciences NGS Analysis Router

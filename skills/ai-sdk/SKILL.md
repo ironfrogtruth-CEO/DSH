@@ -6,6 +6,7 @@ description: Vercel AI SDK expert guidance. Use when building AI-powered
   or working with any LLM provider.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel AI SDK (v6)

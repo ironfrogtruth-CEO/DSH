@@ -1,8 +1,6 @@
 ---
 name: control-chrome
-description: "Control the user's Chrome browser for tasks that depend on
-  existing Chrome state: tabs, logged-in sessions, or extensions. Prefer
-  purpose-built connectors, APIs, or CLIs when available."
+description: 操控用户自己的 Chrome：处理依赖现有标签页、已登录会话或扩展的任务；有专门的连接器、API、CLI 时优先使用。
 compatibility: Ported from Codex plugin chrome
   (https://github.com/openai/openai/tree/master/lib/browser_use/plugin), license
   Proprietary.

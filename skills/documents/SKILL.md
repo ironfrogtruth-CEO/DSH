@@ -1,10 +1,6 @@
 ---
 name: documents
-description: Create, edit, redline, and comment on `.docx`, Word, and Google
-  Docs-targeted document artifacts inside the container, with a strict
-  render-and-verify workflow. Use `render_docx.py` to generate page PNGs (and
-  optional PDF) for visual QA, then iterate until layout is flawless before
-  delivering the final document.
+description: 在容器内创建、编辑、批注 .docx、Word 或面向 Google Docs 的文档：先用 render_docx.py 渲染页面 PNG/PDF 做视觉 QA，反复迭代到版式无误再交付。
 compatibility: Ported from Codex plugin documents (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

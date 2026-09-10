@@ -7,6 +7,7 @@ compatibility: Ported from Codex plugin sharepoint
   (https://www.microsoft.com/en-us/microsoft-365/sharepoint/collaboration),
   license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SharePoint Word Docs

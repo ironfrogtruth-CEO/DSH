@@ -5,6 +5,7 @@ description: Run or plan tumor-normal, tumor-only, WGS, WES, or cancer-panel
   purity, QC, and annotation checks.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Somatic DNA Variants

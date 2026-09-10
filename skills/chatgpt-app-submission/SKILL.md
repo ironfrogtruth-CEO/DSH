@@ -7,6 +7,7 @@ description: Inspect a ChatGPT Apps MCP server codebase and generate
 compatibility: Ported from Codex plugin openai-developers
   (https://platform.openai.com/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # ChatGPT App Submission

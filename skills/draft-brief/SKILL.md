@@ -5,6 +5,7 @@ description: Drafts court filings — motions, memoranda of law, appellate brief
   "draft a motion to dismiss," "write the brief."
 compatibility: Ported from Codex plugin midpage (https://www.midpage.ai), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Draft Brief

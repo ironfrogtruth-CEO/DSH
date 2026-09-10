@@ -8,6 +8,7 @@ description: This skill installs mixpanel_headless, pandas, numpy, matplotlib,
 compatibility: Ported from Codex plugin mixpanel-headless
   (https://mixpanel.github.io/mixpanel-headless/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # mixpanel-headless — Setup

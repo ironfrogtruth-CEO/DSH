@@ -14,6 +14,7 @@ description: >
   explicit user confirmation.
 compatibility: Ported from Codex plugin datasite (https://www.datasite.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Smart File Renaming

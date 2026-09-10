@@ -1,11 +1,6 @@
 ---
 name: plugin-eval
-description: Help engineers evaluate a local skill or plugin, explain why it
-  scored that way, show what to fix first, measure real token usage, benchmark
-  starter scenarios, or decide what to run next. Use when the user says things
-  like "evaluate this skill", "give me an analysis of the game dev skill", "why
-  did this score that way", "what should I fix first", "measure the real token
-  usage of this skill", or "what should I run next?".
+description: 帮工程师评估本地技能或插件：解释为什么得这个分、先修什么、测量真实 token 用量、跑基准场景，或决定下一步跑什么。
 compatibility: Ported from Codex plugin plugin-eval (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

@@ -2,8 +2,11 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
+    "@anionex/dsh-computer-use": "^0.3.1",
     "@dingtalk-real-ai/dsh-dingtalk": "0.6.2",
+    "@dsh-external/dsh-paste-input": "github:lhh010/dsh-paste-input#v0.1.5",
     "@dsh-market/plugin": "^0.2.1",
+    "@huiliyi37/dsh-office": "^0.2.2",
     "@local/dsh-browser": "link:/Users/marcus/.dsh/extensions/dsh-browser",
     "@local/dsh-code-intelligence": "link:/Users/marcus/.dsh/extensions/dsh-code-intelligence",
     "@local/dsh-compaction-v2": "link:/Users/marcus/.dsh/extensions/dsh-compaction-v2",
@@ -19,15 +22,17 @@
     "@local/dsh-knowledge-manager": "link:/Users/marcus/.dsh/extensions/dsh-knowledge-manager",
     "@local/dsh-local-route-policy": "link:/Users/marcus/.dsh/extensions/dsh-local-route-policy",
     "@local/dsh-memory": "link:/Users/marcus/.dsh/extensions/dsh-memory",
+    "@local/dsh-mobile-push": "link:/Users/marcus/.dsh/extensions/dsh-mobile-push",
     "@local/dsh-screen": "link:/Users/marcus/.dsh/extensions/dsh-screen",
     "@local/dsh-shrimp-run-status": "link:/Users/marcus/.dsh/extensions/dsh-shrimp-run-status",
-    "@local/dsh-stenographer": "link:/Users/marcus/.dsh/extensions/dsh-stenographer",
     "@local/dsh-shrimp-shell": "link:/Users/marcus/.dsh/extensions/shrimp-shell",
+    "@local/dsh-stenographer": "link:/Users/marcus/.dsh/extensions/dsh-stenographer",
     "@local/dsh-tool-policy": "link:/Users/marcus/.dsh/extensions/dsh-tool-policy",
     "@local/dsh-webbridge": "link:/Users/marcus/.dsh/extensions/dsh-webbridge",
     "@local/zhipu-media": "link:/Users/marcus/.dsh/extensions/zhipu-media",
     "deepseek-idesign": "^0.2.2",
     "deepseek-ippt": "^0.1.2",
+    "dsh-at-file": "https://github.com/omdsh-dev/dsh-at-file/archive/refs/tags/v0.7.0.tar.gz",
     "dsh-codex-port": "github:STARDUSTLC666/dsh-codex-port"
   },
   "dsh": {
@@ -61,7 +66,11 @@
         "@local/dsh-shrimp-shell",
         "@local/dsh-local-route-policy",
         "@local/dsh-webbridge",
-        "dsh-codex-port"
+        "dsh-codex-port",
+        "@local/dsh-mobile-push",
+        "dsh-at-file",
+        "@huiliyi37/dsh-office",
+        "@anionex/dsh-computer-use"
       ]
     }
   },

@@ -1,9 +1,6 @@
 ---
 name: verification-before-completion
-description: Use when about to claim work is complete, fixed, or passing, before
-  committing or creating PRs - requires running verification commands and
-  confirming output before making any success claims; evidence before assertions
-  always
+description: 在宣称完成、修好或通过之前，以及提交或开 PR 之前用它：先跑验证命令、确认输出，任何成功声明都要先有证据。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

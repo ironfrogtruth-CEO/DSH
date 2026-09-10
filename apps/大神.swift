@@ -1523,6 +1523,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         return nil
     }
 
+    // 文件选择器: WKWebView 里的 <input type="file"> 不会自己弹面板,
+    // 必须由宿主实现此回调, 否则 click() 被静默吞掉(dsh-paste-input 的
+    // "Choose files / Choose folder" 就依赖它)。
+    // completionHandler 必须调用, 否则 web 进程会一直等待。
+    func webView(
+        _ webView: WKWebView,
+        runOpenPanelWith parameters: WKOpenPanelParameters,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping ([URL]?) -> Void
+    ) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        // webkitdirectory("Choose folder") 需要允许选目录; WKOpenPanelParameters
+        // 不暴露该标志, 因此文件和目录同时放开, 由用户在面板里自行选择。
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        panel.prompt = "选择"
+        panel.begin { response in
+            completionHandler(response == .OK ? panel.urls : nil)
+        }
+    }
+
     // 服务未就绪(连接被拒) → 2 秒后重试
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         loadInFlight = false

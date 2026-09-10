@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-evidence-validation
-description: Validate official external health evidence and enforce the boundary between public background sources and enterprise-specific facts. Use for A03 source verification and A04 citation and claim checks.
+description: 核验外部权威健康证据，并守住公开背景资料与企业专属事实的边界；用于 A03 来源核验及 A04 的引用与论断检查。
 ---
 
 # 企业健康外部证据核验

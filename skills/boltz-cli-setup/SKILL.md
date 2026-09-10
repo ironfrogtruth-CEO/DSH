@@ -5,6 +5,7 @@ description: Boltz CLI setup and auth. Use when installing, updating, verifying,
   login, or auth errors.
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Boltz CLI Setup

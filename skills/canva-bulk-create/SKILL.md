@@ -8,6 +8,7 @@ description: Bulk-create Canva designs from tabular data using a brand template
   tables, JSON, or URLs.
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Canva Bulk Design Creation

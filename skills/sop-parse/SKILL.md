@@ -1,6 +1,6 @@
 ---
 name: sop-parse
-description: Use this skill as the parse node in a harness SOP pipeline to separate truth sources, derived outputs, debug notes, pollution risks, constraints, and open evidence gaps before downstream structuring or generation.
+description: SOP 流水线的解析节点：结构化与生成之前，先把真源、派生输出、调试笔记、污染风险、约束与证据缺口分开。
 ---
 
 # SOP Parse Node

@@ -5,6 +5,7 @@ description: Route early browser-game work. Use when the user needs stack
   playtesting before moving to a specialist skill.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Game Studio

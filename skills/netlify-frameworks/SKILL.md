@@ -7,6 +7,7 @@ description: Guide for deploying web frameworks on Netlify. Use when setting up
   needs from each framework and how adapters handle server-side rendering.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Frameworks on Netlify

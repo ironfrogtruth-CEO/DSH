@@ -17,6 +17,7 @@ description: Prompt- and template-complete Google Docs creation and editing with
 compatibility: Ported from Codex plugin google-drive
   (https://workspace.google.com/products/drive/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Google Docs

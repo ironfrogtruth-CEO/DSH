@@ -5,6 +5,7 @@ description: Design new small-molecule binders with Boltz. Use when generating
   screening existing molecules or one-off docking.
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

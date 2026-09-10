@@ -7,6 +7,7 @@ description: Debug failed Render deployments by analyzing logs, metrics, and
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Debug Render Deployments

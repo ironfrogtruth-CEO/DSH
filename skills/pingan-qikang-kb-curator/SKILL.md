@@ -1,6 +1,6 @@
 ---
 name: pingan-qikang-kb-curator
-description: 平安企康知识库摄取、纯享版打包、来源摘要、索引与 QA 闸门维护。
+description: 维护平安企康知识库：摄取内容、打包纯享版、写来源摘要、建索引，并维持 QA 闸门。
 ---
 
 # 平安企康知识库整理 Skill

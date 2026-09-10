@@ -1,10 +1,6 @@
 ---
 name: hyperframes-registry
-description: Install and wire registry blocks and components into HyperFrames
-  compositions. Use when running hyperframes add, installing a block or
-  component, wiring an installed item into index.html, or working with
-  hyperframes.json. Covers the add command, install locations, block
-  sub-composition wiring, component snippet merging, and registry discovery.
+description: 把注册表里的块与组件装进 HyperFrames 合成：跑 hyperframes add、安装某个块或组件、把安装项接入 index.html，或处理 hyperframes.json 与注册表发现时用它。
 compatibility: Ported from Codex plugin hyperframes
   (https://hyperframes.heygen.com), license Apache-2.0.
 allowed-tools: Bash

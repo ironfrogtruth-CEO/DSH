@@ -1,6 +1,6 @@
 ---
 name: pingan-ppt-materials
-description: Create or revise Ping An enterprise health PowerPoint/Google Slides materials through the presentations plugin while enforcing the local knowledge base, Ping An visual style, page blueprints, service/product terminology, source references, QA Gate, and the single output root /Users/marcus/Desktop/平安企康/03_产物交付. Use for 平安企康 PPT, 述标材料, 客户方案, 产品介绍, 服务书, 医健付/企业医务室 decks, or whenever the user asks to use the PPT plugin with Ping An style and local KB content.
+description: 创建或修订平安企业健康 PPT 与 Google Slides（走 presentations 插件），守本地知识库、平安视觉风格、页面蓝图、服务术语、来源引用与 QA 闸门；企康 PPT、述标、客户方案、服务书等 deck 都用它。
 ---
 
 # Ping An PPT Materials

@@ -41,6 +41,17 @@ AUTH_TIMEOUT = 4
 _AUTH_CACHE = {}
 
 
+def access_log(kind: str, path: str, verdict: str, host: str) -> None:
+    try:
+        from datetime import datetime, timezone
+
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with open("/Users/marcus/.dsh/logs/mobile-gateway-edge-access.log", "a") as handle:
+            handle.write(f"{stamp} {kind} {verdict} {path} {host}\n")
+    except OSError:
+        pass
+
+
 def head_host(head: bytes) -> str:
     try:
         for line in head.decode("latin-1").split("\r\n")[1:]:
@@ -70,12 +81,22 @@ def head_path(head: bytes) -> str:
         return "/"
 
 
-def rewrite_host(head: bytes, authority: str) -> bytes:
+def rewrite_headers(head: bytes, replacements: dict) -> bytes:
     lines = head.decode("latin-1").split("\r\n")
+    lowered = {name.lower(): value for name, value in replacements.items()}
     for index, line in enumerate(lines[1:], start=1):
-        if line[:5].lower() == "host:":
-            lines[index] = f"Host: {authority}"
-            break
+        colon = line.find(":")
+        if colon <= 0:
+            continue
+        name = line[:colon].strip().lower()
+        if name in lowered:
+            lines[index] = f"{lines[index][:colon + 1]} {lowered[name]}"
+    present = {line.split(":", 1)[0].strip().lower() for line in lines[1:] if ":" in line}
+    boundary = lines.index("")
+    for name, value in replacements.items():
+        if name.lower() not in present:
+            lines.insert(boundary, f"{name}: {value}")
+            boundary += 1
     return "\r\n".join(lines).encode("latin-1")
 
 
@@ -152,7 +173,10 @@ async def handle(client_reader: asyncio.StreamReader, client_writer: asyncio.Str
         if len(head) > HEAD_MAX:
             return
 
+    is_upgrade = b"upgrade: websocket" in head.lower()
+    note = "ws" if is_upgrade else "http"
     if head_host(head) != PUBLIC_HOST:
+        access_log(note, head_path(head), "403-badhost", head_host(head))
         client_writer.write(simple_response("403 Forbidden", body=b"forbidden"))
         await client_writer.drain()
         client_writer.close()
@@ -164,8 +188,11 @@ async def handle(client_reader: asyncio.StreamReader, client_writer: asyncio.Str
         # Dial the local oauth2-proxy, but keep the public Host header so its
         # whitelist_domains/cookie domain checks match.
         dial_host, dial_port, header_authority = AUTH_HOST, AUTH_PORT, PUBLIC_HOST
+        header_rewrite = {"Host": PUBLIC_HOST}
+        access_log(note, path, "pass-oauth2", "")
     else:
         if not await authorized(head_cookie(head), path):
+            access_log(note, path, "401-redirect", "")
             redirect = (
                 f"Location: https://{PUBLIC_HOST}/oauth2/start?rd={quote(path, safe='')}\r\n"
             )
@@ -173,9 +200,14 @@ async def handle(client_reader: asyncio.StreamReader, client_writer: asyncio.Str
             await client_writer.drain()
             client_writer.close()
             return
-        # Rewrite Host to the trusted authority so the /api browser-trust
-        # fence accepts these requests (incl. WebSocket event streams).
-        dial_host, dial_port, header_authority = APP_HOST, APP_PORT, f"{APP_HOST}:{APP_PORT}"
+        access_log(note, path, "auth-ok", "")
+        # Rewrite Host AND Origin to the trusted authority: the /api fence
+        # checks both before admitting WebSocket event streams.
+        dial_host, dial_port = APP_HOST, APP_PORT
+        header_rewrite = {
+            "Host": f"{APP_HOST}:{APP_PORT}",
+            "Origin": f"http://{APP_HOST}:{APP_PORT}",
+        }
 
     try:
         target_reader, target_writer = await asyncio.wait_for(
@@ -187,9 +219,29 @@ async def handle(client_reader: asyncio.StreamReader, client_writer: asyncio.Str
         client_writer.close()
         return
 
-    target_writer.write(rewrite_host(head, header_authority))
+    # This proxy parses one HTTP request per connection. Keep-alive would
+    # bypass auth/header rewriting on subsequent requests in the raw pump.
+    # WebSocket upgrades remain persistent and retain their Upgrade headers.
+    if not is_upgrade:
+        header_rewrite["Connection"] = "close"
+    target_writer.write(rewrite_headers(head, header_rewrite))
+    await target_writer.drain()
+    upstream_task = asyncio.create_task(pump(client_reader, target_writer))
+    first_line = b""
+    try:
+        first_line = await asyncio.wait_for(target_reader.readline(), timeout=5)
+    except (asyncio.TimeoutError, ConnectionError):
+        pass
+    access_log(
+        "ws-status" if is_upgrade else "http-status",
+        path,
+        first_line.decode("latin-1", "replace").strip()[:44] or "no-response",
+        "",
+    )
+    if first_line:
+        client_writer.write(first_line)
     await asyncio.gather(
-        pump(client_reader, target_writer),
+        upstream_task,
         pump(target_reader, client_writer),
     )
 

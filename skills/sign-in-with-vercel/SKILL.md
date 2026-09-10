@@ -5,6 +5,7 @@ description: Sign in with Vercel guidance — OAuth 2.0/OIDC identity provider f
   Vercel as the identity provider.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Sign in with Vercel

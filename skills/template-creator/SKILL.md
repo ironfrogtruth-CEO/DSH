@@ -1,12 +1,6 @@
 ---
 name: template-creator
-description: Create or update a reusable personal Codex artifact-template skill.
-  Use when the user invokes $template-creator or asks in natural language to
-  create a reusable template from a reference document, presentation,
-  spreadsheet, Google Docs, Slides, or Sheets link, ImageGen or Product Design
-  image, email, Slack message, or Site project, or explicitly asks to edit or
-  update a passed artifact-template skill. Do not use for one-off creation from
-  an existing template.
+description: 把参考文档、演示、表格、Google Docs/Slides 链接、图片、邮件或站点等做成可复用的个人 artifact-template 技能；要创建或更新这类模板时用它，不做一次性拷贝。
 compatibility: Ported from Codex plugin template-creator (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

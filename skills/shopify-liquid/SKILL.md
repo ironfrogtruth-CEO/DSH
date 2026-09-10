@@ -8,6 +8,7 @@ description: "Liquid is an open-source templating language created by Shopify.
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Required Tool Calls (do not skip)

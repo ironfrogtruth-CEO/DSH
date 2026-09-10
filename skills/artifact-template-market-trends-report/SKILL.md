@@ -8,6 +8,7 @@ compatibility: Ported from Codex plugin openai-templates
   (https://github.com/openai/oai-maintained-plugins/tree/main/plugins/openai-templates),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Market Trends Report

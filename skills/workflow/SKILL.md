@@ -6,6 +6,7 @@ description: Vercel Workflow DevKit (WDK) expert guidance. Use when building
   Vercel Workflow.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Workflow DevKit (WDK)

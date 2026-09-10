@@ -4,6 +4,7 @@ description: Build Gradio web UIs and demos in Python. Use when creating or
   editing Gradio apps, components, event listeners, layouts, or chatbots.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Gradio

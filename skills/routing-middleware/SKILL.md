@@ -6,6 +6,7 @@ description: Vercel Routing Middleware guidance — request interception before
   the platform level.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Routing Middleware

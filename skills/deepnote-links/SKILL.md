@@ -6,6 +6,7 @@ description: Use when a task asks for Deepnote URLs, links, project links,
   project, notebook, or workspace data.
 compatibility: Ported from Codex plugin deepnote (https://deepnote.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Deepnote Links

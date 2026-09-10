@@ -1,8 +1,6 @@
 ---
 name: brainstorming
-description: You MUST use this before any creative work - creating features,
-  building components, adding functionality, or modifying behavior. Explores
-  user intent, requirements and design before implementation.
+description: 任何创造性工作——加功能、搭组件、改行为——动手前先用它梳理用户意图、需求与设计，确认清楚了再进入实现。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

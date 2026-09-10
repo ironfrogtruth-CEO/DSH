@@ -5,6 +5,7 @@ description: Use this skill when the user wants to find, filter, or narrow down
   "filter."
 compatibility: Ported from Codex plugin airtable (https://www.airtable.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Airtable MCP Filters

@@ -5,6 +5,7 @@ description: Customize macOS SwiftUI windows and scene behavior. Use when tuning
   borderless windows.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Window Management

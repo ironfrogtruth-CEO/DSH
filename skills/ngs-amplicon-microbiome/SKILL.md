@@ -4,6 +4,7 @@ description: Kick off public 16S, 18S, ITS, COI, or other marker-gene amplicon
   microbiome workflows using nf-core/ampliseq, QIIME2, DADA2, and Cutadapt.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Amplicon Microbiome

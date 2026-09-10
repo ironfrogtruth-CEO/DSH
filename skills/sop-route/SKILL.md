@@ -1,6 +1,6 @@
 ---
 name: sop-route
-description: Use this skill as the route node in a harness SOP pipeline to decide whether a request is simple direct-answer work or complex SOP work, and to identify goal, input sufficiency, truth sources, constraints, risks, validation method, and rollback points.
+description: SOP 流水线的路由节点：判断请求是简单直答还是复杂 SOP 工作，并识别目标、输入是否充分、真源、约束、风险、验证方式与回滚点。
 ---
 
 # SOP Route Node

@@ -6,6 +6,7 @@ description: Authentication integration guidance — Clerk (native Vercel
   Use when implementing user authentication.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Authentication Integrations

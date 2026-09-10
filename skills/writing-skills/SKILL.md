@@ -1,7 +1,6 @@
 ---
 name: writing-skills
-description: Use when creating new skills, editing existing skills, or verifying
-  skills work before deployment
+description: 要创建新技能、编辑已有技能，或在部署之前验证技能能否正常工作时，用它对技能做完整的写、改、验。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

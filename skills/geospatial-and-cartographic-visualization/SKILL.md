@@ -1,11 +1,6 @@
 ---
 name: geospatial-and-cartographic-visualization
-description: Design geospatial and cartographic visualizations. Use when the
-  user needs help deciding whether to use a map, choosing projections or
-  basemaps, building choropleths or symbol maps, or implementing thematic maps,
-  slippy maps, or geospatial interactions with D3 geo, Leaflet, MapLibre, Mapbox
-  GL JS, Google Maps, OpenLayers, deck.gl, ArcGIS Maps SDK, Azure Maps, HERE
-  Maps, CesiumJS, or related tools.
+description: 地理与制图可视化：判断是否用地图、选投影与底图、做分级统计图、符号地图或滑动地图；用 D3 geo、Leaflet、MapLibre、Mapbox GL JS 等实现地理交互时也用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

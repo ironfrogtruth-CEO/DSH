@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-report
-description: Create, revise, validate, and package Ping An Group enterprise health reports as editable A4 HTML/PDF. This is the single HTML-generation and editor skill for the production line. Use for 企业健康报告, HR/union/management health reports, A4 magazine-style health reports, data-to-action storytelling, page-specific components, source boundaries, free image insertion/resizing, top/footer image layers, opacity controls, and PDF-safe export.
+description: 创建、修订、校验并打包平安集团企业健康报告为可编辑 A4 HTML/PDF：杂志式版式、数据到行动的故事线、分页组件、来源边界、自由插图与透明度控制，最后做浏览器 QA 并安全导出 PDF。
 ---
 
 # 企业健康报告

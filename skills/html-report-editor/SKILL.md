@@ -1,6 +1,6 @@
 ---
 name: html-report-editor
-description: Use this skill when the user asks for an editable HTML PPT/report/deck editor, HTML版PPT, 可编辑HTML汇报材料, browser-print PDF export, 16:9 report pages, asset-backed visual materials, or HTML presentation generation. This is the primary Codex-deployed alias for the local html编辑器skill.
+description: 要可编辑 HTML 版 PPT/报告/汇报稿（HTML版PPT、可编辑HTML汇报材料）时用它：16:9 报告页、浏览器打印转 PDF、带素材的视觉材料；是本地 HTML 编辑器在 Codex 的主别名。
 ---
 
 # Editable HTML Report Deck Skill

@@ -1,8 +1,6 @@
 ---
 name: canvas2d-data-visualization
-description: Render data visualizations with Canvas2D. Use when the
-  visualization needs high mark counts, fast redraws, immediate-mode rendering,
-  custom hit testing, or a hybrid Canvas plus SVG or HTML architecture.
+description: 用 Canvas2D 渲染数据可视化，适合高标记数量、快速重绘、即时模式渲染、自定义命中检测，或 Canvas 与 SVG/HTML 混合架构的场景。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

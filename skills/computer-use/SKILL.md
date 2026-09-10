@@ -1,8 +1,6 @@
 ---
 name: computer-use
-description: Control local Mac apps through Computer Use for tasks that require
-  reading or operating app UI. Prefer purpose-built connectors, APIs, or CLIs
-  when available.
+description: 通过 Computer Use 操控本地 Mac 应用，用于需要读取或操作应用界面的任务；存在专门的连接器、API 或 CLI 时优先用它们而非本技能。
 compatibility: Ported from Codex plugin computer-use (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

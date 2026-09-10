@@ -5,6 +5,7 @@ description: Validate FASTQ inputs, run local FastQC/MultiQC QC, interpret QC
   overwriting raw reads.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # FASTQ QC

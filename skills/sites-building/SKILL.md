@@ -5,6 +5,7 @@ description: Use Sites to build websites, including landing pages, portfolios,
   the project contains `.openai/hosting.json`.
 compatibility: Ported from Codex plugin sites (https://openai.com/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Sites building

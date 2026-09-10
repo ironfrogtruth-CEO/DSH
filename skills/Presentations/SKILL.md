@@ -1,7 +1,6 @@
 ---
-name: Presentations
-description: Read, create or edit PowerPoint or Google Slides decks. Use for
-  presentation, slide deck, PowerPoint, PPT, PPTX, or Google Slides requests.
+name: presentations
+description: 生成、编辑和校验 PowerPoint 与 Google Slides 演示文稿：从零做 deck、按模板或参考稿改版、渲染检查、导出 PPTX/PDF；凡是要做 PPT、幻灯片、汇报 deck 都用它。
 compatibility: Ported from Codex plugin presentations (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

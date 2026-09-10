@@ -1,14 +1,9 @@
 ---
-name: Zotero
-description: Use Zotero Desktop from Codex to enable/probe the local API, search
-  a local Zotero library, list items/collections/tags, export BibTeX, insert
-  citation keys into LaTeX or Markdown drafts, read indexed full text when
-  requested, and import BibTeX/RIS records into Zotero through the connector
-  server. Use when the user mentions Zotero, citations, references.bib, BibTeX
-  export, local Zotero API, localhost:23119, or adding citations from a Zotero
-  library.
+name: zotero
+description: 通过本地 API 连接 Zotero 桌面版：检索文献库、列出条目/合集/标签、导出 BibTeX、把引用键插入 LaTeX 或 Markdown 草稿、按需读全文、导入 BibTeX/RIS 记录。
 compatibility: Ported from Codex plugin zotero (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Zotero

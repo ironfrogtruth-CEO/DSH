@@ -5,6 +5,7 @@ description: Design custom metric packs for plugin-eval so teams can add local
   the user wants their own evaluation criteria or visualizations.
 compatibility: Ported from Codex plugin plugin-eval (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Metric Pack Designer

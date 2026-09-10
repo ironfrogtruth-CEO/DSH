@@ -9,6 +9,7 @@ description: "Use when doing ANY task involving Supabase. Triggers: Supabase
   (pg_graphql, pg_cron, pg_vector)."
 compatibility: Ported from Codex plugin supabase (https://supabase.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Supabase

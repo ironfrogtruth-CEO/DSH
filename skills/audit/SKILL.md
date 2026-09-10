@@ -1,12 +1,6 @@
 ---
 name: audit
-description: Audit or critique a product flow, journey, workflow, funnel,
-  onboarding path, checkout path, settings path, screen, or multi-step product
-  experience by capturing screenshots first, then reporting UX, design, and
-  accessibility findings inline from that evidence. Use Figma only when the user
-  explicitly asks for a board. Use when the user asks to audit, review,
-  critique, inspect, assess, analyze, evaluate, or give feedback on a product
-  experience.
+description: 先截屏取证，再评审产品流程或界面（注册、结账、设置等多步路径），把 UX、设计与无障碍问题随截图证据写进报告；用户要求审计、评审或评估产品体验时用它。
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

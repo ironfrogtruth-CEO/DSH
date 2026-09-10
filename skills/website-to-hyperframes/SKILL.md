@@ -1,12 +1,6 @@
 ---
 name: website-to-hyperframes
-description: >
-  Capture a website and create a HyperFrames video from it. Use when: (1) a user
-  provides a URL and wants a video, (2) someone says "capture this site", "turn
-  this into a video", "make a promo from my site", (3) the user wants a social
-  ad, product tour, or any video based on an existing website, (4) the user
-  shares a link and asks for any kind of video content. Even if the user just
-  pastes a URL — this is the skill to use.
+description: 抓取一个网站并做成 HyperFrames 视频：给了 URL 想要视频、把网站变成宣传片或产品导览、基于现有网站做任何视频内容时用它。
 compatibility: Ported from Codex plugin hyperframes
   (https://hyperframes.heygen.com), license Apache-2.0.
 allowed-tools: Bash

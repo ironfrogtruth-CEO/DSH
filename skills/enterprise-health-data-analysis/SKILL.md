@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-data-analysis
-description: Analyze enterprise health report data from the single-sheet field table, verify completeness, derive risks, cost and service conclusions, and prepare 数据分析.md for downstream page planning.
+description: 分析企业健康报告的单表字段数据：核对完整性，推导风险、成本与服务结论，产出数据分析.md 供下游页面规划使用。
 ---
 
 # 企业健康报告数据分析 Skill

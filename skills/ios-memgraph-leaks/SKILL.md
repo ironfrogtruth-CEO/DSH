@@ -4,6 +4,7 @@ description: Capture and inspect iOS leaks and memgraphs. Use when debugging
   leaked objects, retain cycles, memory growth, or before/after leak evidence.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # iOS Memgraph Leaks

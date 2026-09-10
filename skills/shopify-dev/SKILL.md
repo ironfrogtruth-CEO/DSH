@@ -5,6 +5,7 @@ description: Search Shopify developer documentation across all APIs. Use only
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 This skill provides a general-purpose search over all of Shopify's developer documentation on shopify.dev.

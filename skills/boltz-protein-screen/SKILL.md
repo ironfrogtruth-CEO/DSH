@@ -5,6 +5,7 @@ description: Screen existing protein binders with Boltz. Use when ranking a
   target. Not for designing new proteins or screening small molecules.
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

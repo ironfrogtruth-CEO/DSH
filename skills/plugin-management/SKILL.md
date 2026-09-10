@@ -1,9 +1,6 @@
 ---
 name: plugin-management
-description: Discover and suggest relevant plugins, inspect app permissions and
-  dependencies, and manage plugin connections or removal. Use when the user asks
-  about plugins or when a task would materially benefit from an external app,
-  account, service, or data source that available tools cannot access.
+description: 发现并推荐相关插件、检查应用权限与依赖、管理插件连接或移除；任务需要外部应用或数据源、现有工具够不着时用它。
 compatibility: Ported from Codex plugin plugin-management (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

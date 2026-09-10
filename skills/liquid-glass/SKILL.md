@@ -5,6 +5,7 @@ description: Implement and review macOS SwiftUI Liquid Glass UI. Use when
   surfaces.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Liquid Glass

@@ -4,6 +4,7 @@ description: Summarize activity from one Slack channel and return a concise
   recap, post-ready update, or summary doc.
 compatibility: Ported from Codex plugin slack (https://slack.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Slack Channel Summarization

@@ -6,6 +6,7 @@ description: Monitor Render services in real-time. Check health, performance
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Monitor Render Services

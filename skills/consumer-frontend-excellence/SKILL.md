@@ -1,6 +1,6 @@
 ---
 name: consumer-frontend-excellence
-description: Design, implement, repair, or visually QA high-quality consumer-facing web and desktop interfaces. Use for frontend, UI, UX, page, app, dashboard, onboarding, navigation, visual consistency, responsive layout, dark/light themes, interaction states, screenshot references, or Figma implementation where both user experience and production code matter.
+description: 设计、实现、修复或视觉验收面向消费者的高质量 Web 与桌面界面：页面布局、导航、明暗主题、响应式、交互状态或 Figma 落地，且体验与代码质量同样重要时用它。
 ---
 
 # Consumer Frontend Excellence

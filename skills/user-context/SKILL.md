@@ -9,6 +9,7 @@ description: Load or manage Product Design's saved user context. Use when the
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # User Context

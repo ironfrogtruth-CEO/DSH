@@ -1,7 +1,6 @@
 ---
 name: subagent-driven-development
-description: Use when executing implementation plans with independent tasks in
-  the current session
+description: 在当前会话执行实施计划时，把相互独立的任务拆给子代理并行开发、各自推进并回报结果。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

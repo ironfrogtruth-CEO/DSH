@@ -1,6 +1,6 @@
 ---
 name: master-control
-description: Legacy compatibility alias for 以终为始 / goal-first-control. Use only when an older prompt or workflow names master-control; route new complex work through goal-first-control.
+description: 以终为始 / goal-first-control 的旧版兼容别名：只有旧流程或旧提示词点名 master-control 时才用；新复杂工作请走 goal-first-control。
 ---
 
 # Master Control Compatibility Alias

@@ -5,6 +5,7 @@ description: Use when implementing or debugging ANY network request, API call,
   offline support, and Expo Router data loaders (`useLoaderData`).
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Expo Networking

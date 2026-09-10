@@ -10,6 +10,7 @@ description: Route Google Slides authoring requests and derive a design system
 compatibility: Ported from Codex plugin google-drive
   (https://workspace.google.com/products/drive/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Google Slides

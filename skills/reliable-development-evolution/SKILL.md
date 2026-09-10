@@ -1,6 +1,6 @@
 ---
 name: reliable-development-evolution
-description: 每周基于可核验证据回顾可靠开发模式，记录台账、验证结果和可追溯的改进建议。
+description: 每周基于可核验证据回顾可靠开发模式的落地情况，记录台账、验证结果与可追溯的改进建议。
 ---
 
 # 可靠开发模式自进化(Reliable Development Evolution)

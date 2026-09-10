@@ -5,6 +5,7 @@ description: Implement and review iOS 26+ SwiftUI Liquid Glass UI. Use when
   fit.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SwiftUI Liquid Glass

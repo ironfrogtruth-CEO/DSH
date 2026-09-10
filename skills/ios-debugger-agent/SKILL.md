@@ -5,6 +5,7 @@ description: Build, run, and debug iOS apps on Simulator with XcodeBuildMCP. Use
   behavior.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # iOS Debugger Agent

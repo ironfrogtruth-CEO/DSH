@@ -7,6 +7,7 @@ description: Use when the user asks for D&B Finance Analytics workflows such as
 compatibility: Ported from Codex plugin dnb-finance-analytics
   (https://www.dnb.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Finance Analytics Jobs To Be Done

@@ -5,6 +5,7 @@ description: Prepare and optimize browser-game 3D assets. Use when the user asks
   or LOD setup, compression, texture packaging, and runtime validation.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Web 3D Asset Pipeline

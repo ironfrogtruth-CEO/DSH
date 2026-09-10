@@ -3,6 +3,7 @@ name: setup
 description: Verify Daloopa MCP connection and show available skills
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Walk the user through verifying their Daloopa setup for Codex or ChatGPT. Be conversational and helpful.

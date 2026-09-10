@@ -5,6 +5,7 @@ description: "Cite-checks a brief, motion, or memo (PDF/Word): verifies each
   accurately. Returns one marked-up .docx with comments and redlines."
 compatibility: Ported from Codex plugin midpage (https://www.midpage.ai), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Cite-check

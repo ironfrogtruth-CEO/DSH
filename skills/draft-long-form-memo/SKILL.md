@@ -5,6 +5,7 @@ description: Writes a formal objective legal research memo (Questions Presented,
   research memo on whether…" Predicts, never advocates.
 compatibility: Ported from Codex plugin midpage (https://www.midpage.ai), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Draft Long-Form Memo

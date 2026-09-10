@@ -7,6 +7,7 @@ description: Guide for controlling caching on Netlify's CDN. Use when
   framework-specific caching patterns.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Caching on Netlify

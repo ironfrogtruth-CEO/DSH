@@ -9,6 +9,7 @@ description: Full CRUD and analysis for Mixpanel dashboards. Use when the user
 compatibility: Ported from Codex plugin mixpanel-headless
   (https://mixpanel.github.io/mixpanel-headless/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Dashboard Expert

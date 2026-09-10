@@ -8,6 +8,7 @@ description: Use for a standard, single-pass security audit of an entire
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Security Scan

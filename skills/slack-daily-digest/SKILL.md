@@ -5,6 +5,7 @@ description: Create a daily Slack digest from selected channels or topics. Use
   activity.
 compatibility: Ported from Codex plugin slack (https://slack.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Slack Daily Digest

@@ -9,6 +9,7 @@ description: "Configures and troubleshoots scheduled tasks on Render using cron
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Cron Jobs

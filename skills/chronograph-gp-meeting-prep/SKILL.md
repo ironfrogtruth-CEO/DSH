@@ -15,6 +15,7 @@ description: >
 compatibility: Ported from Codex plugin chronograph-lp
   (https://www.chronograph.pe/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Chronograph GP Meeting Prep

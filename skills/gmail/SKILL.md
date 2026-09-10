@@ -9,6 +9,7 @@ description: Manage Gmail inbox triage, mailbox search, thread summaries, action
 compatibility: Ported from Codex plugin gmail
   (https://workspace.google.com/products/gmail/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Gmail

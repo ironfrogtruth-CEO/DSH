@@ -17,6 +17,7 @@ compatibility: Ported from Codex plugin superhuman
   (https://help.superhuman.com/hc/en-us/articles/49810745762067-Superhuman-Mail-MCP-Server),
   license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Batch Draft & Follow-Up Writer

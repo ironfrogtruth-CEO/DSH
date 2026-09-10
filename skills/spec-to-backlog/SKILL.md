@@ -10,6 +10,7 @@ description: "Automatically convert Confluence specification documents into
 compatibility: Ported from Codex plugin atlassian-rovo
   (https://www.atlassian.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Spec to Backlog

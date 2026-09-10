@@ -5,6 +5,7 @@ description: Refactor macOS SwiftUI views and scenes into stable structure. Use
   escapes.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # View Refactor

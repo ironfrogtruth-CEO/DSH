@@ -5,6 +5,7 @@ description: Use when the user asks for a security review of a pull request,
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Security Diff Scan

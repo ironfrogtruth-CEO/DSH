@@ -4,6 +4,7 @@ description: Use when working with HubSpot CRM records to search, summarize,
   create, update, associate, or analyze objects and properties.
 compatibility: Ported from Codex plugin hubspot (https://www.hubspot.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HubSpot

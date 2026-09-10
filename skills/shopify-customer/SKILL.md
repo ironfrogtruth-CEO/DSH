@@ -5,6 +5,7 @@ description: The Customer Account API allows customers to access their own data
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Required Tool Calls (do not skip)

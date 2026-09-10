@@ -3,6 +3,7 @@ name: remotion-best-practices
 description: Best practices for Remotion - Video creation in React
 compatibility: Ported from Codex plugin remotion (https://remotion.dev), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## When to use

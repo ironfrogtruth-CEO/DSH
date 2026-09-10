@@ -7,6 +7,7 @@ description: Route Data Analytics plugin-level requests and broad analytics work
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## ChatGPT web Chat mode stop gate (read first)

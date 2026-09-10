@@ -7,6 +7,7 @@ description: Creates and maintains Figma Code Connect template files that map
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Code Connect

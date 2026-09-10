@@ -5,6 +5,7 @@ description: Vercel Functions expert guidance — Serverless Functions, Edge
   when configuring, debugging, or optimizing server-side code running on Vercel.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Functions

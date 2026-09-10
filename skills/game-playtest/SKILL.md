@@ -5,6 +5,7 @@ description: Run browser-game playtests and frontend QA. Use when the user asks
   overlay review, or structured issue-finding in a browser game.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Game Playtest

@@ -5,6 +5,7 @@ description: Use BrightHire tools when a user asks about BrightHire interview
   decisions, or organization-level interview data.
 compatibility: Ported from Codex plugin brighthire (https://www.brighthire.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # BrightHire

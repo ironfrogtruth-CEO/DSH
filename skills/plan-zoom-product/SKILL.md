@@ -3,6 +3,7 @@ name: plan-zoom-product
 description: Use when choosing products.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # /plan-zoom-product

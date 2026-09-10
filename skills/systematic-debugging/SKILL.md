@@ -1,7 +1,6 @@
 ---
 name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected
-  behavior, before proposing fixes
+description: 遇到任何 bug、测试失败或意外行为，在提出修复之前先用系统化方法定位根因。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

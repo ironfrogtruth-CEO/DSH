@@ -8,6 +8,7 @@ description: Manages shadcn components and projects — adding, searching, fixin
   "switch to --preset".
 compatibility: Ported from Codex plugin build-web-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # shadcn/ui

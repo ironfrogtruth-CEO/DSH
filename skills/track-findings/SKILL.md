@@ -8,6 +8,7 @@ description: Track validated Codex Security findings in Linear, Jira, GitHub
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Track Findings

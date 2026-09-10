@@ -7,6 +7,7 @@ description: Reference for netlify.toml configuration. Use when configuring
   functions config, and edge functions config.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Configuration (netlify.toml)

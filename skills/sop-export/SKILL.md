@@ -1,6 +1,6 @@
 ---
 name: sop-export
-description: Use this skill as the export node in a harness SOP pipeline to package verified artifacts into Markdown, HTML, PDF, PPTX, PNG, CSV, JSON, or portable skill bundles while recording paths and avoiding unvalidated output.
+description: SOP 流水线的导出节点：把已验收产物打包成 Markdown、HTML、PDF、PPTX、PNG、CSV、JSON 或可移植技能包，记录路径并拦下未验证输出。
 ---
 
 # SOP Export Node

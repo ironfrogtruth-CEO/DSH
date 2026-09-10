@@ -5,6 +5,7 @@ description: Vercel CLI expert guidance. Use when deploying, managing
   interacting with the Vercel platform from the command line.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel CLI

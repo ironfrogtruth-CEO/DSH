@@ -1,7 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task,
-  before touching code
+description: 已经拿到规格或需求，需要在动代码之前，为多步骤任务先写一份实施计划时用它。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

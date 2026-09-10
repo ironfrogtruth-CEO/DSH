@@ -9,6 +9,7 @@ description: >
 compatibility: Ported from Codex plugin twilio-developer-kit
   (https://www.twilio.com/docs), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Role

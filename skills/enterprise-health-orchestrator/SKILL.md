@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-orchestrator
-description: Master-control skill for the local A00-A11 Ping An enterprise-health report production line. Use for registered Agent routing, source-bound handoffs, node retry, rollback, user approval, editable HTML rendering, browser QA, PDF export, and clean delivery.
+description: 平安企业健康报告本地 A00-A11 生产线的总控：负责代理路由、按来源交接、节点重试回滚、用户确认、可编辑 HTML 渲染、浏览器 QA、PDF 导出与干净交付。
 ---
 
 # 企业健康报告本地生产线总控 Skill

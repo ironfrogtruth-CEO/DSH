@@ -1,8 +1,6 @@
 ---
-name: Spreadsheets
-description: Create, edit, analyze, and verify standalone spreadsheet files or
-  Google Sheets-ready workbooks, including .xlsx, .xls, .csv, and .tsv. Do not
-  use for live controlling Microsoft Excel app or a live Excel session.
+name: spreadsheets
+description: 创建、编辑、分析与校验独立表格文件（.xlsx/.xls/.csv/.tsv）和 Google Sheets 可用工作簿；不用于操控正在运行的 Excel 应用会话。
 compatibility: Ported from Codex plugin spreadsheets (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

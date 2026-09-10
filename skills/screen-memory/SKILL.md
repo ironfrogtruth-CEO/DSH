@@ -1,6 +1,6 @@
 ---
 name: screen-memory
-description: 自动屏幕记忆与原生系统通知的使用方法。当前台应用变化时由 launchd 每 5 分钟静默截图存档（保留最近 24 小时），Agent 可随时回看"刚才/几分钟前屏幕上有什么"；dsh-notify.sh 可弹 macOS 原生通知。Use when the user asks what was on screen recently, wants screen context recall, or asks to send a native desktop notification.
+description: 自动屏幕记忆与原生通知：launchd 每 5 分钟静默截图、留存最近 24 小时，可回看刚才屏幕上有什么；或经 dsh-notify.sh 发 macOS 原生通知。
 ---
 
 # 屏幕记忆与原生通知

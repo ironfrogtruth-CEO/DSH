@@ -3,6 +3,7 @@ name: build-zoom-team-chat-app
 description: Use when building Team Chat.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build Zoom Team Chat App

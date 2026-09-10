@@ -10,6 +10,7 @@ description: This skill should be used when users want to run any workload on
   jobs on Hugging Face infrastructure without local setup.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Running Workloads on Hugging Face Jobs

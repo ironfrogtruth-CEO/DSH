@@ -4,6 +4,7 @@ description: "`@expo/ui/swift-ui` package lets you use SwiftUI Views and
   modifiers in your app."
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 > The instructions in this skill apply to SDK 55 only. For other SDK versions, refer to the Expo UI SwiftUI docs for that version for the most accurate information.

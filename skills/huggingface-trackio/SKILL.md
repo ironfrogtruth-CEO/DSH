@@ -7,6 +7,7 @@ description: Track and visualize ML training experiments with Trackio. Use when
   output for automation.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Trackio - Experiment Tracking for ML Training

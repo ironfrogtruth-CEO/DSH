@@ -6,6 +6,7 @@ description: Evaluate a local Codex plugin in engineer-friendly language. Use
   or asks for a plugin-wide report before comparing versions.
 compatibility: Ported from Codex plugin plugin-eval (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Evaluate Plugin

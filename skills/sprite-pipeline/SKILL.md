@@ -5,6 +5,7 @@ description: Generate and normalize 2D sprite animations. Use when the user asks
   scale normalization, or preview assets for browser-game animation.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Sprite Pipeline

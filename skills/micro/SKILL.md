@@ -5,6 +5,7 @@ description: Expert guidance for micro — asynchronous HTTP microservices
   endpoints, or microservices using the micro library.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # micro — Asynchronous HTTP Microservices

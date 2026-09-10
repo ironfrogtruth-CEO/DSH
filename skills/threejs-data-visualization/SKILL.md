@@ -1,11 +1,6 @@
 ---
 name: threejs-data-visualization
-description: Render WebGL-accelerated data visualizations with Three.js, raw
-  WebGL, deck.gl, luma.gl, PixiJS, Sigma.js, Plotly WebGL traces, ECharts GL,
-  CesiumJS, Babylon.js, or related GPU libraries. Use when the visualization
-  needs true spatial structure, dense 2D or 3D GPU rendering, particle or flow
-  animation, volumetric views, or interactive exploration that adds real
-  analytical value.
+description: 用 Three.js、WebGL 或 GPU 库渲染数据可视化：真实空间结构、密集 2D/3D 渲染、粒子动画、体视图，或交互探索能带来分析价值时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

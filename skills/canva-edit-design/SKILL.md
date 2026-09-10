@@ -9,6 +9,7 @@ description: Make edits to an existing Canva design — change or fix text,
   on.
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Canva Design Editing

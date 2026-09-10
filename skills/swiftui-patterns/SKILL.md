@@ -5,6 +5,7 @@ description: Build macOS SwiftUI scenes and components with desktop patterns.
   inspectors.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SwiftUI Patterns

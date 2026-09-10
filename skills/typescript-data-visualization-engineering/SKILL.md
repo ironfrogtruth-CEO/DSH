@@ -1,11 +1,6 @@
 ---
 name: typescript-data-visualization-engineering
-description: Build typed data visualizations in TypeScript. Use when the user
-  wants TypeScript visualization code, typed data models, browser visualization
-  components, UML-like diagram models, interactive graph or architecture diagram
-  contracts, scroll-driven scene contracts, library selection guidance, or a
-  maintainable visualization architecture beyond React- or Next-specific
-  concerns.
+description: 用 TypeScript 构建类型化可视化：类型化数据模型、浏览器组件、交互图合同、滚动场景合同与库选型；需要超越 React/Next 的可维护可视化架构时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

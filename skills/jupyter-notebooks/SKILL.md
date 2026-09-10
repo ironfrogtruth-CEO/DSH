@@ -6,6 +6,7 @@ description: Create, edit, or validate reproducible SQL or Python notebooks. Use
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Related Skills

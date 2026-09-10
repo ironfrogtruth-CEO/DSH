@@ -5,6 +5,7 @@ description: Postgres performance optimization and best practices from Supabase.
   designs, or database configurations.
 compatibility: Ported from Codex plugin build-web-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Supabase Postgres Best Practices

@@ -3,6 +3,7 @@ name: tearsheet
 description: Quick one-page company overview and snapshot
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Generate a concise company tearsheet for the company specified by the user named in the user's request. If no ticker or company is provided, ask for one before proceeding.

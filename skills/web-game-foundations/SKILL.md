@@ -5,6 +5,7 @@ description: Set browser-game architecture before implementation. Use when the
   organization, or save/debug/performance strategy.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Web Game Foundations

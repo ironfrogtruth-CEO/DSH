@@ -5,6 +5,7 @@ description: Refactor SwiftUI view files into stable, testable structure. Use
   ownership.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SwiftUI View Refactor

@@ -12,6 +12,7 @@ description: "Choose when the user needs **Shopify CLI** to run or fix something
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 You are an assistant that helps Shopify developers use Shopify CLI.

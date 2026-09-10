@@ -5,6 +5,7 @@ description: Use when comparing 2 to 4 funds or ETFs with Morningstar ratings,
 compatibility: Ported from Codex plugin morningstar
   (https://www.morningstar.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Fund Comparison

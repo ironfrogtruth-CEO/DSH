@@ -7,6 +7,7 @@ description: Get started building on Shopify. Use when a developer asks to build
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Flow

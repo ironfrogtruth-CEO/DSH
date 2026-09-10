@@ -1,10 +1,6 @@
 ---
 name: react-and-nextjs-data-visualization
-description: Integrate data visualizations into React and Next.js applications.
-  Use when the user needs chart components, UML-like or architecture diagram
-  components, React integration patterns, Next.js client or server boundaries,
-  hydration-safe rendering, lazy loading, framework-aware performance,
-  scroll-driven visual stories, or export guidance.
+description: 把可视化集成进 React 与 Next.js 应用：图表与 UML/架构图组件、客户端/服务端边界、防注水渲染、懒加载、滚动叙事与导出指引。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

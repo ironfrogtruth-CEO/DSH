@@ -4,6 +4,7 @@ description: Prepare macOS packaging and notarization workflows. Use when
   archiving apps, validating bundles, or explaining distribution-only failures.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Packaging & Notarization

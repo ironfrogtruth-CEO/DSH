@@ -5,6 +5,7 @@ description: Boltz job status and result recovery. Use when listing jobs,
   existing job ID. Not for starting new jobs.
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

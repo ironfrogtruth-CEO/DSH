@@ -15,6 +15,7 @@ description: >
   bulk-qa-answers).
 compatibility: Ported from Codex plugin datasite (https://www.datasite.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Data Room Gap Analysis

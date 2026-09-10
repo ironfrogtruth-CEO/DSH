@@ -4,6 +4,7 @@ description: Use when auditing HubSpot data quality for missing fields, stale
   records, duplicates, associations, owners, or cleanup tasks.
 compatibility: Ported from Codex plugin hubspot (https://www.hubspot.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HubSpot CRM Data Hygiene

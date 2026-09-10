@@ -9,6 +9,7 @@ description: Develop, debug, and manage Temporal applications across Python,
   patterns.
 compatibility: Ported from Codex plugin temporal (https://temporal.io/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Skill: temporal-developer

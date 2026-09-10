@@ -1,8 +1,6 @@
 ---
 name: validate-data
-description: Validate whether an analysis is accurate, well-supported, and ready
-  to share or use for a decision. Use when reviewing methodology, calculations,
-  comparisons, visuals, caveats, or conclusions.
+description: 核验某分析是否准确、证据充分、可以分享或用于决策：评审方法、计算、对比、图表、局限与结论时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

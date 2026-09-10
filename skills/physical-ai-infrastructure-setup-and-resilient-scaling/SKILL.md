@@ -12,6 +12,7 @@ description: "Use when the user wants to set up, scale, validate, or harden
 compatibility: Ported from Codex plugin nvidia
   (https://build.nvidia.com/skills/), license Apache-2.0 AND CC-BY-4.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Physical AI Infrastructure Setup And Resilient Scaling

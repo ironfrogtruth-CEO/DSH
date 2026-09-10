@@ -1,6 +1,6 @@
 ---
 name: pingan-qikang-visual-component-library
-description: 平安企康 HTML/PPT 材料视觉组件外挂库，负责色彩风格、数据卡片、图表组件、图标与素材注册表。
+description: 平安企康 HTML/PPT 材料的视觉组件库：负责色彩风格、数据卡片、图表组件、图标与素材注册表，供生成环节取用。
 ---
 
 # 平安企康视觉组件外挂库 Skill

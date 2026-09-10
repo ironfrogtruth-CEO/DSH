@@ -5,6 +5,7 @@ description: Kick off public shotgun metagenomics QC, host-depletion, taxonomic
   Kraken2, Bracken, MetaPhlAn, and HUMAnN.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Shotgun Metagenomics

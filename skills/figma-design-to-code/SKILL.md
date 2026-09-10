@@ -13,6 +13,7 @@ description: "Use this skill when implementing a Figma design as code (design â†
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Implement a Figma Design as Code (Design â†’ Code)

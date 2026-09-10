@@ -6,6 +6,7 @@ description: Analyze product data and manage product tooling in PostHog. Use
   analytics, dashboards, data warehouse, or PostHog documentation.
 compatibility: Ported from Codex plugin posthog (https://posthog.com/docs), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # PostHog

@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-pdf-export
-description: Export editable A4 enterprise health report HTML to PDF after browser QA, print QA, editor-control hiding, and file packaging checks.
+description: 在浏览器 QA、打印 QA、隐藏编辑控件与文件打包检查通过后，把可编辑 A4 企业健康报告 HTML 导出为 PDF。
 ---
 
 # 企业健康报告 PDF 导出 Skill

@@ -1,8 +1,6 @@
 ---
 name: get-context
-description: Mandatory design-brief gate for clarifying the product and outcome.
-  Use before ideation, image-to-code builds, redesigns, or product UI work to
-  clarify missing product information and play back the brief before proceeding.
+description: 做设计简报的强制前置关卡：构思、图片转代码、重设计或产品 UI 工作前先澄清缺失的产品信息，复述确认简报再开工。
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

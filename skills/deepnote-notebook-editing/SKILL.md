@@ -6,6 +6,7 @@ description: Use when creating Deepnote projects or notebooks, adding or
   notebook structure through the Deepnote app tools.
 compatibility: Ported from Codex plugin deepnote (https://deepnote.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Deepnote Notebook Editing

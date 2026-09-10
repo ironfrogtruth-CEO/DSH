@@ -1,9 +1,6 @@
 ---
 name: evaluate-skill
-description: Evaluate a local Codex skill in engineer-friendly terms. Use when
-  the user says "evaluate this skill", "give me an analysis of the game dev
-  skill", "audit this skill", "why did this score that way", "what should I fix
-  first", or asks for a skill-specific report before benchmarking it.
+description: 用工程师听得懂的话评估本地 Codex 技能：为什么得这个分、先修什么、基准测试前的技能专项分析；用户说评估或审计某个技能时用它。
 compatibility: Ported from Codex plugin plugin-eval (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

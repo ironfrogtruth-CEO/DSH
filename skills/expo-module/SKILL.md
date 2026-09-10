@@ -6,6 +6,7 @@ description: Guide for writing Expo native modules and views using the Expo
   system. Use when building or modifying native modules for Expo.
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Writing Expo Modules

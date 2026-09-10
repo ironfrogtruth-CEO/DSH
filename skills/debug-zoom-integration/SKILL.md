@@ -3,6 +3,7 @@ name: debug-zoom-integration
 description: Use when isolating failures.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Debug Zoom Integration

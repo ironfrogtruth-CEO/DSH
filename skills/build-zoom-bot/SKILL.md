@@ -3,6 +3,7 @@ name: build-zoom-bot
 description: Use when building bots.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # /build-zoom-bot

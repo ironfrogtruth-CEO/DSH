@@ -1,8 +1,6 @@
 ---
 name: market-sizing
-description: Estimate market, segment, or opportunity size with transparent
-  assumptions and uncertainty. Use for TAM/SAM/SOM, sizing scenarios, or
-  comparing the scale of possible opportunities.
+description: 估算市场、细分或机会规模，并透明交代假设与不确定性；做 TAM/SAM/SOM、情景测算或比较机会量级时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

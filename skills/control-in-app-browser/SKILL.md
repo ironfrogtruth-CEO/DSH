@@ -1,10 +1,6 @@
 ---
 name: control-in-app-browser
-description: Control the in-app Browser for opening, navigating, inspecting
-  visible or interactive page state, clicking, typing, screenshots, and local
-  web testing. It can have existing signed-in sessions. For semantic operations
-  on linked resources, prefer a purpose-built connector, API, or CLI when
-  available.
+description: 操控应用内浏览器：打开、导航、查看页面状态、点击输入、截图与本地 Web 测试，可复用其中的登录会话；语义操作优先用专门的连接器或 API。
 compatibility: Ported from Codex plugin browser
   (https://github.com/openai/openai/tree/master/lib/browser_use/plugin), license
   Proprietary.

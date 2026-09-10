@@ -7,6 +7,7 @@ description: Guide for using Netlify Forms for HTML form handling. Use when
   API.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Forms

@@ -1,9 +1,6 @@
 ---
 name: data-visualization
-description: Route web data visualization work. Use when the user needs chart
-  choice, visual critique, dashboards, maps or geospatial views, Gantt
-  timelines, UML/software diagrams, scrollytelling, reports or exports, testing,
-  accessibility, browser implementation, or concept-first visual design.
+description: Web 数据可视化的总路由：需要选图表、视觉评审、大屏、地图、甘特时间线、UML/软件图、滚动叙事、导出、测试或浏览器实现时，先到这里分流到合适技能。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

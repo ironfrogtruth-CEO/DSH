@@ -14,6 +14,7 @@ compatibility: Ported from Codex plugin wix
   (https://dev.wix.com/docs/api-reference/articles/ai-tools/about-wix-skills),
   license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Wix App Builder

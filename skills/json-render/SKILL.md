@@ -6,6 +6,7 @@ description: AI chat response rendering guidance — handling UIMessage parts,
   response display issues.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # AI Chat Response Rendering

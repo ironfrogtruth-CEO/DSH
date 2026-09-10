@@ -5,6 +5,7 @@ description: Vercel app and REST API expert guidance. Use when the agent needs
   logs, or documentation through the connected Vercel app or REST API.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel API — Connected App & REST API

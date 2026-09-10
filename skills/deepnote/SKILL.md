@@ -5,6 +5,7 @@ description: Use when a task mentions Deepnote, the connected Deepnote app,
   blocks, integrations, or notebook runs.
 compatibility: Ported from Codex plugin deepnote (https://deepnote.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Deepnote Router

@@ -8,6 +8,7 @@ description: Build sandboxed applications for secure code execution. Load when
 compatibility: Ported from Codex plugin cloudflare
   (https://workers.cloudflare.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Cloudflare Sandbox SDK

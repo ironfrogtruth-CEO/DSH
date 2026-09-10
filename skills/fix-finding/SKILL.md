@@ -6,6 +6,7 @@ description: Use when the user explicitly asks to fix and verify a validated or
 compatibility: Ported from Codex plugin codex-security
   (https://developers.openai.com/codex/security), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Fix Finding

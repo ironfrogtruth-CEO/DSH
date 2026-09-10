@@ -1,9 +1,6 @@
 ---
 name: build-dashboard
-description: Build source-backed dashboards for monitoring performance,
-  exploring drivers, or acting on product and business metrics. Use when the
-  task needs a dashboard, scorecard, or monitoring view with clear metrics,
-  filters, source definitions, and QA.
+description: 搭建以数据为源的大屏看板：监控表现、探究驱动因素或跟进业务指标；需要带清晰指标、筛选、数据源定义与 QA 的仪表盘或记分卡时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

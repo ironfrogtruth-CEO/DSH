@@ -6,6 +6,7 @@ description: Translate all text in a Canva design to another language, creating
   a Spanish/French/etc version", or "localize my Canva design".
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Canva Translate

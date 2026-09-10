@@ -3,6 +3,7 @@ name: slack-notification-triage
 description: Triage recent Slack activity into a priority queue or task list for the user.
 compatibility: Ported from Codex plugin slack (https://slack.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Slack Notification Triage

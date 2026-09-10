@@ -9,6 +9,7 @@ description: Guides Stripe integration decisions — API selection (Checkout
   processing payments, setting up subscriptions, or creating connected accounts.
 compatibility: Ported from Codex plugin build-web-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Latest Stripe API version: **2026-02-25.clover**. Always use the latest API version and SDK unless the user specifies otherwise.

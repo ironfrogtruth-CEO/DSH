@@ -9,6 +9,7 @@ description: Process, quality-control, annotate, and visualize single-cell or
   UMAP visualizations for large scRNA-seq datasets.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # scRNA-seq QC

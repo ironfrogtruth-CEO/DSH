@@ -1,9 +1,6 @@
 ---
 name: produce
-description: Use when the user wants to create, explore, adapt, refine, polish,
-  or review visual creative such as campaigns, ads, social posts, product
-  imagery, scenes, offers, logos, brand systems, styles, charts, decks, or
-  related marketing and design assets.
+description: 创作、探索、改编、打磨或评审视觉创意：广告、社媒帖子、产品图、Logo、品牌系统、风格、图表、deck 与营销设计资产都算；要这类创意产出时先用它。
 compatibility: Ported from Codex plugin creative-production
   (https://github.com/openai/oai-maintained-plugins/tree/main/plugins/creative-production),
   license Proprietary.

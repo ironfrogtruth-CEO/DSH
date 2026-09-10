@@ -1,8 +1,6 @@
 ---
 name: using-git-worktrees
-description: Use when starting feature work that needs isolation from current
-  workspace or before executing implementation plans - ensures an isolated
-  workspace exists via native tools or git worktree fallback
+description: 开始需要隔离于当前工作区的功能开发，或执行实施计划前用它：先通过 git worktree 等确保存在隔离工作区。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

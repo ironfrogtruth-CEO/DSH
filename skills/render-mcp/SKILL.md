@@ -10,6 +10,7 @@ description: "Connects and configures the Render MCP server for AI coding
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render MCP Server

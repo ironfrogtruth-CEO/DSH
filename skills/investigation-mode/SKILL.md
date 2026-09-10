@@ -1,9 +1,6 @@
 ---
 name: investigation-mode
-description: "Orchestrated debugging coordinator. Triggers on frustration
-  signals (stuck, hung, broken, waiting) and systematically triages: runtime
-  logs → workflow status → browser verify → deploy/env. Reports findings at
-  every step."
+description: 编排式调试协调器：卡住、卡死、坏了、等待中这类挫败信号会触发它，系统排查运行日志、工作流状态、浏览器验证、部署与环境，每步汇报发现。
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
 ---

@@ -1,6 +1,6 @@
 ---
 name: sop-orchestrator
-description: Use this skill for complex, multi-step, multi-artifact tasks that need harness-style routing, 总控编排, source-truth separation, node-by-node status, confirmation gates, QA blocking, rollback points, and portable skill/tool/model registries. Prefer goal-first-control（以终为始）as the user-facing entrypoint when available.
+description: 复杂多步、多产物任务的总控编排：真源分离、逐节点状态、确认闸门、QA 拦截、回滚点与可移植技能/工具/模型注册表；面向用户时优先走 goal-first-control（以终为始）。
 ---
 
 # SOP Orchestrator

@@ -1,6 +1,6 @@
 ---
 name: reliable-development
-description: Use for non-trivial software development, debugging, refactoring, repository changes, plugin work, infrastructure changes, or long-running coding tasks that require evidence, tests, durable memory, context compaction, and safe continuation across the configured cloud DeepSeek or 智谱 routes.
+description: 用于有分量的软件开发、调试、重构、仓库与基建改动或长时编码：需要证据、测试、持久记忆、上下文压缩，并跨 DeepSeek 与智谱路由安全续跑。
 ---
 
 # Reliable Development

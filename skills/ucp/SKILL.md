@@ -10,6 +10,7 @@ description: Use when the user wants to use the UCP CLI to find, compare, buy,
 compatibility: Ported from Codex plugin shopify
   (https://github.com/Shopify/Shopify-AI-Toolkit), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # ucp

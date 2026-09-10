@@ -5,6 +5,7 @@ description: Use when summarizing a fund or ETF with Morningstar ratings,
 compatibility: Ported from Codex plugin morningstar
   (https://www.morningstar.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Fund Summarizer

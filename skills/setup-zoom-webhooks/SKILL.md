@@ -3,6 +3,7 @@ name: setup-zoom-webhooks
 description: Use when building Zoom webhooks.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Setup Zoom Webhooks

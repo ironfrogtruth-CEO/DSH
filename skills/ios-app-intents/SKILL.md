@@ -5,6 +5,7 @@ description: Design App Intents, app entities, and App Shortcuts for iOS system
   Spotlight, widgets, or controls.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # iOS App Intents

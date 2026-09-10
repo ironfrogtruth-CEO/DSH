@@ -9,6 +9,7 @@ description: "Migrate from Heroku to Render by reading local project files and
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Heroku to Render Migration

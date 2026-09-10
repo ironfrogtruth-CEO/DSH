@@ -6,6 +6,7 @@ description: Reviews code changes using CodeRabbit AI. Use when user asks for
 compatibility: Ported from Codex plugin coderabbit
   (https://docs.coderabbit.ai/cli/overview), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # CodeRabbit Review

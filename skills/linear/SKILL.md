@@ -4,6 +4,7 @@ description: Manage issues, projects & team workflows in Linear. Use when the
   user wants to read, create or updates tickets in Linear.
 compatibility: Ported from Codex plugin linear (https://linear.app/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Linear

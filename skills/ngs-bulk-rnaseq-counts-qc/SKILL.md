@@ -5,6 +5,7 @@ description: Run or plan bulk RNA-seq FASTQ-to-count processing with
   MultiQC, and count-matrix QC checks.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Bulk RNA-seq Counts QC

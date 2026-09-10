@@ -3,6 +3,7 @@ name: expo-api-routes
 description: Guidelines for creating API routes in Expo Router with EAS Hosting
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## When to Use API Routes

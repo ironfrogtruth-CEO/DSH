@@ -5,6 +5,7 @@ description: Vercel storage expert guidance — Blob, Edge Config, and Marketpla
   using data storage with Vercel applications.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Storage

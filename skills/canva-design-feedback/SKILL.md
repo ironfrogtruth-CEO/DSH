@@ -8,6 +8,7 @@ description: Read a Canva design and return structured, actionable design
   wrong with this slide".
 compatibility: Ported from Codex plugin canva.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Get Design Feedback

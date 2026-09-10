@@ -5,6 +5,7 @@ description: Use this skill for Hugging Face Dataset Viewer API workflows that
   download parquet URLs, and read size or statistics.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Hugging Face Dataset Viewer

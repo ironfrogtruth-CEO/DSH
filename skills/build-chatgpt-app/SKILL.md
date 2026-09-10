@@ -10,6 +10,7 @@ description: Build, scaffold, refactor, and troubleshoot ChatGPT Apps SDK
 compatibility: Ported from Codex plugin openai-developers
   (https://platform.openai.com/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build ChatGPT App

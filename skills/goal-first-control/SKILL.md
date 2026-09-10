@@ -1,6 +1,6 @@
 ---
 name: goal-first-control
-description: 以终为始 / goal-first-control：Use when the model selects the goal-first axis at implicit, light, or full depth. Start from the required outcome and success criteria, then expand only the planning detail the task needs; do not force the full pipeline onto simple one-step requests.
+description: 以终为始的控制轴：从目标结果与成功标准出发，只展开任务需要的规划细节；模型选定该轴 implicit/light/full 深度时用它，别把完整流水线强塞给简单请求。
 ---
 
 # 以终为始

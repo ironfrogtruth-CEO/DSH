@@ -3,6 +3,7 @@ name: build-zoom-contact-center-app
 description: Use when using Contact Center.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build Zoom Contact Center App

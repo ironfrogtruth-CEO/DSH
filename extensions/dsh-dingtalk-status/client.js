@@ -121,7 +121,10 @@ window.__ModuleLoader__.load({
         [data-dsh-footer-actions] > [data-slot="sidebar.footer.action"],[data-dsh-settings-area] > [data-slot="sidebar.settings"]{display:contents!important}
         .dsh-dingtalk-root{grid-column:2!important;grid-row:2!important;width:100%!important}.dsh-dingtalk-trigger{width:100%!important;justify-content:flex-start!important}[data-dsh-sidebar-foot] .dsbalance-card{grid-column:1 / -1!important;grid-row:1!important;width:100%!important;margin:0!important}[data-dsh-sidebar-foot] [data-slot="sidebar.settings"] > *{grid-column:1!important;grid-row:2!important;width:100%!important;margin:0!important}
         [data-sidebar-collapsed] [data-dsh-sidebar-foot]{display:flex!important;flex-direction:column!important;align-items:center!important;gap:4px!important;width:36px!important}[data-sidebar-collapsed] [data-dsh-sidebar-foot] .dsbalance-rail{order:1!important;width:36px!important;height:36px!important;margin:0!important}[data-sidebar-collapsed] [data-dsh-sidebar-foot] .dsh-dingtalk-root{order:2!important;width:36px!important;height:36px!important}[data-sidebar-collapsed] [data-dsh-sidebar-foot] [data-slot="sidebar.settings"] > *{order:3!important;width:36px!important;height:36px!important;padding:0!important;justify-content:center!important}.dsh-dingtalk-trigger-label,.dsh-dingtalk-trigger-dot{display:inline}
-        @media(max-width:520px) and (pointer:coarse),(max-width:380px){.dsh-dingtalk-trigger-label,.dsh-dingtalk-trigger-dot{display:none}.dsh-dingtalk-trigger{width:36px;padding:0;justify-content:center}}
+        /* Collapse labels only with the sidebar itself; small touch screens use a full drawer. */
+        [data-sidebar-collapsed] .dsh-dingtalk-trigger-label,[data-sidebar-collapsed] .dsh-dingtalk-trigger-dot{display:none}
+        [data-sidebar-collapsed] .dsh-dingtalk-trigger{padding:0;justify-content:center!important}
+        @media(max-width:520px) and (pointer:coarse),(max-width:380px){.dsh-dingtalk-trigger{padding:0 8px;gap:6px}.dsh-dingtalk-trigger-label{flex:0 0 auto;font-size:12px}.dsh-dingtalk-trigger-dot{flex:0 0 8px}}
       `
       document.getElementById(style.id)?.remove()
       document.head.appendChild(style)

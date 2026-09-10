@@ -3,6 +3,7 @@ name: dcf
 description: Discounted cash flow valuation with sensitivity analysis
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Build a discounted cash flow (DCF) valuation for the company named in the user's request. If no ticker or company is provided, ask for one before proceeding.

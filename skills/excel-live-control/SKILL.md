@@ -6,6 +6,7 @@ description: Control an open or active Microsoft Excel workbook through the
   for standalone spreadsheet files or Google Sheets.
 compatibility: Ported from Codex plugin spreadsheets (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Excel Live Control

@@ -4,6 +4,7 @@ description: Build and refactor SwiftUI UI with component patterns and examples.
   Use when shaping navigation, state, layouts, controls, or screen composition.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SwiftUI UI Patterns

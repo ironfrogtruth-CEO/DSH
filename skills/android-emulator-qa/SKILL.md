@@ -4,6 +4,7 @@ description: Use when validating Android feature flows in an emulator with
   adb-driven launch, input, UI-tree inspection, screenshots, and logcat capture.
 compatibility: Ported from Codex plugin test-android-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Android Emulator QA

@@ -4,6 +4,7 @@ description: Share a runnable prototype using the user's preferred deployment to
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Share

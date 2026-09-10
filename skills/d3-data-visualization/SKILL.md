@@ -1,9 +1,6 @@
 ---
 name: d3-data-visualization
-description: Build custom data visualizations with D3. Use when the user needs
-  SVG or DOM-based charts, rich annotation, domain-native contextual
-  backgrounds, data joins, custom scales or interactions, scroll-driven SVG
-  scene states, or precise control over browser visualization behavior.
+description: 用 D3 构建定制可视化：SVG/DOM 图表、富标注、数据绑定、自定义比例尺与交互、滚动驱动的场景，或需要精确控制浏览器渲染行为时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

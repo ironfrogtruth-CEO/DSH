@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-visual-design
-description: Design visual components, image strategy, report VI, color constraints, and editable image layers for A4 enterprise health reports using the provided visual component library.
+description: 用现成视觉组件库为企业健康报告设计视觉组件、图片策略、报告 VI、配色约束与可编辑图层层。
 ---
 
 # 企业健康报告视觉设计 Skill

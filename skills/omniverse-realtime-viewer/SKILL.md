@@ -5,6 +5,7 @@ description: Use as the top-level router for Omniverse Realtime Viewer USD app
 compatibility: Ported from Codex plugin nvidia
   (https://build.nvidia.com/skills/), license Apache-2.0 AND CC-BY-4.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 <!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->

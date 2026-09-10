@@ -3,6 +3,7 @@ name: unit-economics
 description: Bottoms-up unit economics decomposition for any public company
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Perform a bottoms-up unit economics decomposition for the company named in the user's request. If no ticker or company is provided, ask for one before proceeding.

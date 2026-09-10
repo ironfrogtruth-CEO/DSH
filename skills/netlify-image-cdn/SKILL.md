@@ -8,6 +8,7 @@ description: Guide for using Netlify Image CDN for image optimization and
   Functions + Blobs.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Image CDN

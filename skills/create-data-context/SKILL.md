@@ -1,8 +1,6 @@
 ---
 name: create-data-context
-description: Create, update, inspect, or repair Data Analytics semantic layers.
-  Use when the user asks to save data context or create a semantic layer that
-  future Data Analytics work can inspect and cite.
+description: 创建、更新、检查或修复数据分析的语义层（业务上下文），让后续分析能引用可核验的指标口径与来源定义。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

@@ -12,6 +12,7 @@ description: SwiftUI ↔ Figma translation. Use whenever the user mentions Swift
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Figma ↔ SwiftUI

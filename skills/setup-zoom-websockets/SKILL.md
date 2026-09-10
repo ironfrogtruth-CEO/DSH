@@ -3,6 +3,7 @@ name: setup-zoom-websockets
 description: Use when building Zoom WebSockets.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Setup Zoom WebSockets

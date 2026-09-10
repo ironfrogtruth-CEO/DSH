@@ -5,6 +5,7 @@ description: Host websites with Sites. Always use after `sites-building`, and
   containing `.openai/hosting.json`.
 compatibility: Ported from Codex plugin sites (https://openai.com/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Sites hosting

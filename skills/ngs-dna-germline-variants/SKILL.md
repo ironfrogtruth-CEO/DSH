@@ -5,6 +5,7 @@ description: Run or plan deep germline WGS, WES, targeted-panel, cohort, or trio
   joint-calling, and annotation checks.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Germline DNA Variants

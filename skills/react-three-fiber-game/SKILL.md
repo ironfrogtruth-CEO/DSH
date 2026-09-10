@@ -5,6 +5,7 @@ description: Build React-hosted 3D browser games with React Three Fiber. Use
   HUD integration inside a React app.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # React Three Fiber Game

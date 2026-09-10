@@ -4,6 +4,7 @@ description: Use when preparing HubSpot customer briefs for meetings, renewals,
   QBRs, sales calls, escalations, handoffs, or follow-ups.
 compatibility: Ported from Codex plugin hubspot (https://www.hubspot.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HubSpot Customer Prep

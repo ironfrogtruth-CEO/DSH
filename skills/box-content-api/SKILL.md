@@ -8,6 +8,7 @@ description: Build and troubleshoot Box integrations for uploads, folders,
   search, summarization, extraction, or question-answering.
 compatibility: Ported from Codex plugin box (https://www.box.com/home), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Box Content API

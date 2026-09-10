@@ -3,6 +3,7 @@ name: build-zoom-rest-api-app
 description: Use when calling REST APIs.
 compatibility: Ported from Codex plugin zoom (https://developers.zoom.us/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Build Zoom REST API App

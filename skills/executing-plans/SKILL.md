@@ -1,7 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan to execute in a
-  separate session with review checkpoints
+description: 拿到写好的实施计划、要在独立会话里执行并设评审检查点时用它，按计划推进并在检查点核对进度。
 compatibility: Ported from Codex plugin superpowers
   (https://github.com/obra/superpowers), license MIT.
 allowed-tools: Bash

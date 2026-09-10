@@ -5,6 +5,7 @@ description: Implement browser-game runtimes with plain Three.js. Use when the
   loaders, physics, and low-level WebGL debugging.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Three WebGL Game

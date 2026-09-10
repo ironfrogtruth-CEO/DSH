@@ -9,6 +9,7 @@ description: Use when an OpenAI API request fails and Codex needs to classify
 compatibility: Ported from Codex plugin openai-developers
   (https://platform.openai.com/), license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # OpenAI API Troubleshooting

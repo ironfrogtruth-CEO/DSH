@@ -1,7 +1,6 @@
 ---
 name: image-to-code
-description: Implement a selected image, screenshot, mockup, or Image Gen
-  reference as a faithful, responsive frontend.
+description: 把选定的图片、截图、线框稿或 Image Gen 参考图实现成忠实于原图、能自适应不同屏幕的前端页面。
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

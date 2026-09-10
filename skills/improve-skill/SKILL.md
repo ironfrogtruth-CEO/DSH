@@ -1,8 +1,6 @@
 ---
 name: improve-skill
-description: Turn plugin-eval findings into a concrete rewrite brief for a Codex
-  skill. Use when the user already evaluated a skill and now wants Codex to
-  improve it, especially after asking what to fix first.
+description: 把技能评估发现转成一份具体的改写简报；用户已评估某技能、现在要改进它（尤其问过先修什么）时用它。
 compatibility: Ported from Codex plugin plugin-eval (https://openai.com/), license MIT.
 allowed-tools: Bash
 ---

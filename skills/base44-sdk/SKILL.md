@@ -7,6 +7,7 @@ description: The base44 SDK is the library to communicate with base44 services.
   implement a feature, you must learn this skill
 compatibility: Ported from Codex plugin base44 (https://docs.base44.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Base44 Coder

@@ -1,9 +1,6 @@
 ---
 name: design-kpis
-description: Design KPI frameworks, metric definitions, targets, guardrails, and
-  measurement plans for product or business decisions. Use when success metrics,
-  drivers, guardrails, targets, or the measurement approach need to be defined
-  or improved.
+description: 为产品或业务决策设计 KPI 框架：指标定义、目标值、护栏与度量计划；当成功指标、驱动因素、目标或口径需要确定或改进时用它。
 compatibility: Ported from Codex plugin data-analytics (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

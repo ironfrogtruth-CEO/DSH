@@ -65,3 +65,5 @@ ui-theme:
   preference: system
 locale:
   preference: zh
+web-search-deepseek:
+  model: deepseek-flash

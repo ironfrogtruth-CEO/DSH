@@ -3,6 +3,7 @@ name: inflection
 description: Auto-detect biggest acceleration/deceleration inflections across all metrics
 compatibility: Ported from Codex plugin daloopa (https://daloopa.com), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 Detect the biggest financial and operating inflections for the company named in the user's request. If no ticker or company is provided, ask for one before proceeding.

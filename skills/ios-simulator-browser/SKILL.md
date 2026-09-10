@@ -7,6 +7,7 @@ description: Mirror an iOS Simulator into the Codex in-app browser and render
   preview, or capture browser-visible simulator proof.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # iOS Simulator Browser

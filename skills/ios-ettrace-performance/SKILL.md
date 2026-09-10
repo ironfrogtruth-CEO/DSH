@@ -5,6 +5,7 @@ description: Capture and interpret iOS Simulator ETTrace profiles. Use when
   stacks.
 compatibility: Ported from Codex plugin build-ios-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # iOS ETTrace Performance

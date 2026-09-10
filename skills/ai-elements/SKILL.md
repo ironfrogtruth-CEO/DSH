@@ -6,6 +6,7 @@ description: AI Elements component library guidance — pre-built React componen
   AI-native interface with the AI SDK.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # AI Elements

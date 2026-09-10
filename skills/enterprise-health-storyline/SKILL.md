@@ -1,6 +1,6 @@
 ---
 name: enterprise-health-storyline
-description: Design the A06 enterprise health report storyline from verified A04 conclusions, A03 official evidence, and A05 recommendation decisions, producing a gated annual-blueprint.v3 JSON for A07.
+description: 依据已核实的 A04 结论、A03 权威证据与 A05 建议决策设计 A06 故事线，产出带闸门的 annual-blueprint.v3 JSON 交给 A07。
 ---
 
 # 企业健康报告故事线 Skill

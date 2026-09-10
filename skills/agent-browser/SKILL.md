@@ -1,10 +1,6 @@
 ---
 name: agent-browser
-description: Browser automation CLI for AI agents. Use when the user needs to
-  interact with websites, verify dev server output, test web apps, navigate
-  pages, fill forms, click buttons, take screenshots, extract data, or automate
-  any browser task. Also triggers when a dev server starts so you can verify it
-  visually.
+description: 给 AI 代理用的浏览器自动化 CLI：需要打开网页、验证开发服务器输出、测试 Web 应用、翻页、填表、点击、截图、抓数据或自动化任何浏览器操作时用它。
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
 ---

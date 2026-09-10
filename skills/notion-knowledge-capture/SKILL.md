@@ -5,6 +5,7 @@ description: Capture conversations and decisions into structured Notion pages;
   with proper linking.
 compatibility: Ported from Codex plugin notion (https://www.notion.so/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Knowledge Capture

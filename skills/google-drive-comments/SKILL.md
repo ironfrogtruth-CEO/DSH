@@ -7,6 +7,7 @@ description: Write, reply to, and resolve Google Drive comments on Docs, Sheets,
 compatibility: Ported from Codex plugin google-drive
   (https://workspace.google.com/products/drive/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Google Drive Comments

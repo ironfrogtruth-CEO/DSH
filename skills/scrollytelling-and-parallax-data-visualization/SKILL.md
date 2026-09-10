@@ -1,11 +1,6 @@
 ---
 name: scrollytelling-and-parallax-data-visualization
-description: Design and implement parallax scrolling and scrollytelling data
-  visualizations. Use when the user asks for parallax scrolling, scrollytelling,
-  scroll-driven timelines, sticky graphics, Scrollama, ScrollTrigger,
-  ScrollTimeline, view timelines, rich-media timelines, moviescrollers,
-  scroll-scrubbed charts, staged narrative reveals, or interactive visual
-  stories where scrolling changes a data visualization or media scene.
+description: 设计并实现视差滚动与滚动叙事可视化：滚动驱动的时间线、sticky 图形、Scrollama/ScrollTrigger、逐帧揭示，或随滚动变化的图表场景时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

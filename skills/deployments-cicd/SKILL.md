@@ -5,6 +5,7 @@ description: Vercel deployment and CI/CD expert guidance. Use when deploying,
   configuring CI workflow files for Vercel.
 compatibility: Ported from Codex plugin vercel (https://vercel.com/), license Apache-2.0.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Vercel Deployments & CI/CD

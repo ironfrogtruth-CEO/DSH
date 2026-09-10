@@ -7,6 +7,7 @@ description: Predict Tier-1 ADME/ADMET for small molecules with Boltz from bare
   boltz-small-molecule-screen, which already returns ADME free).
 compatibility: Ported from Codex plugin boltz-api-cli (https://boltz.bio), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 ## Workflow

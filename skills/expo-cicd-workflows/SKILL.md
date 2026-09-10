@@ -6,6 +6,7 @@ description: Helps understand and write EAS workflow YAML files for Expo
   pipelines or deployment automation.
 compatibility: Ported from Codex plugin expo (https://docs.expo.dev/skills/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # EAS Workflows Skill

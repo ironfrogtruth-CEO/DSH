@@ -4,6 +4,7 @@ description: Build, run, and test SwiftPM macOS packages and executables. Use
   when the repo is package-first or has no Xcode project.
 compatibility: Ported from Codex plugin build-macos-apps (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # SwiftPM for macOS

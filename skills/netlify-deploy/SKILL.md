@@ -5,6 +5,7 @@ description: Deploy projects to Netlify with the Netlify CLI. Use when the user
   between preview and production flows.
 compatibility: Ported from Codex plugin netlify (https://www.netlify.com), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Netlify Deployment Skill

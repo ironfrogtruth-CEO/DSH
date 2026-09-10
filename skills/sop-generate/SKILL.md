@@ -1,6 +1,6 @@
 ---
 name: sop-generate
-description: Use this skill as the generate node in a harness SOP pipeline to create artifacts from a confirmed structure by selecting registered skills, tools, and model aliases while keeping outputs traceable and rollback-safe.
+description: SOP 流水线的生成节点：依据已确认的结构，选择注册的技能、工具与模型别名产出产物，输出全程可追溯、可回滚。
 ---
 
 # SOP Generate Node

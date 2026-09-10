@@ -8,6 +8,7 @@ description: Use Transformers.js to run state-of-the-art machine learning models
   models from Hugging Face Hub.
 compatibility: Ported from Codex plugin hugging-face (https://huggingface.co), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Transformers.js - Machine Learning for JavaScript

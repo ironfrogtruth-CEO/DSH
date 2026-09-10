@@ -1,18 +1,6 @@
 ---
 name: visualization-strategy-and-critique
-description: Choose, lay out, critique, and explain data visualizations. Use
-  when the user asks what visualization fits a dataset or goal, how a chart,
-  dashboard, operational workspace, UML-like diagram, or software architecture
-  diagram should be composed or interacted with, asks for visual page design, a
-  layout mockup, generated large-screen and mobile concept images, or to be
-  shown what a visualization could look like, when domain-native contextual
-  surfaces or graphical backgrounds may help, when scrollytelling or parallax
-  might be appropriate, wants a critique of an existing visualization, or needs
-  guidance grounded in trusted visualization theory and practice. For advanced
-  visual design or page-layout prompts where composition affects understanding,
-  Codex must generate and show both large-screen and mobile portrait image
-  concepts before implementation or text-only design handoff, plus mobile
-  landscape when needed.
+description: 为图表与大屏做选型、版式与评审：判断什么图适合某数据/目标、图如何组织与交互、页面视觉设计、线框与概念图，或要批评现有可视化时用它。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

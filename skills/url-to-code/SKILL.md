@@ -1,6 +1,6 @@
 ---
 name: url-to-code
-description: Clone a live URL as a runnable frontend-only local app.
+description: 把一个能访问的 URL 克隆成纯前端、可本地运行的应用，便于离线研究或在此基础上改造页面。
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash

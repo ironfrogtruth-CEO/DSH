@@ -1,11 +1,6 @@
 ---
 name: node-link-and-diagram-layout
-description: Choose and apply automatic layout strategies for node-link diagrams
-  and connected-node visuals. Use when the user asks how to auto-arrange nodes,
-  reduce line crossings, route edges, avoid overlaps, stabilize layout, or
-  choose graph-layout algorithms for network diagrams, dependency graphs,
-  database schema diagrams, ERDs, state machines, decision trees, flow diagrams,
-  box-and-line editors, or other line-connected nodes.
+description: 为节点连线图选自动布局策略：自动排布节点、减少连线交叉、路由边线、避免重叠、稳定布局，或挑图布局算法；网络图、依赖图、ERD、状态机、流程图都适用。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

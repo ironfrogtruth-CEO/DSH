@@ -13,6 +13,7 @@ description: Build or update a professional-grade design system in Figma from a
 compatibility: Ported from Codex plugin figma (https://www.figma.com), license
   LicenseRef-Figma-Developer-Terms.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Design System Builder — Figma MCP Skill

@@ -10,6 +10,7 @@ description: "Sets up and configures background workers on Render for
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Render Background Workers

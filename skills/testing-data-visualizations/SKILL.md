@@ -1,11 +1,6 @@
 ---
 name: testing-data-visualizations
-description: Test data visualizations and dashboards. Use when the user needs
-  chart or diagram test strategy, screenshot or image diff testing, visual
-  regression, mocked or synthetic chart data, component or unit tests, E2E
-  dashboard QA, interactive UML-like diagram verification, scroll-driven story
-  verification, export verification, or guidance on avoiding brittle
-  over-testing.
+description: 测试图表与仪表盘：截图/图像差异对比、视觉回归、模拟数据、组件与单元测试、E2E 大屏 QA、滚动叙事与导出验证，以及避免过度测试的建议。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash

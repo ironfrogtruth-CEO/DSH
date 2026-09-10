@@ -7,6 +7,7 @@ description: Generate image-based alternatives, remixes, or new design
 compatibility: Ported from Codex plugin product-design (https://openai.com/),
   license Proprietary.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Ideate

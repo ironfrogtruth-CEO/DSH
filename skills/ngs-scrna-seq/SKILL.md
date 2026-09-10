@@ -5,6 +5,7 @@ description: Route single-cell or single-nucleus RNA-seq FASTQs to public
   clustering, and UMAP analysis to the embedded scrna-seq-qc skill.
 compatibility: Ported from Codex plugin ngs-analysis (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Single-cell RNA-seq

@@ -8,6 +8,7 @@ description: "Configures environment variables, secrets, and env groups on
 compatibility: Ported from Codex plugin render
   (https://github.com/renderinc/render-codex-plugin), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Environment Variables on Render

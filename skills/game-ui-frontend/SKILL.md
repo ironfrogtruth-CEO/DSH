@@ -5,6 +5,7 @@ description: Design UI surfaces for browser games. Use when the user asks for
   protect the playfield.
 compatibility: Ported from Codex plugin game-studio (https://openai.com/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Game UI Frontend

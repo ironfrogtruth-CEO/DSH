@@ -7,6 +7,7 @@ description: Build a practical meeting prep brief from a connected Google
 compatibility: Ported from Codex plugin google-calendar
   (https://workspace.google.com/products/calendar/), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Google Calendar Meeting Prep

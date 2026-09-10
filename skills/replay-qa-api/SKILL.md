@@ -6,6 +6,7 @@ description: Use when calling Replay QA's REST API directly from Codex. Covers
   explorations, and fix workflow discipline.
 compatibility: Ported from Codex plugin replayio (https://replay.io), license MIT.
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Replay QA API

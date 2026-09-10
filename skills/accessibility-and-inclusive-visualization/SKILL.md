@@ -1,10 +1,6 @@
 ---
 name: accessibility-and-inclusive-visualization
-description: Make data visualizations accessible and inclusive. Use when the
-  user needs chart or diagram accessibility guidance, text alternatives for
-  complex visuals, color and contrast review, keyboard support, reduced-motion
-  behavior for animation or parallax, or an accessibility QA workflow for
-  exported figures, UML-like diagrams, and dashboards.
+description: 让图表与可视化对所有人都可读可用：提供复杂图形的文字替代、颜色与对比度审查、键盘支持与减弱动画方案，并给出导出图片、UML 图和仪表盘的无障碍 QA 流程。
 compatibility: Ported from Codex plugin build-web-data-visualization
   (https://openai.com/), license MIT.
 allowed-tools: Bash
