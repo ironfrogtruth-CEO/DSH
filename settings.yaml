@@ -1,8 +1,8 @@
 ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
-  # 对话默认走云端 GLM；本地 Ollama 只承载后台媒体/检索模型，不进入对话选择器。
-  provider: zhipu-glm
+  # 对话默认走 DeepSeek V4.1 Flash 正式版（deepseek-flash）；本地 Ollama 只承载后台媒体/检索模型，不进入对话选择器。
+  provider: deepseek-official
   model: deepseek-flash
   reasoningEffort: high
 agent-presets:
